@@ -1,0 +1,1939 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#28A745" />
+  <meta name="description" content="Organize sua vida com produtividade" />
+  <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogInByb2R1dGl2Lm1lIC0gT3JnYW5pemUgc3VhIHZpZGEiLAogICJzaG9ydF9uYW1lIjogInByb2R1dGl2Lm1lIiwKICAiZGVzY3JpcHRpb24iOiAiT3JnYW5pemUgc3VhIHZpZGEgY29tIHByb2R1dGl2aWRhZGUiLAogICJzdGFydF91cmwiOiAiLyIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZjlmYSIsCiAgInRoZW1lX2NvbG9yIjogIiMyOEE3NDUiCn0=" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%2328A745' rx='24'/%3E%3Cpath d='M96 40C65 40 40 65 40 96s25 56 56 56 56-25 56-56-25-56-56-56zm20 76h-12V96h12v20zm-6-28c-4 0-7-3-7-7s3-7 7-7 7 3 7 7-3 7-7 7z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2328A745' rx='4'/%3E%3Cpath d='M16 8c-4 0-8 4-8 8s4 8 8 8 8-4 8-8-4-8-8-8zm3 11h-2v-3h2v3zm-1-4c-1 0-1-1-1-1s0-1 1-1 1 0 1 1 0 1-1 1z' fill='white'/%3E%3C/svg%3E" />
+  <title>produtiv.me — App de Produtividade</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    :root{
+      --primary:#28A745;
+      --primary-dark:#1e7e34;
+      --primary-light:#e8f5e9;
+      --primary-glow:rgba(40,167,69,0.18);
+      --bg:#f3f6f4;
+      --surface:#ffffff;
+      --surface2:#f8faf8;
+      --text:#1a2e1c;
+      --text-2:#4a6350;
+      --text-3:#8aaa8f;
+      --border:#ddeee0;
+      --danger:#e53935;
+      --danger-light:#ffeaea;
+      --warn:#f59e0b;
+      --shadow-sm:0 1px 4px rgba(0,0,0,.06);
+      --shadow:0 4px 16px rgba(40,167,69,.10),0 1px 4px rgba(0,0,0,.05);
+      --shadow-lg:0 8px 32px rgba(40,167,69,.14),0 2px 8px rgba(0,0,0,.08);
+      --radius:14px;
+      --radius-sm:9px;
+      --radius-lg:20px;
+      --font:'Plus Jakarta Sans',system-ui,sans-serif;
+      --transition:0.18s cubic-bezier(.4,0,.2,1);
+    }
+
+    body{
+      font-family:var(--font);
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.6;
+      min-height:100vh;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+
+    /* ── APP CONTAINER ── */
+    .app-container{max-width:720px;margin:0 auto;background:var(--bg);min-height:100vh}
+
+    /* ── HEADER ── */
+    header{
+      background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+      color:#fff;
+      padding:.9rem 1.1rem;
+      position:sticky;top:0;z-index:100;
+      box-shadow:0 2px 12px rgba(40,167,69,.25);
+    }
+    .header-content{display:flex;justify-content:space-between;align-items:center;max-width:720px;margin:0 auto}
+    .logo{font-size:1.25rem;font-weight:800;display:flex;align-items:center;gap:.5rem;letter-spacing:-.5px}
+    .logo-dot{color:rgba(255,255,255,.7)}
+    #user-name-display{color:rgba(255,255,255,.9);font-weight:600;font-size:.9rem}
+
+    /* ── MAIN ── */
+    main{flex:1;padding:1rem 1rem 120px;max-width:720px;margin:0 auto}
+
+    /* ── CARDS ── */
+    .card{
+      background:var(--surface);
+      border-radius:var(--radius);
+      padding:1.25rem;
+      margin-bottom:.875rem;
+      box-shadow:var(--shadow);
+      border:1px solid var(--border);
+      transition:box-shadow var(--transition);
+    }
+    .card:hover{box-shadow:var(--shadow-lg)}
+    .card-title{font-size:1.05rem;font-weight:700;margin-bottom:.75rem;color:var(--text);display:flex;align-items:center;gap:.5rem}
+    .card-title i{color:var(--primary);font-size:.95rem}
+
+    /* ── BUTTONS ── */
+    .btn{
+      padding:.6rem 1.1rem;
+      border-radius:var(--radius-sm);
+      border:0;
+      font-weight:700;
+      font-family:var(--font);
+      font-size:.9rem;
+      cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+      transition:all var(--transition);
+      outline:none;
+    }
+    .btn:active{transform:scale(.97)}
+    .btn-primary{
+      background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+      color:#fff;
+      box-shadow:0 2px 8px rgba(40,167,69,.3);
+    }
+    .btn-primary:hover{
+      background:linear-gradient(135deg,#2dbb4e,var(--primary));
+      box-shadow:0 4px 14px rgba(40,167,69,.4);
+      transform:translateY(-1px);
+    }
+    .btn-danger{background:var(--danger);color:#fff;box-shadow:0 2px 6px rgba(229,57,53,.2)}
+    .btn-danger:hover{background:#c62828;box-shadow:0 4px 12px rgba(229,57,53,.35);transform:translateY(-1px)}
+    .btn-ghost{background:var(--surface2);color:var(--text-2);border:1px solid var(--border)}
+    .btn-ghost:hover{background:var(--primary-light);color:var(--primary)}
+    .btn-icon{padding:.5rem .65rem;background:var(--surface2);border:1px solid var(--border);color:var(--text-2)}
+    .btn-icon:hover{background:var(--primary-light);color:var(--primary)}
+    .btn-block{display:flex;width:100%}
+    .btn-sm{padding:.4rem .8rem;font-size:.82rem}
+
+    /* ── STATS ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.875rem}
+    .stat-card{
+      text-align:center;padding:1rem .75rem;border-radius:var(--radius);
+      background:var(--surface);border:1px solid var(--border);
+      box-shadow:var(--shadow-sm);
+      transition:transform var(--transition),box-shadow var(--transition);
+    }
+    .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+    .stat-value{font-size:1.55rem;color:var(--primary);font-weight:800;line-height:1.1}
+    .stat-label{font-size:.78rem;color:var(--text-3);margin-top:.25rem;font-weight:600}
+
+    /* ── TASK ITEMS ── */
+    .task-item{
+      background:var(--surface2);
+      padding:.85rem;border-radius:var(--radius-sm);
+      display:flex;gap:.75rem;align-items:center;
+      margin-bottom:.5rem;
+      border:1px solid var(--border);
+      transition:all var(--transition);
+      animation:slideIn .2s ease;
+    }
+    .task-item:hover{background:var(--primary-light);border-color:rgba(40,167,69,.2)}
+    .task-done{opacity:.65}
+    .task-done .task-title{text-decoration:line-through;color:var(--text-3)}
+    .task-title{font-weight:600;font-size:.95rem;line-height:1.3}
+    .task-desc{color:var(--text-3);font-size:.82rem;margin-top:.15rem}
+    .task-meta{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.35rem}
+    .badge{
+      display:inline-flex;align-items:center;gap:.25rem;
+      padding:.18rem .55rem;border-radius:20px;
+      font-size:.72rem;font-weight:700;
+    }
+    .badge-alta{background:#ffeaea;color:#c62828}
+    .badge-media{background:#fff8e1;color:#e65100}
+    .badge-baixa{background:#e8f5e9;color:#2e7d32}
+    .badge-focus{background:var(--primary-light);color:var(--primary-dark)}
+
+    /* ── CHECKBOX ── */
+    input[type="checkbox"]{
+      width:18px;height:18px;min-width:18px;
+      accent-color:var(--primary);cursor:pointer;border-radius:5px;
+    }
+
+    /* ── PROGRESS BAR ── */
+    .progress-bar{background:var(--border);border-radius:20px;height:8px;overflow:hidden}
+    .progress-fill{background:linear-gradient(90deg,var(--primary),#4caf50);border-radius:20px;height:100%;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+    /* ── MODAL ── */
+    .modal{
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,.45);
+      backdrop-filter:blur(4px);
+      z-index:1200;align-items:flex-end;justify-content:center;padding:0;
+    }
+    @media(min-width:520px){.modal{align-items:center;padding:1rem}}
+    .modal.active{display:flex;animation:fadeIn .15s ease}
+    .modal-content{
+      background:var(--surface);padding:1.5rem;
+      border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+      width:100%;max-width:520px;
+      box-shadow:0 -4px 32px rgba(0,0,0,.15);
+      animation:slideUp .22s cubic-bezier(.4,0,.2,1);
+      max-height:90vh;overflow-y:auto;
+    }
+    @media(min-width:520px){.modal-content{border-radius:var(--radius-lg)}}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.1rem}
+    .modal-header h3{font-size:1.15rem;font-weight:800}
+
+    /* ── FORMS ── */
+    .form-group{margin-bottom:.875rem}
+    label{display:block;margin-bottom:.35rem;font-weight:700;font-size:.88rem;color:var(--text-2)}
+    input,textarea,select{
+      width:100%;padding:.65rem .85rem;
+      border:1.5px solid var(--border);border-radius:var(--radius-sm);
+      background:var(--surface);color:var(--text);
+      font-family:var(--font);font-size:.92rem;
+      transition:border-color var(--transition),box-shadow var(--transition);
+      outline:none;
+    }
+    input:focus,textarea:focus,select:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px var(--primary-glow);
+    }
+    textarea{resize:vertical;min-height:80px}
+
+    /* ── NAV ── */
+    nav{
+      position:fixed;left:0;right:0;bottom:0;
+      background:var(--surface);
+      border-top:1px solid var(--border);
+      display:flex;justify-content:space-around;
+      padding:.5rem .25rem calc(.5rem + env(safe-area-inset-bottom));
+      z-index:1100;
+      box-shadow:0 -2px 12px rgba(0,0,0,.07);
+    }
+    .nav-item{
+      flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem;
+      color:var(--text-3);font-weight:600;font-size:.62rem;
+      padding:.4rem .2rem;border-radius:var(--radius-sm);
+      background:transparent;border:0;cursor:pointer;
+      transition:all var(--transition);font-family:var(--font);
+    }
+    .nav-item i{font-size:1.15rem;transition:transform var(--transition)}
+    .nav-item.active{color:var(--primary)}
+    .nav-item.active i{transform:scale(1.15)}
+    .nav-item:hover{color:var(--primary);background:var(--primary-light)}
+
+    /* ── TOAST ── */
+    .toast{
+      position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-8px);
+      background:var(--text);color:#fff;
+      padding:.7rem 1.2rem;border-radius:30px;
+      display:none;z-index:1300;font-weight:600;font-size:.88rem;
+      box-shadow:0 4px 16px rgba(0,0,0,.18);white-space:nowrap;
+    }
+    .toast.show{display:block;animation:toastIn .2s ease forwards}
+    .toast.success{background:var(--primary)}
+    .toast.error{background:var(--danger)}
+
+    /* ── SYNC INDICATOR ── */
+    .sync-indicator{
+      display:inline-flex;align-items:center;gap:.4rem;
+      font-size:.78rem;font-weight:600;color:rgba(255,255,255,.8);
+      padding:.25rem .65rem;background:rgba(255,255,255,.15);
+      border-radius:20px;cursor:default;
+    }
+    .sync-dot{width:7px;height:7px;border-radius:50%;background:#4cff6e;transition:background .3s}
+    .sync-dot.syncing{background:#ffd740;animation:pulse 1s infinite}
+    .sync-dot.offline{background:#ff5252}
+    .sync-dot.error{background:#ff9800}
+    /* ── OFFLINE BANNER ── */
+    #offline-banner{
+      display:none;position:fixed;top:0;left:0;right:0;z-index:2000;
+      background:#e53935;color:#fff;text-align:center;
+      padding:.45rem 1rem;font-size:.82rem;font-weight:700;
+      box-shadow:0 2px 8px rgba(0,0,0,.2);
+    }
+    #offline-banner.show{display:block;animation:slideDown .2s ease}
+    @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
+    /* ── CHART ── */
+    .chart-container{height:220px;margin-top:.5rem}
+
+    /* ── SCREENS ── */
+    .screen{display:none}
+    .screen.active{display:block;animation:fadeIn .18s ease}
+
+    /* ── EMPTY STATE ── */
+    .empty-state{
+      text-align:center;padding:2.5rem 1rem;color:var(--text-3);
+    }
+    .empty-state i{font-size:2.5rem;margin-bottom:.75rem;opacity:.4;display:block}
+    .empty-state p{font-weight:600;font-size:.95rem}
+    .empty-state small{font-size:.82rem;display:block;margin-top:.25rem}
+
+    /* ── QUESTIONE-SE SCREEN ── */
+    .question-card{
+      background:var(--surface);
+      border-radius:var(--radius);
+      padding:1.25rem;
+      margin-bottom:.875rem;
+      border:1px solid var(--border);
+      box-shadow:var(--shadow);
+      transition:all var(--transition);
+    }
+    .question-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+    .question-number{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:28px;height:28px;border-radius:50%;
+      background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+      color:#fff;font-size:.75rem;font-weight:800;
+      margin-bottom:.75rem;
+      flex-shrink:0;
+    }
+    .question-text{
+      font-size:1rem;font-weight:700;color:var(--text);
+      margin-bottom:.875rem;line-height:1.45;
+    }
+    .question-answer{
+      width:100%;padding:.7rem .9rem;
+      border:1.5px solid var(--border);border-radius:var(--radius-sm);
+      background:var(--surface2);color:var(--text);
+      font-family:var(--font);font-size:.88rem;
+      resize:vertical;min-height:70px;
+      transition:border-color var(--transition),box-shadow var(--transition);
+      outline:none;
+    }
+    .question-answer:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-glow)}
+    .question-actions{display:flex;justify-content:space-between;align-items:center;margin-top:.75rem}
+    .answer-saved-badge{
+      display:none;align-items:center;gap:.3rem;
+      font-size:.78rem;font-weight:700;color:var(--primary);
+    }
+    .answer-saved-badge.visible{display:flex;animation:fadeIn .2s ease}
+    .questione-header{
+      background:linear-gradient(135deg,var(--primary-light),rgba(255,255,255,.5));
+      border:1px solid rgba(40,167,69,.2);
+      border-radius:var(--radius);
+      padding:1.25rem;margin-bottom:1rem;
+      display:flex;gap:1rem;align-items:flex-start;
+    }
+    .questione-header-icon{
+      font-size:2rem;flex-shrink:0;
+    }
+    .questione-progress{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:1rem;
+      margin-bottom:1rem;
+      display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    }
+    .questione-progress-label{font-size:.85rem;font-weight:700;color:var(--text-2)}
+    .questione-progress-value{font-size:1.4rem;font-weight:800;color:var(--primary)}
+
+    /* ── AUTH ── */
+    .auth-container{
+      min-height:100vh;display:flex;align-items:center;justify-content:center;
+      padding:2rem 1rem;
+      background:linear-gradient(145deg,#1a5c28 0%,var(--primary) 50%,#37c55c 100%);
+    }
+    .auth-box{
+      background:#fff;border-radius:var(--radius-lg);
+      padding:2rem;max-width:420px;width:100%;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+    }
+    .auth-tab{flex:1;border-radius:var(--radius-sm)!important;transition:all var(--transition)}
+    .auth-tab.inactive{background:var(--surface2)!important;color:var(--text-2)!important;box-shadow:none!important}
+
+    /* ── GOALS ── */
+    .goal-item .priority-tag{
+      display:inline-block;padding:.2rem .6rem;
+      border-radius:20px;font-size:.72rem;font-weight:700;
+    }
+
+    /* ── LOADING OVERLAY ── */
+    .loading-overlay{
+      position:fixed;inset:0;
+      background:rgba(255,255,255,.7);backdrop-filter:blur(3px);
+      display:none;align-items:center;justify-content:center;
+      z-index:2000;flex-direction:column;gap:.75rem;
+    }
+    .loading-overlay.active{display:flex}
+    .spinner{
+      width:36px;height:36px;border:3px solid var(--border);
+      border-top-color:var(--primary);border-radius:50%;
+      animation:spin .7s linear infinite;
+    }
+    .loading-text{font-size:.9rem;font-weight:700;color:var(--text-2)}
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes slideIn{from{transform:translateX(-10px);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes toastIn{from{transform:translateX(-50%) translateY(-16px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    @keyframes checkBounce{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+
+    .task-just-done input[type="checkbox"]{animation:checkBounce .3s ease}
+
+    /* ── HIDDEN ── */
+    .hidden{display:none!important}
+
+    /* ── RESPONSIVE ── */
+    @media(min-width:600px){main{padding:1.5rem 1.5rem 120px}}
+  </style>
+</head>
+<body>
+<!-- OFFLINE BANNER -->
+<div id="offline-banner"><i class="fas fa-wifi-slash"></i> Sem conexão — alterações salvas localmente e serão sincronizadas ao reconectar</div>
+
+<div class="app-container">
+
+  <!-- AUTH -->
+  <div id="auth-screen" class="auth-container">
+    <div class="auth-box">
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:.75rem;box-shadow:0 6px 20px rgba(40,167,69,.3)">
+          <i class="fas fa-bolt" style="font-size:1.75rem;color:#fff"></i>
+        </div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-.5px">produtiv<span style="color:var(--primary)">.me</span></h1>
+        <p style="color:var(--text-3);font-size:.9rem;margin-top:.25rem">Organize sua vida com produtividade</p>
+      </div>
+
+      <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;background:var(--bg);padding:.3rem;border-radius:var(--radius-sm)">
+        <button id="tab-login" class="auth-tab btn btn-primary" style="flex:1">Entrar</button>
+        <button id="tab-register" class="auth-tab btn inactive" style="flex:1">Criar Conta</button>
+      </div>
+
+      <div id="auth-alert"></div>
+
+      <form id="login-form">
+        <div class="form-group"><label><i class="fas fa-envelope" style="color:var(--primary);margin-right:.35rem"></i>Email</label><input id="login-email" type="email" required placeholder="seu@email.com"></div>
+        <div class="form-group"><label><i class="fas fa-lock" style="color:var(--primary);margin-right:.35rem"></i>Senha</label><input id="login-password" type="password" required placeholder="••••••••"></div>
+        <button id="btn-login" class="btn btn-primary btn-block" style="margin-top:.25rem"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+      </form>
+
+      <form id="register-form" class="hidden">
+        <div class="form-group"><label>Nome</label><input id="register-name" type="text" required placeholder="Seu nome"></div>
+        <div class="form-group"><label>Email</label><input id="register-email" type="email" required placeholder="seu@email.com"></div>
+        <div class="form-group"><label>Senha</label><input id="register-password" type="password" required minlength="3" placeholder="••••••••"></div>
+        <div class="form-group"><label>Confirmar senha</label><input id="register-confirm" type="password" required minlength="3" placeholder="••••••••"></div>
+        <button id="btn-register" class="btn btn-primary btn-block"><i class="fas fa-user-plus"></i> Criar Conta</button>
+      </form>
+
+      <p style="margin-top:1rem;color:var(--text-3);font-size:.82rem;text-align:center">Conta sincronizada com o servidor de forma segura.</p>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="main-app" class="hidden">
+    <header>
+      <div class="header-content">
+        <div class="logo">
+          <i class="fas fa-bolt"></i>
+          <span>produtiv<span class="logo-dot">.me</span></span>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <div id="sync-status" class="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Online</span></div>
+          <div id="user-name-display"></div>
+          <button id="btn-settings" class="btn" style="background:rgba(255,255,255,.15);color:#fff;padding:.4rem .6rem;min-width:0"><i class="fas fa-cog"></i></button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- DASHBOARD -->
+      <div id="dashboard-screen" class="screen active">
+        <div class="card" style="background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;border:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-size:1.05rem;font-weight:800;margin-bottom:.2rem">Bem-vindo de volta! 👋</div>
+              <div style="color:rgba(255,255,255,.8);font-size:.85rem" id="current-date"></div>
+            </div>
+            <button id="btn-sync-home" class="btn" style="background:rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:.45rem .8rem">
+              <i class="fas fa-sync-alt" id="sync-icon"></i> Sincronizar
+            </button>
+          </div>
+          <div id="daily-motivation" style="margin-top:.85rem;padding:.65rem .85rem;background:rgba(255,255,255,.15);border-radius:var(--radius-sm);font-size:.85rem;font-style:italic;color:rgba(255,255,255,.9)"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value" id="stat-tasks-completed">0/0</div><div class="stat-label">Concluídas</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-completion-rate">0%</div><div class="stat-label">Taxa Hoje</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-streak">0🔥</div><div class="stat-label">Sequência</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fas fa-list-check"></i>Tarefas de Hoje</div>
+          <div id="today-tasks-list"></div>
+          <div style="margin-top:.875rem">
+            <button id="btn-add-task" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar Tarefa</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fas fa-chart-line"></i>Progresso Semanal</div>
+          <div class="chart-container"><canvas id="weekly-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ROTINA -->
+      <div id="rotina-screen" class="screen">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-calendar-day"></i>Rotina do Dia</div>
+          <button class="btn btn-primary" id="btn-new-task"><i class="fas fa-plus"></i> Nova Tarefa</button>
+        </div>
+        <div id="routine-tasks-list"></div>
+      </div>
+
+      <!-- METAS -->
+      <div id="metas-screen" class="screen">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-bullseye"></i>Metas</div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" id="btn-new-goal"><i class="fas fa-plus"></i> Nova Meta</button>
+            <select id="goal-filter" style="padding:.55rem .75rem;border-radius:var(--radius-sm);margin-left:auto;font-family:var(--font);font-weight:600;font-size:.85rem">
+              <option value="all">Todas</option>
+              <option value="semanal">Semanais</option>
+              <option value="mensal">Mensais</option>
+              <option value="completed">Concluídas</option>
+            </select>
+          </div>
+        </div>
+        <div id="goals-list"></div>
+      </div>
+
+      <!-- BIOGRAFIAS -->
+      <div id="biografias-screen" class="screen">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-book-open"></i>Biografias Motivacionais</div>
+          <button class="btn btn-primary" id="btn-new-bio"><i class="fas fa-plus"></i> Adicionar Biografia</button>
+        </div>
+        <div id="biographies-list"></div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div id="analytics-screen" class="screen">
+        <div class="card"><div class="card-title"><i class="fas fa-chart-pie"></i>Analytics</div></div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value" id="analytics-avg-completion">0%</div><div class="stat-label">Média Geral</div></div>
+          <div class="stat-card"><div class="stat-value" id="analytics-best-day">-</div><div class="stat-label">Melhor Dia</div></div>
+          <div class="stat-card"><div class="stat-value" id="analytics-total-tasks">0</div><div class="stat-label">Total Tarefas</div></div>
+        </div>
+        <div class="card"><div class="card-title"><i class="fas fa-crosshairs"></i>Produtividade por Foco</div><div class="chart-container"><canvas id="focus-chart"></canvas></div></div>
+        <div class="card"><div class="card-title"><i class="fas fa-calendar-alt"></i>Evolução Mensal <span id="monthly-chart-year" style="color:var(--text-3);font-weight:600;font-size:.85rem"></span></div><div class="chart-container"><canvas id="monthly-chart"></canvas></div></div>
+      </div>
+
+      <!-- QUESTIONE-SE -->
+      <div id="questione-screen" class="screen">
+        <div class="questione-header">
+          <div class="questione-header-icon">🔥</div>
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:1.05rem;margin-bottom:.3rem">Questione-se</div>
+            <div style="font-size:.85rem;color:var(--text-2);line-height:1.5">Perguntas para reflexão profunda. Responda com honestidade — sem julgamento.</div>
+          </div>
+        </div>
+
+        <div class="questione-progress card">
+          <div>
+            <div class="questione-progress-label">Respostas Salvas</div>
+            <div class="progress-bar" style="margin-top:.4rem;width:140px"><div class="progress-fill" id="questione-progress-fill" style="width:0%"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="questione-progress-value"><span id="questione-answered">0</span>/<span id="questione-total">0</span></div>
+            <button id="btn-add-question" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nova Pergunta</button>
+          </div>
+        </div>
+
+        <div id="questions-list"></div>
+      </div>
+    </main>
+
+    <nav>
+      <button class="nav-item active" data-screen="dashboard"><i class="fas fa-home"></i>Home</button>
+      <button class="nav-item" data-screen="rotina"><i class="fas fa-calendar-day"></i>Rotina</button>
+      <button class="nav-item" data-screen="metas"><i class="fas fa-bullseye"></i>Metas</button>
+      <button class="nav-item" data-screen="biografias"><i class="fas fa-book"></i>Biografias</button>
+      <button class="nav-item" data-screen="analytics"><i class="fas fa-chart-pie"></i>Analytics</button>
+      <button class="nav-item" data-screen="questione"><i class="fas fa-brain"></i>Questione</button>
+    </nav>
+  </div>
+
+  <!-- MODAIS -->
+  <div id="task-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="task-modal-title">Nova Tarefa</h3>
+        <button type="button" class="btn btn-icon" id="task-cancel"><i class="fas fa-times"></i></button>
+      </div>
+      <form id="task-form">
+        <input id="task-id" type="hidden">
+        <div class="form-group"><label>Título *</label><input id="task-title" required placeholder="Ex: Estudar por 30 minutos"></div>
+        <div class="form-group"><label>Descrição</label><textarea id="task-description" rows="2" placeholder="Detalhes opcionais..."></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <div class="form-group"><label>Prioridade</label><select id="task-priority"><option value="alta">🔴 Alta</option><option value="media" selected>🟡 Média</option><option value="baixa">🟢 Baixa</option></select></div>
+          <div class="form-group"><label>Tempo (min)</label><input id="task-estimate" type="number" min="5" value="30"></div>
+        </div>
+        <div class="form-group"><label>Foco</label><select id="task-focus"><option value="visionario">🚀 Visionário</option><option value="comportamental">🧠 Comportamental</option><option value="consistente" selected>🎯 Consistente</option></select></div>
+        <div class="form-group"><label>Meta Vinculada</label><select id="task-goal"><option value="">Nenhuma</option></select></div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <button type="button" id="task-cancel-2" class="btn btn-ghost">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="goal-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nova Meta</h3>
+        <button class="btn btn-icon" onclick="closeModal('goal-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <form id="goal-form">
+        <input type="hidden" id="goal-id">
+        <div class="form-group"><label>Título *</label><input type="text" id="goal-title" required placeholder="Ex: Ler 12 livros este ano"></div>
+        <div class="form-group"><label>Descrição</label><textarea id="goal-desc" rows="2"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <div class="form-group"><label>Tipo</label><select id="goal-type"><option value="semanal">Semanal</option><option value="mensal">Mensal</option></select></div>
+          <div class="form-group"><label>Prioridade</label><select id="goal-priority"><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <div class="form-group"><label>Data Início</label><input type="date" id="goal-start" required></div>
+          <div class="form-group"><label>Data Fim</label><input type="date" id="goal-end" required></div>
+        </div>
+        <div class="form-group"><label>Progresso (%)</label><input type="number" id="goal-progress" min="0" max="100" value="0"></div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('goal-modal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="bio-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Adicionar Biografia</h3>
+        <button class="btn btn-icon" onclick="closeModal('bio-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <form id="bio-form">
+        <input type="hidden" id="bio-id">
+        <div class="form-group"><label>Nome *</label><input type="text" id="bio-name" required placeholder="Ex: Steve Jobs"></div>
+        <div class="form-group"><label>Biografia e Lições *</label><textarea id="bio-text" rows="5" required placeholder="Conte a história e as lições que você aprendeu..."></textarea></div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('bio-modal')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-cog" style="color:var(--primary);margin-right:.4rem"></i>Configurações</h3>
+        <button class="btn btn-icon" onclick="closeModal('settings-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="form-group"><label>Nome</label><input id="settings-name"></div>
+      <div class="form-group"><label>Email</label><input id="settings-email" disabled></div>
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+        <button id="btn-save-settings" class="btn btn-primary" style="flex:1"><i class="fas fa-check"></i> Salvar Nome</button>
+        <button id="btn-logout" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Sair</button>
+      </div>
+      <hr style="margin:.75rem 0;border-color:var(--border)">
+      <div style="font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">Gerenciar Dados</div>
+      <div class="form-group"><button id="export-data" class="btn btn-ghost btn-block"><i class="fas fa-download"></i> Exportar Dados (JSON)</button></div>
+      <div class="form-group" style="display:flex;gap:.5rem;align-items:center">
+        <input type="file" id="import-file" accept=".json" style="flex:1;font-size:.82rem">
+        <button id="import-data" class="btn btn-ghost"><i class="fas fa-upload"></i> Importar</button>
+      </div>
+      <div class="form-group"><button id="clear-data" class="btn btn-danger btn-block"><i class="fas fa-trash"></i> Limpar Todos os Dados</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL NOVA PERGUNTA -->
+  <div id="question-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-brain" style="color:var(--primary);margin-right:.4rem"></i>Nova Pergunta</h3>
+        <button class="btn btn-icon" onclick="closeModal('question-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="form-group">
+        <label>Escolha um emoji</label>
+        <div id="emoji-picker" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.25rem">
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent;transition:border-color .15s" data-emoji="💭">💭</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="🤔">🤔</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="🧠">🧠</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="💡">💡</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="🔥">🔥</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="🎯">🎯</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="⚡">⚡</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="🌱">🌱</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="✨">✨</span>
+          <span class="emoji-opt" style="font-size:1.4rem;cursor:pointer;padding:.2rem .35rem;border-radius:6px;border:2px solid transparent" data-emoji="🚀">🚀</span>
+        </div>
+        <input id="question-emoji" type="text" maxlength="4" placeholder="ou escreva um emoji..." style="width:120px;margin-top:.25rem">
+      </div>
+      <div class="form-group">
+        <label>Sua pergunta *</label>
+        <textarea id="question-text-input" rows="3" placeholder="Ex: O que eu realmente quero para minha vida?"></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.25rem">
+        <button class="btn btn-ghost" onclick="closeModal('question-modal')">Cancelar</button>
+        <button id="btn-save-question" class="btn btn-primary"><i class="fas fa-check"></i> Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST & LOADING -->
+  <div id="toast" class="toast"></div>
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Sincronizando...</div>
+  </div>
+</div>
+
+<script>
+(async function(){
+  // ── CONFIG ──
+  const SUPABASE_URL = 'https://ddybuxzdvbvvgnixzijx.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWJ1eHpkdmJ2dmduaXh6aWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0NzkxMjEsImV4cCI6MjA4MzA1NTEyMX0.Z9FDJdKthsMFUm4uDrtGaVxWYpwssILoM8wvMr6EBwE';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    realtime: { params: { eventsPerSecond: 5 } }
+  });
+
+  // ── HELPERS ──
+  function q(id){ return document.getElementById(id); }
+  function closeModal(id){ q(id).classList.remove('active'); }
+
+  let toastTimer;
+  function showToast(msg, type='default', t=2400){
+    const el = q('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (type !== 'default' ? ' ' + type : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), t);
+  }
+
+  function showLoading(text='Sincronizando...'){
+    q('loading-text').textContent = text;
+    q('loading-overlay').classList.add('active');
+  }
+  function hideLoading(){ q('loading-overlay').classList.remove('active'); }
+
+  // ── CONECTIVIDADE REAL ──
+  // Testa conectividade real via fetch leve, não apenas navigator.onLine
+  let _isOnline = navigator.onLine;
+  async function checkRealConnectivity(){
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 3000);
+      await fetch(`${SUPABASE_URL}/rest/v1/`, {
+        method: 'HEAD',
+        headers: { 'apikey': SUPABASE_KEY },
+        signal: ctrl.signal
+      });
+      clearTimeout(tid);
+      return true;
+    } catch(e){ return false; }
+  }
+  async function updateOnlineStatus(force){
+    const wasOnline = _isOnline;
+    if(force !== undefined){ _isOnline = force; }
+    else { _isOnline = navigator.onLine ? await checkRealConnectivity() : false; }
+    const banner = q('offline-banner');
+    if(banner){ if(_isOnline) banner.classList.remove('show'); else banner.classList.add('show'); }
+    if(!wasOnline && _isOnline){
+      // Voltou online: processar fila
+      setSyncStatus('syncing');
+      await offlineQueue.flush();
+    }
+    if(!_isOnline) setSyncStatus('offline');
+  }
+  window.addEventListener('online',  () => updateOnlineStatus());
+  window.addEventListener('offline', () => updateOnlineStatus(false));
+  // Verificação periódica de conectividade (a cada 15s)
+  setInterval(() => updateOnlineStatus(), 15000);
+
+  function setSyncStatus(status){
+    const dot = q('sync-dot');
+    const label = q('sync-label');
+    if(!dot || !label) return;
+    dot.style.background = '';
+    if(status === 'syncing'){
+      dot.className = 'sync-dot syncing';
+      label.textContent = 'Sincronizando';
+    } else if(status === 'online'){
+      dot.className = 'sync-dot';
+      dot.style.background = '#4cff6e';
+      label.textContent = 'Online';
+    } else if(status === 'offline'){
+      dot.className = 'sync-dot offline';
+      label.textContent = 'Offline';
+    } else if(status === 'error'){
+      dot.className = 'sync-dot error';
+      label.textContent = 'Erro';
+    } else {
+      dot.className = 'sync-dot';
+      dot.style.background = '#ffd740';
+      label.textContent = 'Local';
+    }
+  }
+
+  // ── OFFLINE QUEUE ──
+  // Armazena ações pendentes para enviar quando voltar a conexão
+  const QUEUE_KEY = 'produtivme_offline_queue_v1';
+  const offlineQueue = {
+    load(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); }catch(e){ return []; } },
+    save(q){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }catch(e){} },
+    push(action){
+      const list = this.load();
+      // Evitar duplicação: se já existe ação do mesmo tipo+id, substituir
+      const idx = list.findIndex(a => a.type === action.type && a.id === action.id);
+      if(idx !== -1) list[idx] = action; else list.push(action);
+      this.save(list);
+    },
+    clear(){ localStorage.removeItem(QUEUE_KEY); },
+    async flush(){
+      if(!_isOnline) return;
+      const list = this.load();
+      if(!list.length) return;
+      const remaining = [];
+      for(const action of list){
+        try{
+          if(action.type === 'upsert_task'){
+            await supabase.from('tarefas').upsert([action.payload], { onConflict: 'id' });
+          } else if(action.type === 'delete_task'){
+            await supabase.from('tarefas').delete().eq('id', action.id).eq('user_id', action.user_id);
+          } else if(action.type === 'upsert_goal'){
+            await supabase.from('metas').upsert([action.payload], { onConflict: 'id' });
+          } else if(action.type === 'delete_goal'){
+            await supabase.from('metas').delete().eq('id', action.id).eq('user_id', action.user_id);
+          } else if(action.type === 'upsert_bio'){
+            await supabase.from('BIOS').upsert([action.payload], { onConflict: 'id' });
+          } else if(action.type === 'delete_bio'){
+            await supabase.from('BIOS').delete().eq('id', action.id).eq('user_id', action.user_id);
+          } else if(action.type === 'upsert_answer'){
+            await supabase.from('questione_respostas').upsert([action.payload], { onConflict: 'user_id,question_id' });
+          }
+        } catch(e){
+          remaining.push(action); // manter na fila se falhar
+        }
+      }
+      this.save(remaining);
+      if(!remaining.length) setSyncStatus('online');
+    }
+  };
+
+  const storageKey = 'produtivme_combined_v1';
+  const sessionKey = 'produtivme_session_v1';
+  const questionsKey = 'produtivme_questions_v1';
+  const doneOverridesKey = 'produtivme_done_overrides_v1'; // chave protetora de checkboxes
+
+  async function hashPassword(password){
+    const enc = new TextEncoder().encode(password);
+    const digest = await crypto.subtle.digest('SHA-256', enc);
+    const view = new DataView(digest);
+    let hex = '';
+    for(let i=0;i<digest.byteLength;i++) hex += ('00'+view.getUint8(i).toString(16)).slice(-2);
+    return hex;
+  }
+
+  function escapeHtml(text){
+    if(!text) return '';
+    return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function formatDate(d){
+    if(!d) return '';
+    const D = new Date(d+'T00:00:00');
+    return D.toLocaleDateString('pt-BR');
+  }
+
+  // ── DEBOUNCE ──
+  function debounce(fn, delay){
+    let timer;
+    return function(...args){
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
+  // ── FRASES MOTIVACIONAIS ──
+  const motivations = [
+    "🌱 Pequenas ações consistentes criam grandes resultados.",
+    "🎯 Foco no processo, não apenas no resultado.",
+    "💪 Cada tarefa concluída é uma vitória real.",
+    "🔥 Disciplina é liberdade.",
+    "⚡ Comece antes de se sentir pronto.",
+    "🚀 Seu futuro é criado pelo que você faz hoje.",
+    "🧠 A mente que persiste supera todos os obstáculos.",
+    "✨ Um passo de cada vez, mas nunca pare.",
+  ];
+
+  // ── PERGUNTAS PADRÃO ──
+  const QUESTIONS = [
+    { id: 'q1', icon: '🪞', text: 'O que você está tolerando hoje que deveria mudar?' },
+    { id: 'q2', icon: '⏰', text: 'O que você precisa parar de adiar?' },
+    { id: 'q3', icon: '🎯', text: 'Qual decisão você está evitando tomar?' },
+    { id: 'q4', icon: '⛓️', text: 'O que está te impedindo de agir agora?' },
+    { id: 'q5', icon: '📅', text: 'Se você não mudar hoje, como estará sua vida em 1 ano?' },
+    { id: 'q6', icon: '💡', text: 'Qual é o próximo passo que você já sabe que precisa dar?' },
+    { id: 'q7', icon: '🔥', text: 'O que você faria se soubesse que não poderia falhar?' },
+    { id: 'q8', icon: '🤔', text: 'Qual hábito está sabotando seu crescimento?' },
+    { id: 'q9', icon: '🎁', text: 'Que presente você pode dar a si mesmo hoje: ação ou desculpa?' },
+    { id: 'q10', icon: '🌟', text: 'Em qual área da sua vida você está sendo covarde?' },
+    { id: 'q11', icon: '📖', text: 'O que você precisa aprender que ainda não começou?' },
+    { id: 'q12', icon: '💬', text: 'Que conversa difícil você precisa ter e está postergando?' },
+  ];
+
+  const customQuestionsKey = 'produtivme_custom_questions_v1';
+
+  function loadCustomQuestions(){
+    try{ return JSON.parse(localStorage.getItem(customQuestionsKey)||'[]'); }catch(e){ return []; }
+  }
+  function saveCustomQuestions(list){
+    localStorage.setItem(customQuestionsKey, JSON.stringify(list));
+  }
+  function getAllQuestions(){
+    return [...QUESTIONS, ...loadCustomQuestions()];
+  }
+
+  // ── APP ──
+  const app = {
+    state: {
+      user: null, data: null, charts: {},
+      syncPending: false, realtimeChannel: null,
+      lastSyncAt: null
+    },
+
+    getTodayKey(){ return new Date().toISOString().split('T')[0]; },
+
+    getDefaultData(){
+      return {
+        user: { name: 'Usuário' },
+        routines: { [this.getTodayKey()]: [] },
+        goals: [],
+        biographies: [],
+        analytics: { history: [] }
+      };
+    },
+
+    loadLocal(){
+      this.state.data = this.getDefaultData();
+      const session = localStorage.getItem(sessionKey);
+      const localData = localStorage.getItem(storageKey);
+      if(session){ try{ this.state.user = JSON.parse(session); }catch(e){ this.state.user = null; } }
+      if(localData){ try{ this.state.data = JSON.parse(localData); }catch(e){ console.warn('Erro ao carregar dados locais'); } }
+      // Garante que os checkboxes marcados pelo usuário nunca se perdem
+      this.applyDoneOverrides();
+    },
+
+    saveLocal(){
+      if(this.state.user){ try{ localStorage.setItem(sessionKey, JSON.stringify(this.state.user)); }catch(e){} }
+      else { localStorage.removeItem(sessionKey); }
+      localStorage.setItem(storageKey, JSON.stringify(this.state.data));
+    },
+
+    // ── PROTEÇÃO DE CHECKBOXES ──
+    // Salva o estado done de cada tarefa por dia numa chave separada.
+    // Essa chave NUNCA é sobrescrita pelo pull remoto — o usuário tem a última palavra.
+    loadDoneOverrides(){
+      try{ return JSON.parse(localStorage.getItem(doneOverridesKey)||'{}'); }catch(e){ return {}; }
+    },
+    saveDoneOverride(taskId, done){
+      const overrides = this.loadDoneOverrides();
+      const today = this.getTodayKey();
+      if(!overrides[today]) overrides[today] = {};
+      overrides[today][taskId] = done;
+      // Limpar dias com mais de 7 dias para não acumular lixo
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 7);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      Object.keys(overrides).forEach(day => { if(day < cutoffStr) delete overrides[day]; });
+      localStorage.setItem(doneOverridesKey, JSON.stringify(overrides));
+    },
+    // Aplica os overrides locais por cima dos dados (chamado após qualquer pull remoto)
+    applyDoneOverrides(){
+      const overrides = this.loadDoneOverrides();
+      Object.entries(overrides).forEach(([day, tasks]) => {
+        const list = this.state.data.routines[day];
+        if(!list) return;
+        list.forEach(task => {
+          if(tasks.hasOwnProperty(task.id)){
+            task.done = tasks[task.id];
+          }
+        });
+      });
+    },
+
+    // ── UI ──
+    updateCurrentDate(){
+      const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+      q('current-date').textContent = new Date().toLocaleDateString('pt-BR', opts);
+      const idx = new Date().getDay();
+      q('daily-motivation').textContent = motivations[idx % motivations.length];
+    },
+
+    renderDashboard(){
+      const today = this.getTodayKey();
+      const tasks = this.state.data.routines[today] || [];
+      const completed = tasks.filter(t=>t.done).length;
+      const total = tasks.length;
+      const rate = total ? Math.round((completed/total)*100) : 0;
+      q('stat-tasks-completed').textContent = `${completed}/${total}`;
+      q('stat-completion-rate').textContent = `${rate}%`;
+      q('stat-streak').textContent = this.calculateStreak() + '🔥';
+
+      const list = q('today-tasks-list');
+      if(!tasks.length){
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-sun"></i><p>Nenhuma tarefa para hoje</p><small>Adicione sua primeira tarefa do dia!</small></div>';
+      } else {
+        list.innerHTML = tasks.slice(0,10).map(t=>this.taskHtml(t)).join('');
+      }
+    },
+
+    taskHtml(task){
+      const priorityLabel = {alta:'Alta',media:'Média',baixa:'Baixa'}[task.priority]||'Média';
+      const focusLabel = {visionario:'Visionário',comportamental:'Comportamental',consistente:'Consistente'}[task.focus]||'Consistente';
+      return `<div class="task-item ${task.done?'task-done':''}" id="task-item-${escapeHtml(task.id)}">
+        <input type="checkbox" ${task.done?'checked':''} data-id="${escapeHtml(task.id)}" title="Marcar como concluída" />
+        <div style="flex:1;min-width:0">
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ''}
+          <div class="task-meta">
+            <span class="badge badge-${task.priority||'media'}">${priorityLabel}</span>
+            <span class="badge badge-focus">${focusLabel}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:.35rem;flex-shrink:0">
+          <button data-edit="${escapeHtml(task.id)}" class="btn btn-icon btn-sm" title="Editar"><i class="fas fa-pen"></i></button>
+          <button data-delete="${escapeHtml(task.id)}" class="btn btn-icon btn-sm" style="color:var(--danger)" title="Excluir"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+    },
+
+    renderRoutine(){
+      const today = this.getTodayKey();
+      const tasks = this.state.data.routines[today] || [];
+      const cont = q('routine-tasks-list');
+      if(!tasks.length){
+        cont.innerHTML = '<div class="card"><div class="empty-state"><i class="fas fa-clipboard-list"></i><p>Nenhuma tarefa adicionada</p><small>Use o botão acima para criar sua primeira tarefa</small></div></div>';
+      } else {
+        cont.innerHTML = '<div class="card">' + tasks.map(t=>this.taskHtml(t)).join('') + '</div>';
+      }
+    },
+
+    renderGoals(){
+      const filter = q('goal-filter')?.value || 'all';
+      let goals = [...(this.state.data.goals || [])];
+      if(filter==='semanal') goals = goals.filter(g=>g.type==='semanal');
+      if(filter==='mensal') goals = goals.filter(g=>g.type==='mensal');
+      if(filter==='completed') goals = goals.filter(g=>g.progress>=100);
+      const list = q('goals-list');
+      if(!goals.length){
+        list.innerHTML = '<div class="card"><div class="empty-state"><i class="fas fa-bullseye"></i><p>Nenhuma meta cadastrada</p><small>Defina seu próximo objetivo!</small></div></div>';
+      } else {
+        const priorityColors = {alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'};
+        list.innerHTML = goals.map(g=>`
+          <div class="card goal-item">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:.95rem">${escapeHtml(g.title)}</div>
+                <div style="color:var(--text-3);font-size:.8rem;margin-top:.2rem">${g.type} • ${formatDate(g.start)} → ${formatDate(g.end)}</div>
+                ${g.desc ? `<div style="color:var(--text-2);font-size:.85rem;margin-top:.35rem">${escapeHtml(g.desc)}</div>` : ''}
+                <span class="badge ${priorityColors[g.priority]||'badge-media'}" style="margin-top:.4rem">${g.priority||'média'}</span>
+              </div>
+              <div style="display:flex;gap:.35rem;flex-shrink:0">
+                <button class="btn btn-icon btn-sm" data-edit-goal="${g.id}" title="Editar"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-icon btn-sm" data-delete-goal="${g.id}" style="color:var(--danger)" title="Excluir"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+            <div style="margin-top:.875rem">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+                <span style="font-size:.78rem;font-weight:600;color:var(--text-2)">Progresso</span>
+                <span style="font-weight:800;color:var(--primary);font-size:.88rem">${g.progress}%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${g.progress}%"></div></div>
+            </div>
+          </div>
+        `).join('');
+      }
+      const goalSelect = q('task-goal');
+      if(goalSelect) goalSelect.innerHTML = '<option value="">Nenhuma</option>' + (this.state.data.goals||[]).map(g=>`<option value="${g.id}">${escapeHtml(g.title)}</option>`).join('');
+    },
+
+    renderBiographies(){
+      const list = q('biographies-list');
+      const bios = this.state.data.biographies || [];
+      if(!bios.length){
+        list.innerHTML = '<div class="card"><div class="empty-state"><i class="fas fa-book-open"></i><p>Nenhuma biografia salva</p><small>Adicione inspirações de grandes nomes</small></div></div>';
+      } else {
+        list.innerHTML = bios.map(b=>`
+          <div class="bio-card card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:800;font-size:1rem;margin-bottom:.35rem">${escapeHtml(b.name)}</div>
+                <div style="color:var(--text-2);font-size:.85rem;line-height:1.5">${escapeHtml(b.text.slice(0,220))}${b.text.length>220?'...':''}</div>
+              </div>
+              <div style="display:flex;gap:.35rem;flex-shrink:0">
+                <button class="btn btn-icon btn-sm" data-edit-bio="${b.id}" title="Editar"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-icon btn-sm" data-delete-bio="${b.id}" style="color:var(--danger)" title="Excluir"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    },
+
+    renderAnalytics(){
+      const allTasks = Object.values(this.state.data.routines || {}).flat();
+      const completed = allTasks.filter(t=>t.done).length;
+      const total = allTasks.length;
+      const avg = total ? Math.round((completed/total)*100) : 0;
+      q('analytics-avg-completion').textContent = `${avg}%`;
+      q('analytics-total-tasks').textContent = total;
+      q('analytics-best-day').textContent = this.getBestDay();
+      this.updateCharts();
+    },
+
+    renderQuestions(){
+      const saved = this.loadQuestionAnswers();
+      const list = q('questions-list');
+      const all = getAllQuestions();
+      const customIds = new Set(loadCustomQuestions().map(q=>q.id));
+      const answered = all.filter(item=>saved[item.id]&&saved[item.id].trim()).length;
+      q('questione-answered').textContent = answered;
+      q('questione-total').textContent = all.length;
+      const pct = all.length ? Math.round((answered/all.length)*100) : 0;
+      q('questione-progress-fill').style.width = pct + '%';
+
+      list.innerHTML = all.map((item, idx) => {
+        const ans = saved[item.id] || '';
+        const isCustom = customIds.has(item.id);
+        return `<div class="question-card" id="qcard-${item.id}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+            <div style="display:flex;align-items:center;gap:.65rem">
+              <div class="question-number">${idx+1}</div>
+              <div style="font-size:1.2rem">${item.icon}</div>
+              ${isCustom ? '<span class="badge badge-focus" style="font-size:.68rem">Minha</span>' : ''}
+            </div>
+            ${isCustom ? `<button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteCustomQuestion('${item.id}')" title="Excluir pergunta"><i class="fas fa-trash"></i></button>` : ''}
+          </div>
+          <div class="question-text">${escapeHtml(item.text)}</div>
+          <textarea class="question-answer" id="qanswer-${item.id}" placeholder="Escreva sua resposta aqui..." rows="3">${escapeHtml(ans)}</textarea>
+          <div class="question-actions">
+            <div class="answer-saved-badge ${ans?'visible':''}" id="qsaved-${item.id}"><i class="fas fa-check-circle"></i> Salvo</div>
+            <button class="btn btn-primary btn-sm" onclick="app.saveAnswer('${item.id}')"><i class="fas fa-save"></i> Salvar</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      // Autosave com debounce em cada textarea
+      all.forEach(item => {
+        const ta = q('qanswer-' + item.id);
+        if(!ta) return;
+        const debouncedSave = debounce(() => this.saveAnswer(item.id, true), 1200);
+        ta.addEventListener('input', () => {
+          const badge = q('qsaved-' + item.id);
+          if(badge) badge.classList.remove('visible');
+          debouncedSave();
+        });
+      });
+    },
+
+    loadQuestionAnswers(){
+      try{ return JSON.parse(localStorage.getItem(questionsKey)||'{}'); }catch(e){ return {}; }
+    },
+
+    saveAnswer(questionId, silent){
+      const textarea = q('qanswer-' + questionId);
+      if(!textarea) return;
+      const val = textarea.value; // não trim() para não perder espaço ao digitar
+      const saved = this.loadQuestionAnswers();
+      saved[questionId] = val;
+      localStorage.setItem(questionsKey, JSON.stringify(saved));
+      const badge = q('qsaved-' + questionId);
+      if(badge){ badge.classList.add('visible'); }
+      this.renderQuestionsProgress();
+      if(!silent) showToast('Resposta salva! 💪', 'success');
+      // Sync remoto da resposta
+      if(this.state.user && !this.state.user.local){
+        const payload = {
+          user_id: this.state.user.id,
+          question_id: questionId,
+          answer: val,
+          updated_at: new Date().toISOString()
+        };
+        if(_isOnline){
+          supabase.from('questione_respostas')
+            .upsert([payload], { onConflict: 'user_id,question_id' })
+            .then(({error}) => { if(error) offlineQueue.push({ type:'upsert_answer', id: questionId, user_id: this.state.user.id, payload }); });
+        } else {
+          offlineQueue.push({ type:'upsert_answer', id: questionId, user_id: this.state.user.id, payload });
+        }
+      }
+    },
+
+    async loadAnswersRemote(){
+      if(!this.state.user || this.state.user.local) return;
+      try{
+        const { data, error } = await supabase.from('questione_respostas')
+          .select('question_id, answer, updated_at')
+          .eq('user_id', this.state.user.id);
+        if(error || !data) return;
+        const local = this.loadQuestionAnswers();
+        data.forEach(row => {
+          const localTs = local['_ts_'+row.question_id] || '';
+          const remoteTs = row.updated_at || '';
+          if(!local[row.question_id] || remoteTs >= localTs){
+            local[row.question_id] = row.answer;
+            local['_ts_'+row.question_id] = remoteTs;
+          }
+        });
+        localStorage.setItem(questionsKey, JSON.stringify(local));
+      } catch(e){ console.warn('Erro ao carregar respostas remotas', e); }
+    },
+
+    renderQuestionsProgress(){
+      const saved = this.loadQuestionAnswers();
+      const all = getAllQuestions();
+      const answered = all.filter(item=>saved[item.id]&&saved[item.id].trim()).length;
+      q('questione-answered').textContent = answered;
+      q('questione-total').textContent = all.length;
+      const pct = all.length ? Math.round((answered/all.length)*100) : 0;
+      q('questione-progress-fill').style.width = pct + '%';
+    },
+
+    deleteCustomQuestion(id){
+      if(!confirm('Excluir esta pergunta?')) return;
+      const customs = loadCustomQuestions().filter(q=>q.id!==id);
+      saveCustomQuestions(customs);
+      // remove resposta salva também
+      const saved = this.loadQuestionAnswers();
+      delete saved[id];
+      localStorage.setItem(questionsKey, JSON.stringify(saved));
+      this.renderQuestions();
+      showToast('Pergunta removida', 'default');
+    },
+
+    renderAll(){
+      this.updateCurrentDate();
+      this.renderDashboard();
+      this.renderRoutine();
+      this.renderGoals();
+      this.renderBiographies();
+      this.renderAnalytics();
+      this.renderQuestions();
+      q('user-name-display').textContent = this.state.user?.name || this.state.data?.user?.name || '';
+    },
+
+    // ── SUPABASE — TAREFAS ──
+    async saveTaskRemote(task){
+      if(!this.state.user || this.state.user.local) return;
+      const now = new Date().toISOString();
+      const payload = {
+        id: task.id,
+        user_id: this.state.user.id,
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority || 'media',
+        focus: task.focus || null,
+        done: !!task.done,
+        estimate_min: task.estimateMin || 30,
+        goal_id: task.linkedGoalId || null,
+        created_at: task.created_at || now,
+        updated_at: task.updated_at || now
+      };
+      if(!_isOnline){
+        offlineQueue.push({ type:'upsert_task', id: task.id, user_id: this.state.user.id, payload });
+        setSyncStatus('offline'); return;
+      }
+      const { error } = await supabase.from('tarefas').upsert([payload], { onConflict: 'id' });
+      if(error){
+        console.error('Erro ao salvar tarefa remota', error);
+        offlineQueue.push({ type:'upsert_task', id: task.id, user_id: this.state.user.id, payload });
+        setSyncStatus('error');
+      }
+    },
+
+    async loadTasksRemote(){
+      if(!this.state.user || this.state.user.local) return;
+      const { data, error } = await supabase.from('tarefas').select('*').eq('user_id', this.state.user.id);
+      if(error){ console.error('Erro ao buscar tarefas', error); return; }
+      const newRoutines = {};
+      (data||[]).forEach(task => {
+        const date = (task.created_at||'').split('T')[0] || this.getTodayKey();
+        if(!newRoutines[date]) newRoutines[date] = [];
+        newRoutines[date].push({
+          id: task.id, title: task.title,
+          description: task.description, priority: task.priority||'media',
+          estimateMin: task.estimate_min||30, focus: task.focus||'consistente',
+          linkedGoalId: task.goal_id||'', done: !!task.done,
+          created_at: task.created_at, updated_at: task.updated_at
+        });
+      });
+      // "Última atualização vence": mescla com dados locais priorizando updated_at remoto
+      const merged = Object.assign({}, this.state.data.routines);
+      Object.entries(newRoutines).forEach(([day, remoteTasks]) => {
+        if(!merged[day]){ merged[day] = remoteTasks; return; }
+        const localMap = {};
+        merged[day].forEach(t => localMap[t.id] = t);
+        remoteTasks.forEach(rt => {
+          if(!localMap[rt.id]){ localMap[rt.id] = rt; return; }
+          const localTs = localMap[rt.id].updated_at || localMap[rt.id].created_at || '';
+          const remoteTs = rt.updated_at || rt.created_at || '';
+          if(remoteTs >= localTs) localMap[rt.id] = rt;
+        });
+        merged[day] = Object.values(localMap);
+      });
+      this.state.data.routines = merged;
+      // ← Restaura os checkboxes marcados pelo usuário — nunca perde o estado local
+      this.applyDoneOverrides();
+      this.saveLocal();
+      this.renderAll();
+    },
+
+    async addTask(obj){
+      const today = this.getTodayKey();
+      if(!this.state.data.routines[today]) this.state.data.routines[today] = [];
+      obj.created_at = obj.created_at || new Date().toISOString();
+      obj.updated_at = new Date().toISOString();
+      this.state.data.routines[today].push(obj);
+      this.saveLocal();
+      this.renderAll();
+      if(this.state.user && !this.state.user.local){
+        await this.saveTaskRemote(obj);
+      }
+    },
+
+    async updateTask(task){
+      const today = this.getTodayKey();
+      const list = this.state.data.routines[today] || [];
+      const idx = list.findIndex(x => x.id === task.id);
+      task.updated_at = new Date().toISOString();
+      if(idx !== -1) this.state.data.routines[today][idx] = task;
+      // Salva o estado done na chave protetora — não será perdido pelo pull remoto
+      this.saveDoneOverride(task.id, task.done);
+      this.saveLocal();
+      this.renderAll();
+      if(this.state.user && !this.state.user.local){
+        await this.saveTaskRemote(task);
+      }
+    },
+
+    async removeTask(id){
+      const today = this.getTodayKey();
+      const list = this.state.data.routines[today] || [];
+      this.state.data.routines[today] = list.filter(t => t.id !== id);
+      // Limpa override da tarefa removida
+      const overrides = this.loadDoneOverrides();
+      if(overrides[today]) { delete overrides[today][id]; localStorage.setItem(doneOverridesKey, JSON.stringify(overrides)); }
+      this.saveLocal();
+      this.renderAll();
+      if(this.state.user && !this.state.user.local){
+        if(!_isOnline){
+          offlineQueue.push({ type:'delete_task', id, user_id: this.state.user.id });
+        } else {
+          const { error } = await supabase.from('tarefas').delete().eq('id', id).eq('user_id', this.state.user.id);
+          if(error) offlineQueue.push({ type:'delete_task', id, user_id: this.state.user.id });
+        }
+      }
+    },
+
+    // ── SUPABASE — METAS ──
+    async saveGoalRemote(goal){
+      if(!this.state.user || this.state.user.local) return;
+      const payload = {
+        id: goal.id, user_id: this.state.user.id,
+        title: goal.title, desc: goal.desc||'',
+        type: goal.type, start: goal.start, end: goal.end,
+        progress: goal.progress||0, priority: goal.priority||'media',
+        updated_at: new Date().toISOString()
+      };
+      if(!_isOnline){ offlineQueue.push({ type:'upsert_goal', id: goal.id, user_id: this.state.user.id, payload }); return; }
+      const { error } = await supabase.from('metas').upsert([payload], { onConflict: 'id' });
+      if(error) offlineQueue.push({ type:'upsert_goal', id: goal.id, user_id: this.state.user.id, payload });
+    },
+    async loadGoalsRemote(){
+      if(!this.state.user || this.state.user.local) return;
+      const { data, error } = await supabase.from('metas').select('*').eq('user_id', this.state.user.id);
+      if(error || !data) return;
+      // Merge: remoto vence se updated_at mais recente
+      const localMap = {};
+      (this.state.data.goals||[]).forEach(g => localMap[g.id] = g);
+      data.forEach(rg => {
+        const local = localMap[rg.id];
+        const localTs = local?.updated_at || '';
+        const remoteTs = rg.updated_at || '';
+        if(!local || remoteTs >= localTs) localMap[rg.id] = rg;
+      });
+      this.state.data.goals = Object.values(localMap);
+    },
+    async deleteGoalRemote(id){
+      if(!this.state.user || this.state.user.local) return;
+      if(!_isOnline){ offlineQueue.push({ type:'delete_goal', id, user_id: this.state.user.id }); return; }
+      await supabase.from('metas').delete().eq('id', id).eq('user_id', this.state.user.id);
+    },
+    async saveGoal(goal){
+      if(!this.state.data.goals) this.state.data.goals = [];
+      const idx = this.state.data.goals.findIndex(g=>g.id===goal.id);
+      if(idx!==-1) this.state.data.goals[idx] = goal;
+      else this.state.data.goals.push(goal);
+      this.saveLocal(); this.renderAll();
+      await this.saveGoalRemote(goal);
+    },
+    async deleteGoal(id){
+      this.state.data.goals = (this.state.data.goals||[]).filter(g=>g.id!==id);
+      this.saveLocal(); this.renderAll();
+      await this.deleteGoalRemote(id);
+    },
+
+    // ── SUPABASE — BIOS ──
+    async saveBioRemote(bio){
+      if(!this.state.user || this.state.user.local) return;
+      const payload = { id: bio.id, user_id: this.state.user.id, name: bio.name, text: bio.text, updated_at: new Date().toISOString() };
+      if(!_isOnline){ offlineQueue.push({ type:'upsert_bio', id: bio.id, user_id: this.state.user.id, payload }); return; }
+      const { error } = await supabase.from('BIOS').upsert([payload], { onConflict: 'id' });
+      if(error) offlineQueue.push({ type:'upsert_bio', id: bio.id, user_id: this.state.user.id, payload });
+    },
+    async loadBiosRemote(){
+      if(!this.state.user || this.state.user.local) return;
+      const { data, error } = await supabase.from('BIOS').select('*').eq('user_id', this.state.user.id);
+      if(error || !data) return;
+      const localMap = {};
+      (this.state.data.biographies||[]).forEach(b => localMap[b.id] = b);
+      data.forEach(rb => {
+        const local = localMap[rb.id];
+        if(!local || (rb.updated_at||'') >= (local.updated_at||'')) localMap[rb.id] = rb;
+      });
+      this.state.data.biographies = Object.values(localMap);
+    },
+    async deleteBioRemote(id){
+      if(!this.state.user || this.state.user.local) return;
+      if(!_isOnline){ offlineQueue.push({ type:'delete_bio', id, user_id: this.state.user.id }); return; }
+      await supabase.from('BIOS').delete().eq('id', id).eq('user_id', this.state.user.id);
+    },
+    async saveBio(bio){
+      if(!this.state.data.biographies) this.state.data.biographies = [];
+      const idx = this.state.data.biographies.findIndex(b=>b.id===bio.id);
+      if(idx!==-1) this.state.data.biographies[idx] = bio;
+      else this.state.data.biographies.push(bio);
+      this.saveLocal(); this.renderAll();
+      await this.saveBioRemote(bio);
+    },
+    async deleteBio(id){
+      this.state.data.biographies = (this.state.data.biographies||[]).filter(b=>b.id!==id);
+      this.saveLocal(); this.renderAll();
+      await this.deleteBioRemote(id);
+    },
+
+    // ── SYNC GERAL (debounced, inteligente) ──
+    syncRemote: debounce(async function(){
+      if(!this.state.user || this.state.user.local){ setSyncStatus('local'); return; }
+      if(!_isOnline){ setSyncStatus('offline'); return; }
+      if(this.state.syncPending) return;
+      this.state.syncPending = true;
+      setSyncStatus('syncing');
+      const syncIcon = q('sync-icon');
+      if(syncIcon) syncIcon.classList.add('fa-spin');
+      try{
+        const uid = this.state.user.id;
+        const lastSync = this.state.lastSyncAt;
+        const now = new Date().toISOString();
+
+        // Sincronizar apenas tarefas alteradas desde o último sync
+        const tasksFlat = Object.entries(this.state.data.routines||{}).flatMap(([date, arr]) =>
+          (arr||[])
+            .filter(t => !lastSync || (t.updated_at||t.created_at||'') > lastSync)
+            .map(t => ({
+              id: t.id, user_id: uid,
+              title: t.title, description: t.description||'',
+              priority: t.priority||'media', estimate_min: t.estimateMin||30,
+              focus: t.focus||'consistente', goal_id: t.linkedGoalId||null,
+              done: !!t.done, created_at: t.created_at||now,
+              updated_at: t.updated_at||now
+            }))
+        );
+        if(tasksFlat.length){
+          const { error } = await supabase.from('tarefas').upsert(tasksFlat, { onConflict: 'id' });
+          if(error) throw error;
+        }
+
+        // Sync metas alteradas
+        const goals = (this.state.data.goals||[])
+          .filter(g => !lastSync || (g.updated_at||'') > lastSync)
+          .map(g => ({...g, user_id: uid, updated_at: g.updated_at || now}));
+        if(goals.length) await supabase.from('metas').upsert(goals, { onConflict: 'id' });
+
+        // Flush fila offline
+        await offlineQueue.flush();
+
+        this.state.lastSyncAt = now;
+        setSyncStatus('online');
+      } catch(e){
+        console.warn('syncRemote error:', e);
+        setSyncStatus('error');
+      } finally {
+        this.state.syncPending = false;
+        if(syncIcon) syncIcon.classList.remove('fa-spin');
+      }
+    }, 1500),
+
+    async pullRemote(){
+      if(!this.state.user || this.state.user.local){ setSyncStatus('local'); return; }
+      if(!_isOnline){ setSyncStatus('offline'); showToast('Sem conexão — dados locais', 'error', 2000); return; }
+      showLoading('Carregando dados...');
+      try{
+        await this.loadTasksRemote();
+        await this.loadGoalsRemote();
+        await this.loadBiosRemote();
+        await this.loadAnswersRemote();
+        this.saveLocal(); this.renderAll();
+        this.state.lastSyncAt = new Date().toISOString();
+        setSyncStatus('online');
+        showToast('Dados sincronizados! ✅', 'success');
+      } catch(e){ console.warn('pullRemote error:', e); setSyncStatus('error'); showToast('Erro ao puxar dados', 'error'); }
+      finally{ hideLoading(); }
+    },
+
+    // ── CHARTS ──
+    initCharts(){
+      const weeklyCtx = q('weekly-chart');
+      if(weeklyCtx && !this.state.charts.weekly){
+        this.state.charts.weekly = new Chart(weeklyCtx, {
+          type:'line',
+          data:{ labels:this.getLast7DayLabels(), datasets:[{ label:'Taxa (%)', data:this.getWeeklyData(), borderColor:'#28A745', backgroundColor:'rgba(40,167,69,.1)', tension:.4, fill:true, pointBackgroundColor:'#28A745', pointRadius:4 }] },
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, max:100, grid:{color:'rgba(0,0,0,.04)'} }, x:{grid:{display:false}} } }
+        });
+      }
+      const focusCtx = q('focus-chart');
+      if(focusCtx && !this.state.charts.focus){
+        this.state.charts.focus = new Chart(focusCtx, {
+          type:'doughnut',
+          data:{ labels:['Visionário','Comportamental','Consistente'], datasets:[{ data:[33,33,34], backgroundColor:['#28A745','#66bb6a','#a5d6a7'], borderWidth:0 }] },
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{font:{family:'Plus Jakarta Sans',weight:'700'},padding:12} } } }
+        });
+      }
+      const monthlyCtx = q('monthly-chart');
+      if(monthlyCtx && !this.state.charts.monthly){
+        const year = new Date().getFullYear();
+        const monthLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].map(m => `${m}/${year}`);
+        this.state.charts.monthly = new Chart(monthlyCtx, {
+          type:'bar',
+          data:{ labels: monthLabels, datasets:[{ label:'Tarefas Concluídas', data:new Array(12).fill(0), backgroundColor:'rgba(40,167,69,.7)', borderRadius:6, borderSkipped:false }] },
+          options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, grid:{color:'rgba(0,0,0,.04)'} }, x:{grid:{display:false}, ticks:{font:{size:10}}} } }
+        });
+        const yearEl = q('monthly-chart-year');
+        if(yearEl) yearEl.textContent = year;
+      }
+    },
+
+    updateCharts(){
+      if(this.state.charts.weekly){
+        this.state.charts.weekly.data.labels = this.getLast7DayLabels();
+        this.state.charts.weekly.data.datasets[0].data = this.getWeeklyData();
+        this.state.charts.weekly.update();
+      }
+      if(this.state.charts.focus){
+        this.state.charts.focus.data.datasets[0].data = this.getFocusData();
+        this.state.charts.focus.update();
+      }
+      if(this.state.charts.monthly){
+        this.state.charts.monthly.data.datasets[0].data = this.getMonthlyGoalData();
+        this.state.charts.monthly.update();
+      }
+    },
+
+    getLast7DayLabels(){
+      const days=[]; const today=new Date();
+      for(let i=6;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d.toLocaleDateString('pt-BR',{weekday:'short'})); }
+      return days;
+    },
+    getWeeklyData(){
+      const data=[]; const today=new Date();
+      for(let i=6;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); const key=d.toISOString().split('T')[0]; const tasks=this.state.data.routines[key]||[]; if(tasks.length){ data.push(Math.round((tasks.filter(t=>t.done).length/tasks.length)*100)); } else data.push(0); }
+      return data;
+    },
+    getFocusData(){
+      const all=Object.values(this.state.data.routines||{}).flat();
+      const v=all.filter(t=>t.focus==='visionario').length;
+      const c=all.filter(t=>t.focus==='comportamental').length;
+      const s=all.filter(t=>t.focus==='consistente').length;
+      const total=v+c+s;
+      return total===0 ? [33,33,34] : [Math.round((v/total)*100),Math.round((c/total)*100),Math.round((s/total)*100)];
+    },
+    getMonthlyGoalData(){
+      const months=new Array(12).fill(0);
+      Object.values(this.state.data.routines||{}).flat().forEach(task=>{
+        if(!task.done) return;
+        const m=new Date(task.created_at||'').getMonth();
+        if(!isNaN(m)) months[m]++;
+      });
+      return months;
+    },
+    calculateStreak(){
+      let streak=0; const today=new Date();
+      for(let i=0;i<30;i++){
+        const d=new Date(today); d.setDate(d.getDate()-i); const key=d.toISOString().split('T')[0];
+        const tasks=this.state.data.routines[key]||[]; if(!tasks.length) break;
+        if((tasks.filter(t=>t.done).length/tasks.length)*100 >= 70) streak++; else break;
+      }
+      return streak;
+    },
+    getBestDay(){
+      const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; const dayStats={};
+      Object.entries(this.state.data.routines||{}).forEach(([key, tasks])=>{
+        if(!tasks.length) return; const idx=new Date(key+'T12:00:00').getDay();
+        const rate=(tasks.filter(t=>t.done).length/tasks.length)*100;
+        if(!dayStats[idx]) dayStats[idx]=[]; dayStats[idx].push(rate);
+      });
+      let best='-'; let bestRate=0;
+      Object.keys(dayStats).forEach(idx=>{ const avg=dayStats[idx].reduce((a,b)=>a+b,0)/dayStats[idx].length; if(avg>bestRate){ bestRate=avg; best=days[idx]; } });
+      return best;
+    },
+
+    // ── AUTH ──
+    async signupLocal(name, email, password){
+      if(!_isOnline) throw new Error('Sem conexão — conecte-se à internet para criar uma conta');
+      const { data:existing } = await supabase.from('usuários_do_aplicativo').select('id').eq('email', email).maybeSingle();
+      if(existing) throw new Error('Email já cadastrado');
+      const passHash = await hashPassword(password);
+      const { data, error } = await supabase.from('usuários_do_aplicativo').insert([{ name, email, password_hash: passHash }]).select().maybeSingle();
+      if(error) throw new Error('Erro ao criar conta: ' + (error.message || 'tente novamente'));
+      this.state.user = { id:data.id, email:data.email, name:data.name };
+      this.saveLocal(); return this.state.user;
+    },
+    async signinLocal(email, password){
+      if(!_isOnline) throw new Error('Sem conexão — verifique sua internet e tente novamente');
+      const passHash = await hashPassword(password);
+      const { data, error } = await supabase.from('usuários_do_aplicativo').select('*').eq('email', email).maybeSingle();
+      if(error) throw new Error('Erro ao conectar com o servidor.');
+      if(!data) throw new Error('Usuário não encontrado');
+      if((data.password_hash||'') !== passHash) throw new Error('Senha incorreta');
+      this.state.user = { id:data.id, email:data.email, name:data.name };
+      this.saveLocal(); return this.state.user;
+    },
+    async signoutLocal(){
+      // Limpar canal realtime ao sair
+      if(this.state.realtimeChannel){
+        supabase.removeChannel(this.state.realtimeChannel);
+        this.state.realtimeChannel = null;
+      }
+      this.state.user = null;
+      this.state.lastSyncAt = null;
+      this.saveLocal();
+      this.showUIAuth();
+    },
+
+    // ── INIT ──
+    loadRoutineForToday(){
+      const todayKey = this.getTodayKey();
+      if(this.state.data.routines[todayKey]) return;
+      const keys = Object.keys(this.state.data.routines||{});
+      if(keys.length){
+        const lastKey = keys.sort().reverse()[0];
+        const base = JSON.parse(JSON.stringify(this.state.data.routines[lastKey]||[]));
+        this.state.data.routines[todayKey] = base.map(item=>({
+          ...item,
+          id:'t-'+Math.random().toString(36).slice(2,9),
+          done:false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
+        this.saveLocal();
+      }
+    },
+
+    showUIApp(){
+      q('auth-screen').classList.add('hidden');
+      q('main-app').classList.remove('hidden');
+      this.initCharts();
+      this.loadRoutineForToday();
+      this.renderAll();
+      if(this.state.user && !this.state.user.local){
+        // Verificar conectividade real antes de tentar sync
+        updateOnlineStatus().then(() => {
+          if(_isOnline){
+            setSyncStatus('syncing');
+            this.pullRemote().catch(e => { console.error('Sync falhou', e); setSyncStatus('error'); });
+          } else {
+            setSyncStatus('offline');
+          }
+        });
+        // Realtime: remover canal anterior se existir (evita duplicação)
+        if(this.state.realtimeChannel){
+          supabase.removeChannel(this.state.realtimeChannel);
+          this.state.realtimeChannel = null;
+        }
+        const uid = this.state.user.id;
+        const channel = supabase.channel(`sync-${uid}`)
+          .on('postgres_changes', { event:'*', schema:'public', table:'tarefas', filter:`user_id=eq.${uid}` },
+            () => { if(_isOnline) setTimeout(() => { this.loadTasksRemote().then(() => { this.saveLocal(); this.renderAll(); }); }, 800); })
+          .on('postgres_changes', { event:'*', schema:'public', table:'metas', filter:`user_id=eq.${uid}` },
+            () => { if(_isOnline) setTimeout(() => { this.loadGoalsRemote().then(() => { this.saveLocal(); this.renderAll(); }); }, 800); })
+          .subscribe((status) => {
+            if(status === 'SUBSCRIBED') console.log('Realtime conectado');
+          });
+        this.state.realtimeChannel = channel;
+        // Sync periódico a cada 45s (apenas itens alterados)
+        setInterval(() => {
+          if(this.state.user && !this.state.user.local && _isOnline) this.syncRemote();
+        }, 45000);
+      } else {
+        setSyncStatus('local');
+      }
+    },
+    showUIAuth(){ q('auth-screen').classList.remove('hidden'); q('main-app').classList.add('hidden'); },
+
+    async init(){
+      this.loadLocal();
+      // Verificar conectividade real no boot
+      await updateOnlineStatus();
+      // initEvents roda UMA vez, sempre — tanto na tela de auth quanto na tela do app
+      this.initEvents();
+      if(this.state.user){
+        this.showUIApp();
+      } else {
+        this.showUIAuth();
+      }
+    },
+
+    initEvents(){
+      // Auth tabs
+      q('tab-login').addEventListener('click', ()=>{
+        q('login-form').classList.remove('hidden'); q('register-form').classList.add('hidden');
+        q('tab-login').classList.remove('inactive'); q('tab-register').classList.add('inactive');
+      });
+      q('tab-register').addEventListener('click', ()=>{
+        q('login-form').classList.add('hidden'); q('register-form').classList.remove('hidden');
+        q('tab-register').classList.remove('inactive'); q('tab-login').classList.add('inactive');
+      });
+
+      q('btn-login').addEventListener('click', async (ev)=>{
+        ev.preventDefault();
+        const email=q('login-email').value.trim(); const pass=q('login-password').value;
+        if(!email||!pass){ showToast('Preencha email e senha','error'); return; }
+        const btn = q('btn-login'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'; btn.disabled = true;
+        try{
+          await this.signinLocal(email,pass);
+          this.showUIApp();
+        } catch(err){ showToast(err.message||'Erro ao entrar','error'); }
+        finally{ btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar'; btn.disabled = false; }
+      });
+
+      q('btn-register').addEventListener('click', async (ev)=>{
+        ev.preventDefault();
+        const name=q('register-name').value.trim(); const email=q('register-email').value.trim();
+        const pass=q('register-password').value; const conf=q('register-confirm').value;
+        if(!name||!email||!pass){ showToast('Preencha todos os campos','error'); return; }
+        if(pass!==conf){ showToast('Senhas não conferem','error'); return; }
+        const btn = q('btn-register'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...'; btn.disabled = true;
+        try{
+          await this.signupLocal(name,email,pass);
+          showToast('Conta criada com sucesso! 🎉','success');
+          this.showUIApp();
+        } catch(err){ showToast(err.message||'Erro ao criar conta','error'); }
+        finally{ btn.innerHTML = '<i class="fas fa-user-plus"></i> Criar Conta'; btn.disabled = false; }
+      });
+
+      // Nav
+      document.querySelectorAll('nav .nav-item').forEach(btn => btn.addEventListener('click', ()=>{
+        document.querySelectorAll('nav .nav-item').forEach(n=>n.classList.remove('active'));
+        btn.classList.add('active');
+        const screen = btn.getAttribute('data-screen');
+        document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+        q(screen+'-screen').classList.add('active');
+        if(screen==='analytics') this.updateCharts();
+        if(screen==='questione') this.renderQuestions();
+      }));
+
+      // Tasks
+      q('btn-add-task').addEventListener('click', ()=>{ q('task-form').reset(); q('task-id').value=''; q('task-modal-title').textContent='Nova Tarefa'; q('task-modal').classList.add('active'); });
+      q('btn-new-task').addEventListener('click', ()=>{ q('task-form').reset(); q('task-id').value=''; q('task-modal-title').textContent='Nova Tarefa'; q('task-modal').classList.add('active'); });
+      q('task-cancel').addEventListener('click', ()=>closeModal('task-modal'));
+      q('task-cancel-2').addEventListener('click', ()=>closeModal('task-modal'));
+
+      q('task-form').addEventListener('submit', async (ev)=>{
+        ev.preventDefault();
+        const existingId = q('task-id').value;
+        const id = existingId || ('t-'+Math.random().toString(36).slice(2,9));
+        const title = q('task-title').value.trim();
+        if(!title){ showToast('Título obrigatório','error'); return; }
+        const obj = {
+          id, title, description: q('task-description').value.trim(),
+          priority: q('task-priority').value, estimateMin: Number(q('task-estimate').value)||30,
+          focus: q('task-focus').value, linkedGoalId: q('task-goal').value||'',
+          done: false, created_at: new Date().toISOString()
+        };
+        closeModal('task-modal');
+        if(existingId){
+          const today=this.getTodayKey();
+          const existing = (this.state.data.routines[today]||[]).find(t=>t.id===existingId);
+          if(existing) obj.done = existing.done;
+          await this.updateTask(obj);
+        } else {
+          await this.addTask(obj);
+        }
+        showToast('Tarefa salva!','success');
+      });
+
+      // Click delegation
+      document.addEventListener('click', async (ev)=>{
+        const edit = ev.target.closest('[data-edit]');
+        if(edit){
+          const id=edit.getAttribute('data-edit'); const today=this.getTodayKey();
+          const t=(this.state.data.routines[today]||[]).find(x=>x.id===id);
+          if(t){ q('task-id').value=t.id; q('task-title').value=t.title; q('task-description').value=t.description||''; q('task-priority').value=t.priority||'media'; q('task-estimate').value=t.estimateMin||30; q('task-focus').value=t.focus||'consistente'; q('task-goal').value=t.linkedGoalId||''; q('task-modal-title').textContent='Editar Tarefa'; q('task-modal').classList.add('active'); } return;
+        }
+        const del = ev.target.closest('[data-delete]');
+        if(del){
+          const id=del.getAttribute('data-delete');
+          if(confirm('Deseja excluir esta tarefa?')) await this.removeTask(id);
+          return;
+        }
+        const cb = ev.target.closest('input[type="checkbox"][data-id]');
+        if(cb){
+          const id=cb.getAttribute('data-id'); const today=this.getTodayKey();
+          const t=(this.state.data.routines[today]||[]).find(x=>x.id===id);
+          if(t){ t.done=cb.checked; await this.updateTask(t); if(cb.checked) showToast('Tarefa concluída! 🎉','success'); }
+          return;
+        }
+        const editG = ev.target.closest('[data-edit-goal]');
+        if(editG){ const id=editG.getAttribute('data-edit-goal'); const g=(this.state.data.goals||[]).find(x=>x.id===id); if(g){ q('goal-id').value=g.id; q('goal-title').value=g.title; q('goal-desc').value=g.desc||''; q('goal-type').value=g.type||'semanal'; q('goal-start').value=g.start||''; q('goal-end').value=g.end||''; q('goal-progress').value=g.progress||0; q('goal-priority').value=g.priority||'media'; q('goal-modal').classList.add('active'); } return; }
+        const delG = ev.target.closest('[data-delete-goal]');
+        if(delG){ const id=delG.getAttribute('data-delete-goal'); if(confirm('Excluir meta?')) await this.deleteGoal(id); return; }
+        const editB = ev.target.closest('[data-edit-bio]');
+        if(editB){ const id=editB.getAttribute('data-edit-bio'); const b=(this.state.data.biographies||[]).find(x=>x.id===id); if(b){ q('bio-id').value=b.id; q('bio-name').value=b.name; q('bio-text').value=b.text; q('bio-modal').classList.add('active'); } return; }
+        const delB = ev.target.closest('[data-delete-bio]');
+        if(delB){ const id=delB.getAttribute('data-delete-bio'); if(confirm('Excluir biografia?')) await this.deleteBio(id); return; }
+      });
+
+      // Goals
+      q('btn-new-goal').addEventListener('click', ()=>{ q('goal-form').reset(); q('goal-id').value=''; q('goal-modal').classList.add('active'); });
+      q('goal-form').addEventListener('submit', async (ev)=>{
+        ev.preventDefault();
+        const id=q('goal-id').value||('g-'+Math.random().toString(36).slice(2,9));
+        const obj={ id, title:q('goal-title').value.trim(), desc:q('goal-desc').value.trim(), type:q('goal-type').value, start:q('goal-start').value, end:q('goal-end').value, progress:Number(q('goal-progress').value)||0, priority:q('goal-priority').value||'media' };
+        closeModal('goal-modal');
+        await this.saveGoal(obj);
+        showToast('Meta salva!','success');
+      });
+
+      // Bios
+      q('btn-new-bio').addEventListener('click', ()=>{ q('bio-form').reset(); q('bio-id').value=''; q('bio-modal').classList.add('active'); });
+      q('bio-form').addEventListener('submit', async (ev)=>{
+        ev.preventDefault();
+        const id=q('bio-id').value||('b-'+Math.random().toString(36).slice(2,9));
+        const obj={ id, name:q('bio-name').value.trim(), text:q('bio-text').value.trim(), favorite:false };
+        closeModal('bio-modal');
+        await this.saveBio(obj);
+        showToast('Biografia salva!','success');
+      });
+
+      // Settings
+      q('btn-settings').addEventListener('click', ()=>{ q('settings-name').value=this.state.user?.name||''; q('settings-email').value=this.state.user?.email||''; q('settings-modal').classList.add('active'); });
+      q('btn-save-settings').addEventListener('click', async ()=>{
+        const name=q('settings-name').value.trim(); if(!this.state.user) return;
+        try{ await supabase.from('usuários_do_aplicativo').update({ name }).eq('id',this.state.user.id); this.state.user.name=name; this.saveLocal(); showToast('Nome atualizado','success'); closeModal('settings-modal'); }
+        catch(e){ showToast('Erro ao salvar','error'); }
+      });
+      q('btn-logout').addEventListener('click', async ()=>{ await this.signoutLocal(); });
+
+      // Sync button
+      q('btn-sync-home').addEventListener('click', async ()=>{
+        if(!this.state.user){ showToast('Faça login para sincronizar','error'); return; }
+        if(this.state.user.local){ showToast('Usuário local — crie conta online para sincronizar'); return; }
+        if(!_isOnline){ showToast('Sem conexão — verifique sua internet','error'); return; }
+        showLoading('Sincronizando...');
+        try{
+          await offlineQueue.flush();
+          await this.syncRemote();
+          await this.pullRemote();
+        } finally { hideLoading(); }
+      });
+
+      // Export/Import/Clear
+      q('export-data').addEventListener('click', ()=>{
+        const blob=new Blob([JSON.stringify(this.state.data,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob); const a=document.createElement('a');
+        a.href=url; a.download='produtivme_data.json'; a.click(); URL.revokeObjectURL(url);
+      });
+      q('import-data').addEventListener('click', ()=>{
+        const f=q('import-file').files[0]; if(!f) return showToast('Escolha um arquivo');
+        const reader=new FileReader();
+        reader.onload=(e)=>{ try{ this.state.data=JSON.parse(e.target.result); this.saveLocal(); this.renderAll(); showToast('Dados importados','success'); }catch(err){ showToast('Arquivo inválido','error'); } };
+        reader.readAsText(f);
+      });
+      q('clear-data').addEventListener('click', ()=>{
+        if(confirm('Limpar todos os dados locais?')){ this.state.data=this.getDefaultData(); this.saveLocal(); this.renderAll(); showToast('Dados limpos'); }
+      });
+
+      q('goal-filter').addEventListener('change', ()=>this.renderGoals());
+
+      // ── QUESTIONE: nova pergunta ──
+      let selectedEmoji = '💭';
+      q('btn-add-question').addEventListener('click', ()=>{
+        selectedEmoji = '💭';
+        q('question-emoji').value = '';
+        if(q('question-text-input')) q('question-text-input').value = '';
+        // reset emoji picker highlight
+        document.querySelectorAll('.emoji-opt').forEach(el=>{
+          el.style.borderColor='transparent'; el.style.background='transparent';
+        });
+        const first = document.querySelector('.emoji-opt[data-emoji="💭"]');
+        if(first){ first.style.borderColor='var(--primary)'; first.style.background='var(--primary-light)'; }
+        q('question-modal').classList.add('active');
+      });
+
+      document.querySelectorAll('.emoji-opt').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          document.querySelectorAll('.emoji-opt').forEach(e=>{ e.style.borderColor='transparent'; e.style.background='transparent'; });
+          el.style.borderColor='var(--primary)'; el.style.background='var(--primary-light)';
+          selectedEmoji = el.getAttribute('data-emoji');
+          q('question-emoji').value = '';
+        });
+      });
+
+      q('question-emoji').addEventListener('input', ()=>{
+        if(q('question-emoji').value.trim()){
+          document.querySelectorAll('.emoji-opt').forEach(e=>{ e.style.borderColor='transparent'; e.style.background='transparent'; });
+          selectedEmoji = q('question-emoji').value.trim();
+        }
+      });
+
+      q('btn-save-question').addEventListener('click', ()=>{
+        const text = q('question-text-input').value.trim();
+        if(!text){ showToast('Escreva uma pergunta','error'); return; }
+        const emoji = q('question-emoji').value.trim() || selectedEmoji || '💭';
+        const customs = loadCustomQuestions();
+        const id = 'cq-' + Math.random().toString(36).slice(2,9);
+        customs.push({ id, icon: emoji, text });
+        saveCustomQuestions(customs);
+        closeModal('question-modal');
+        this.renderQuestions();
+        showToast('Pergunta adicionada! 🎉','success');
+      });
+
+      // PWA install prompt
+      window.addEventListener('beforeinstallprompt', (e)=>{
+        e.preventDefault();
+        setTimeout(()=>showToast('Instale o app na tela inicial para melhor experiência!','',5000), 3000);
+      });
+    },
+  };
+
+  window.closeModal = closeModal;
+  window.app = app;
+  await app.init();
+})();
+</script>
+</div>
+</body>
+</html>
