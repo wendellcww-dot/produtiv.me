@@ -502,6 +502,7 @@
               <option value="all">Todas</option>
               <option value="semanal">Semanais</option>
               <option value="mensal">Mensais</option>
+              <option value="anual">Anual</option>
               <option value="completed">Concluídas</option>
             </select>
           </div>
@@ -1035,6 +1036,7 @@
       let goals = [...(this.state.data.goals || [])];
       if(filter==='semanal') goals = goals.filter(g=>g.type==='semanal');
       if(filter==='mensal') goals = goals.filter(g=>g.type==='mensal');
+      if (filter === 'anual') goals = goals.filter(g => g.type === 'anual');
       if(filter==='completed') goals = goals.filter(g=>g.progress>=100);
       const list = q('goals-list');
       if(!goals.length){
