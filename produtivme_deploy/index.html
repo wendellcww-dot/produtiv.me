@@ -914,7 +914,13 @@
       lastSyncAt: null
     },
 
-    getTodayKey(){ return new Date().toISOString().split('T')[0]; },
+    getTodayKey(){
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    },
 
     getDefaultData(){
       return {
@@ -1282,18 +1288,26 @@
         });
       });
       // "Última atualização vence": mescla com dados locais priorizando updated_at remoto
-      const merged = Object.assign({}, this.state.data.routines);
+      // Remoto é a fonte da verdade para IDs — local só preserva o done
+      const merged = {};
       Object.entries(newRoutines).forEach(([day, remoteTasks]) => {
-        if(!merged[day]){ merged[day] = remoteTasks; return; }
+        const localList = this.state.data.routines[day] || [];
+        // Monta mapa local por ID para recuperar o done
         const localMap = {};
-        merged[day].forEach(t => localMap[t.id] = t);
-        remoteTasks.forEach(rt => {
-          if(!localMap[rt.id]){ localMap[rt.id] = rt; return; }
-          const localTs = localMap[rt.id].updated_at || localMap[rt.id].created_at || '';
-          const remoteTs = rt.updated_at || rt.created_at || '';
-          if(remoteTs >= localTs) localMap[rt.id] = rt;
+        localList.forEach(t => localMap[t.id] = t);
+        // Remoto define a lista — sem duplicatas
+        merged[day] = remoteTasks.map(rt => {
+          const local = localMap[rt.id];
+          // Preserva done local se o servidor ainda não recebeu a atualização
+          if(local && local.done && !rt.done && (!rt.updated_at || rt.updated_at === rt.created_at)){
+            return { ...rt, done: true };
+          }
+          return rt;
         });
-        merged[day] = Object.values(localMap);
+      });
+      // Mantém dias locais que não estão no remoto (ex: offline)
+      Object.entries(this.state.data.routines).forEach(([day, tasks]) => {
+        if(!merged[day]) merged[day] = tasks;
       });
       this.state.data.routines = merged;
       // ← Restaura os checkboxes marcados pelo usuário — nunca perde o estado local
@@ -1637,19 +1651,8 @@
     // ── INIT ──
     loadRoutineForToday(){
       const todayKey = this.getTodayKey();
-      if(this.state.data.routines[todayKey]) return;
-      const keys = Object.keys(this.state.data.routines||{});
-      if(keys.length){
-        const lastKey = keys.sort().reverse()[0];
-        const base = JSON.parse(JSON.stringify(this.state.data.routines[lastKey]||[]));
-        this.state.data.routines[todayKey] = base.map(item=>({
-          ...item,
-          id:'t-'+Math.random().toString(36).slice(2,9),
-          done:false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-        this.saveLocal();
+      if(!this.state.data.routines[todayKey]){
+        this.state.data.routines[todayKey] = [];
       }
     },
 
