@@ -502,7 +502,7 @@
               <option value="all">Todas</option>
               <option value="semanal">Semanais</option>
               <option value="mensal">Mensais</option>
-              <option value="anual">Anual</option>
+              <option value="anual">Anuais</option>
               <option value="completed">Concluídas</option>
             </select>
           </div>
@@ -648,6 +648,15 @@
         <button id="btn-save-settings" class="btn btn-primary" style="flex:1"><i class="fas fa-check"></i> Salvar Nome</button>
         <button id="btn-logout" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Sair</button>
       </div>
+      <hr style="margin:.75rem 0;border-color:var(--border)">
+      <div style="font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.5rem">🔔 Notificações</div>
+      <div id="notif-status" style="font-size:.82rem;margin-bottom:.75rem"></div>
+      <button id="btn-ativar-notif" class="btn btn-primary btn-block" style="margin-bottom:.5rem"><i class="fas fa-bell"></i> Ativar Notificações</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+        <div class="form-group" style="margin-bottom:0"><label>☀️ Manhã</label><input type="time" id="notif-manha" value="08:00"></div>
+        <div class="form-group" style="margin-bottom:0"><label>🌅 Tarde</label><input type="time" id="notif-tarde" value="14:00"></div>
+      </div>
+      <button id="btn-salvar-notif" class="btn btn-ghost btn-block" style="margin-bottom:.75rem"><i class="fas fa-save"></i> Salvar Horários</button>
       <hr style="margin:.75rem 0;border-color:var(--border)">
       <div style="font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">Gerenciar Dados</div>
       <div class="form-group"><button id="export-data" class="btn btn-ghost btn-block"><i class="fas fa-download"></i> Exportar Dados (JSON)</button></div>
@@ -1042,7 +1051,7 @@
       let goals = [...(this.state.data.goals || [])];
       if(filter==='semanal') goals = goals.filter(g=>g.type==='semanal');
       if(filter==='mensal') goals = goals.filter(g=>g.type==='mensal');
-      if (filter === 'anual') goals = goals.filter(g => g.type === 'anual');
+      if(filter==='anual') goals = goals.filter(g=>g.type==='anual');
       if(filter==='completed') goals = goals.filter(g=>g.progress>=100);
       const list = q('goals-list');
       if(!goals.length){
@@ -1277,7 +1286,14 @@
       if(error){ console.error('Erro ao buscar tarefas', error); return; }
       const newRoutines = {};
       (data||[]).forEach(task => {
-        const date = (task.created_at||'').split('T')[0] || this.getTodayKey();
+        // Usa fuso local do usuário para evitar bug de virada de dia
+        let date;
+        if(task.created_at){
+          const d = new Date(task.created_at);
+          date = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        } else {
+          date = this.getTodayKey();
+        }
         if(!newRoutines[date]) newRoutines[date] = [];
         newRoutines[date].push({
           id: task.id, title: task.title,
@@ -1287,17 +1303,14 @@
           created_at: task.created_at, updated_at: task.updated_at
         });
       });
-      // "Última atualização vence": mescla com dados locais priorizando updated_at remoto
-      // Remoto é a fonte da verdade para IDs — local só preserva o done
-     // Merge: remoto define o que existe, mas local preserva tarefas ainda não sincronizadas
-      const merged = Object.assign({}, this.state.data.routines);
+      // Merge: remoto define o que existe, local preserva tarefas ainda não sincronizadas e o done marcado
       const remoteIds = new Set((data||[]).map(t => t.id));
+      const merged = Object.assign({}, this.state.data.routines);
       Object.entries(newRoutines).forEach(([day, remoteTasks]) => {
         const localList = merged[day] || [];
-        // Mapa local por id para recuperar done
         const localMap = {};
         localList.forEach(t => localMap[t.id] = t);
-        // Começa com as tarefas remotas, preservando done local
+        // Tarefas remotas preservando done local quando servidor ainda não recebeu
         const resultado = remoteTasks.map(rt => {
           const local = localMap[rt.id];
           if(local && local.done && !rt.done && (!rt.updated_at || rt.updated_at === rt.created_at)){
@@ -1305,7 +1318,7 @@
           }
           return rt;
         });
-        // Adiciona tarefas locais que ainda não chegaram no servidor (recém criadas)
+        // Tarefas locais recém criadas que ainda não chegaram no servidor
         localList.forEach(lt => {
           if(!remoteIds.has(lt.id)) resultado.push(lt);
         });
@@ -1314,13 +1327,8 @@
       // Mantém dias que só existem localmente
       Object.entries(this.state.data.routines).forEach(([day, tasks]) => {
         if(!merged[day]) merged[day] = tasks;
-      }); 
-      // Mantém dias locais que não estão no remoto (ex: offline)
-      Object.entries(this.state.data.routines).forEach(([day, tasks]) => {
-        if(!merged[day]) merged[day] = tasks;
       });
       this.state.data.routines = merged;
-      // ← Restaura os checkboxes marcados pelo usuário — nunca perde o estado local
       this.applyDoneOverrides();
       this.saveLocal();
       this.renderAll();
@@ -1478,6 +1486,13 @@
         const tasksFlat = Object.entries(this.state.data.routines||{}).flatMap(([date, arr]) =>
           (arr||[])
             .map(t => ({
+              id: t.id, user_id: uid,
+              title: t.title, description: t.description||'',
+              priority: t.priority||'media', estimate_min: t.estimateMin||30,
+              focus: t.focus||'consistente', goal_id: t.linkedGoalId||null,
+              done: !!t.done, created_at: t.created_at||now,
+              updated_at: t.updated_at||now
+            }))
         );
         if(tasksFlat.length){
           const { error } = await supabase.from('tarefas').upsert(tasksFlat, { onConflict: 'id' });
@@ -1809,7 +1824,7 @@
         if(cb){
           const id=cb.getAttribute('data-id'); const today=this.getTodayKey();
           const t=(this.state.data.routines[today]||[]).find(x=>x.id===id);
-          if(t){ t.done=cb.checked; await this.updateTask(t); if(cb.checked) showToast('Tarefa concluída! 🎉','success'); }
+          if(t){ t.done=cb.checked; await this.updateTask(t); if(cb.checked){ showToast('Tarefa concluída! 🎉','success'); if(window._verificarParabens) window._verificarParabens(); } }
           return;
         }
         const editG = ev.target.closest('[data-edit-goal]');
@@ -1927,6 +1942,94 @@
         this.renderQuestions();
         showToast('Pergunta adicionada! 🎉','success');
       });
+
+      // ── NOTIFICAÇÕES ──
+      const notifKey = 'produtivme_notif_v1';
+      function loadNotifConfig(){ try{ return JSON.parse(localStorage.getItem(notifKey)||'{}'); }catch(e){ return {}; } }
+      function saveNotifConfig(cfg){ localStorage.setItem(notifKey, JSON.stringify(cfg)); }
+
+      function atualizarStatusNotif(){
+        const el = q('notif-status'); if(!el) return;
+        const cfg = loadNotifConfig();
+        if(Notification.permission==='granted' && cfg.ativo){
+          el.innerHTML = `<span style="color:var(--primary)">✅ Ativas — Manhã: ${cfg.manha||'08:00'} · Tarde: ${cfg.tarde||'14:00'}</span>`;
+        } else if(Notification.permission==='denied'){
+          el.innerHTML = `<span style="color:var(--danger)">❌ Bloqueadas. Permita nas configurações do navegador.</span>`;
+        } else {
+          el.innerHTML = `<span style="color:var(--text-3)">Clique em "Ativar Notificações" para começar.</span>`;
+        }
+      }
+
+      function dispararNotificacao(titulo, corpo){
+        if(Notification.permission!=='granted') return;
+        try{ new Notification(titulo, { body: corpo, icon: 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%2328A745%27 rx=%278%27/%3E%3Ctext x=%2732%27 y=%2745%27 font-size=%2240%27 text-anchor=%27middle%27%3E%E2%9A%A1%3C/text%3E%3C/svg%3E', vibrate:[200,100,200] }); }
+        catch(e){ console.warn('Erro notificação',e); }
+      }
+
+      function checarNotificacoes(){
+        const cfg = loadNotifConfig();
+        if(!cfg.ativo || Notification.permission!=='granted') return;
+        const agora = new Date();
+        const hhmm = String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
+        const hoje = app.getTodayKey ? app.getTodayKey() : new Date().toISOString().split('T')[0];
+        const tarefasHoje = (app.state?.data?.routines?.[hoje])||[];
+        const total = tarefasHoje.length;
+        const concluidas = tarefasHoje.filter(t=>t.done).length;
+        const pendentes = total - concluidas;
+        if(hhmm===(cfg.manha||'08:00') && cfg.ultimaManha!==hoje){
+          dispararNotificacao('☀️ Bom dia!', total===0 ? 'Você ainda não tem tarefas para hoje. Que tal adicionar uma?' : `Você tem ${total} tarefa${total>1?'s':''} para hoje. Bora lá! 💪`);
+          cfg.ultimaManha=hoje; saveNotifConfig(cfg);
+        }
+        if(hhmm===(cfg.tarde||'14:00') && cfg.ultimaTarde!==hoje){
+          if(total>0 && concluidas===total) dispararNotificacao('🏆 Incrível!','Você concluiu TODAS as tarefas de hoje. Parabéns! 🎉');
+          else if(pendentes>0) dispararNotificacao('🌅 Boa tarde!',`Ainda tem ${pendentes} tarefa${pendentes>1?'s':''} pendente${pendentes>1?'s':''}. Você consegue! 💪`);
+          else dispararNotificacao('🌅 Boa tarde!','Tudo certo por aqui! Continue focado. 🎯');
+          cfg.ultimaTarde=hoje; saveNotifConfig(cfg);
+        }
+      }
+
+      window._verificarParabens = function(){
+        const cfg = loadNotifConfig();
+        if(!cfg.ativo || Notification.permission!=='granted') return;
+        const hoje = app.getTodayKey ? app.getTodayKey() : new Date().toISOString().split('T')[0];
+        const tarefasHoje = (app.state?.data?.routines?.[hoje])||[];
+        const total = tarefasHoje.length;
+        if(total>0 && tarefasHoje.every(t=>t.done) && cfg.ultimoParabens!==hoje){
+          setTimeout(()=>dispararNotificacao('🎉 Parabéns!',`Você concluiu todas as ${total} tarefas de hoje! Você é incrível! 🏆`), 1500);
+          cfg.ultimoParabens=hoje; saveNotifConfig(cfg);
+        }
+      };
+
+      setInterval(checarNotificacoes, 60000);
+
+      q('btn-ativar-notif').addEventListener('click', async ()=>{
+        if(!('Notification' in window)){ showToast('Navegador não suporta notificações','error'); return; }
+        const perm = await Notification.requestPermission();
+        if(perm==='granted'){
+          const cfg = loadNotifConfig();
+          cfg.ativo=true; cfg.manha=q('notif-manha').value||'08:00'; cfg.tarde=q('notif-tarde').value||'14:00';
+          saveNotifConfig(cfg); atualizarStatusNotif();
+          showToast('Notificações ativadas! 🔔','success');
+          dispararNotificacao('✅ produtiv.me','Notificações ativadas com sucesso!');
+        } else {
+          showToast('Permissão negada. Habilite nas configurações do navegador.','error');
+          atualizarStatusNotif();
+        }
+      });
+
+      q('btn-salvar-notif').addEventListener('click', ()=>{
+        const cfg = loadNotifConfig();
+        cfg.manha=q('notif-manha').value||'08:00'; cfg.tarde=q('notif-tarde').value||'14:00';
+        saveNotifConfig(cfg); atualizarStatusNotif();
+        showToast('Horários salvos! ⏰','success');
+      });
+
+      q('btn-settings').addEventListener('click', ()=>{
+        const cfg = loadNotifConfig();
+        if(q('notif-manha')) q('notif-manha').value=cfg.manha||'08:00';
+        if(q('notif-tarde')) q('notif-tarde').value=cfg.tarde||'14:00';
+        setTimeout(atualizarStatusNotif, 100);
+      }, true);
 
       // PWA install prompt
       window.addEventListener('beforeinstallprompt', (e)=>{
