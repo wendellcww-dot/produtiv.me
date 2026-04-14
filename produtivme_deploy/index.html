@@ -1289,22 +1289,32 @@
       });
       // "Última atualização vence": mescla com dados locais priorizando updated_at remoto
       // Remoto é a fonte da verdade para IDs — local só preserva o done
-      const merged = {};
+     // Merge: remoto define o que existe, mas local preserva tarefas ainda não sincronizadas
+      const merged = Object.assign({}, this.state.data.routines);
+      const remoteIds = new Set((data||[]).map(t => t.id));
       Object.entries(newRoutines).forEach(([day, remoteTasks]) => {
-        const localList = this.state.data.routines[day] || [];
-        // Monta mapa local por ID para recuperar o done
+        const localList = merged[day] || [];
+        // Mapa local por id para recuperar done
         const localMap = {};
         localList.forEach(t => localMap[t.id] = t);
-        // Remoto define a lista — sem duplicatas
-        merged[day] = remoteTasks.map(rt => {
+        // Começa com as tarefas remotas, preservando done local
+        const resultado = remoteTasks.map(rt => {
           const local = localMap[rt.id];
-          // Preserva done local se o servidor ainda não recebeu a atualização
           if(local && local.done && !rt.done && (!rt.updated_at || rt.updated_at === rt.created_at)){
             return { ...rt, done: true };
           }
           return rt;
         });
+        // Adiciona tarefas locais que ainda não chegaram no servidor (recém criadas)
+        localList.forEach(lt => {
+          if(!remoteIds.has(lt.id)) resultado.push(lt);
+        });
+        merged[day] = resultado;
       });
+      // Mantém dias que só existem localmente
+      Object.entries(this.state.data.routines).forEach(([day, tasks]) => {
+        if(!merged[day]) merged[day] = tasks;
+      }); 
       // Mantém dias locais que não estão no remoto (ex: offline)
       Object.entries(this.state.data.routines).forEach(([day, tasks]) => {
         if(!merged[day]) merged[day] = tasks;
@@ -1467,15 +1477,7 @@
         // Sincronizar apenas tarefas alteradas desde o último sync
         const tasksFlat = Object.entries(this.state.data.routines||{}).flatMap(([date, arr]) =>
           (arr||[])
-            .filter(t => !lastSync || (t.updated_at||t.created_at||'') > lastSync)
             .map(t => ({
-              id: t.id, user_id: uid,
-              title: t.title, description: t.description||'',
-              priority: t.priority||'media', estimate_min: t.estimateMin||30,
-              focus: t.focus||'consistente', goal_id: t.linkedGoalId||null,
-              done: !!t.done, created_at: t.created_at||now,
-              updated_at: t.updated_at||now
-            }))
         );
         if(tasksFlat.length){
           const { error } = await supabase.from('tarefas').upsert(tasksFlat, { onConflict: 'id' });
