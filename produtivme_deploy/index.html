@@ -651,9 +651,10 @@
       <hr style="margin:.75rem 0;border-color:var(--border)">
       <div style="font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">🔔 Notificações</div>
       <div id="notif-status" style="font-size:.82rem;color:var(--text-3);margin-bottom:.75rem"></div>
-      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
         <button id="btn-ativar-notif" class="btn btn-primary btn-block"><i class="fas fa-bell"></i> Ativar Notificações</button>
       </div>
+      <div style="font-size:.8rem;font-weight:700;color:var(--text-2);margin-bottom:.4rem">⏰ Lembretes diários gerais</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
         <div class="form-group" style="margin-bottom:0">
           <label>☀️ Manhã</label>
@@ -665,8 +666,11 @@
         </div>
       </div>
       <div style="margin-bottom:.75rem">
-        <button id="btn-salvar-notif" class="btn btn-ghost btn-block"><i class="fas fa-save"></i> Salvar Horários</button>
+        <button id="btn-salvar-notif" class="btn btn-ghost btn-block"><i class="fas fa-save"></i> Salvar Horários Gerais</button>
       </div>
+      <hr style="margin:.75rem 0;border-color:var(--border)">
+      <div style="font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.5rem">🎯 Alarmes por Tarefa</div>
+      <div id="task-alarms-list" style="font-size:.82rem;color:var(--text-3)">Carregando tarefas...</div>
       <hr style="margin:.75rem 0;border-color:var(--border)">
       <div style="font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">Gerenciar Dados</div>
       <div class="form-group"><button id="export-data" class="btn btn-ghost btn-block"><i class="fas fa-download"></i> Exportar Dados (JSON)</button></div>
@@ -1288,32 +1292,58 @@
       if(!this.state.user || this.state.user.local) return;
       const { data, error } = await supabase.from('tarefas').select('*').eq('user_id', this.state.user.id);
       if(error){ console.error('Erro ao buscar tarefas', error); return; }
-      const newRoutines = {};
+
+      // Mapa global de todas as tarefas remotas por ID (evita duplicação entre dias)
+      const remoteById = {};
       (data||[]).forEach(task => {
         const date = (task.created_at||'').split('T')[0] || this.getTodayKey();
-        if(!newRoutines[date]) newRoutines[date] = [];
-        newRoutines[date].push({
+        remoteById[task.id] = {
           id: task.id, title: task.title,
           description: task.description, priority: task.priority||'media',
           estimateMin: task.estimate_min||30, focus: task.focus||'consistente',
           linkedGoalId: task.goal_id||'', done: !!task.done,
-          created_at: task.created_at, updated_at: task.updated_at
-        });
+          created_at: task.created_at, updated_at: task.updated_at,
+          _remoteDate: date
+        };
       });
-      // "Última atualização vence": mescla com dados locais priorizando updated_at remoto
-      const merged = Object.assign({}, this.state.data.routines);
+
+      // Reconstrói routines a partir do remoto, sem duplicar IDs entre dias
+      const newRoutines = {};
+      Object.values(remoteById).forEach(task => {
+        const date = task._remoteDate;
+        delete task._remoteDate;
+        if(!newRoutines[date]) newRoutines[date] = [];
+        newRoutines[date].push(task);
+      });
+
+      // Mapa global de IDs já presentes no remoto
+      const remoteIds = new Set(Object.keys(remoteById));
+
+      // "Última atualização vence": mescla com dados locais
+      const merged = {};
+      // Preservar dias locais que não existem no remoto (offline criados)
+      Object.entries(this.state.data.routines||{}).forEach(([day, localTasks]) => {
+        const localOnly = (localTasks||[]).filter(t => !remoteIds.has(t.id));
+        if(localOnly.length) merged[day] = localOnly;
+      });
+
       Object.entries(newRoutines).forEach(([day, remoteTasks]) => {
-        if(!merged[day]){ merged[day] = remoteTasks; return; }
+        if(!merged[day]) merged[day] = [];
         const localMap = {};
-        merged[day].forEach(t => localMap[t.id] = t);
+        // Pegar tarefas locais do mesmo dia
+        (this.state.data.routines[day]||[]).forEach(t => { if(remoteIds.has(t.id)) localMap[t.id] = t; });
         remoteTasks.forEach(rt => {
           if(!localMap[rt.id]){ localMap[rt.id] = rt; return; }
           const localTs = localMap[rt.id].updated_at || localMap[rt.id].created_at || '';
           const remoteTs = rt.updated_at || rt.created_at || '';
           if(remoteTs >= localTs) localMap[rt.id] = rt;
         });
-        merged[day] = Object.values(localMap);
+        merged[day] = [...merged[day], ...Object.values(localMap)];
+        // Dedup final por ID dentro do mesmo dia
+        const seen = new Set();
+        merged[day] = merged[day].filter(t => { if(seen.has(t.id)) return false; seen.add(t.id); return true; });
       });
+
       this.state.data.routines = merged;
       // ← Restaura os checkboxes marcados pelo usuário — nunca perde o estado local
       this.applyDoneOverrides();
@@ -1943,12 +1973,45 @@
       });
 // ── NOTIFICAÇÕES ──
       const notifKey = 'produtivme_notif_v1';
+      const taskAlarmsKey = 'produtivme_task_alarms_v1';
 
       function loadNotifConfig(){
         try{ return JSON.parse(localStorage.getItem(notifKey)||'{}'); }catch(e){ return {}; }
       }
       function saveNotifConfig(cfg){
         localStorage.setItem(notifKey, JSON.stringify(cfg));
+      }
+      function loadTaskAlarms(){
+        try{ return JSON.parse(localStorage.getItem(taskAlarmsKey)||'{}'); }catch(e){ return {}; }
+      }
+      function saveTaskAlarms(alarms){
+        localStorage.setItem(taskAlarmsKey, JSON.stringify(alarms));
+      }
+
+      // ── SOM DE ALARME via Web Audio API ──
+      function tocarAlarme(vezes){
+        vezes = vezes || 3;
+        try{
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          function bip(t, freq, dur){
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.6, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            osc.start(t);
+            osc.stop(t + dur + 0.05);
+          }
+          for(let i = 0; i < vezes; i++){
+            const base = ctx.currentTime + i * 0.55;
+            bip(base,       880, 0.12);
+            bip(base+0.15,  1100, 0.12);
+            bip(base+0.30,  1320, 0.18);
+          }
+        } catch(e){ console.warn('Web Audio não disponível', e); }
       }
 
       function atualizarStatusNotif(){
@@ -1960,21 +2023,54 @@
         } else if(Notification.permission === 'denied'){
           el.innerHTML = `<span style="color:var(--danger)">❌ Bloqueadas no navegador. Vá nas configurações do navegador para permitir.</span>`;
         } else {
-          el.innerHTML = `<span style="color:var(--text-3)">Clique em "Ativar Notificações" para começar.</span>`;
+          el.innerHTML = `<span style="color:var(--warn)">⚠️ Clique em "Ativar Notificações" para começar.</span>`;
         }
       }
 
-      function dispararNotificacao(titulo, corpo, icone){
+      const NOTIF_ICON = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%2328A745%27 rx=%278%27/%3E%3Ctext x=%2732%27 y=%2745%27 font-size=%2740%27 text-anchor=%27middle%27%3E%E2%9A%A1%3C/text%3E%3C/svg%3E';
+
+      function dispararNotificacao(titulo, corpo, comAlarme){
         if(Notification.permission !== 'granted') return;
+        if(comAlarme) tocarAlarme(3);
         try{
-          new Notification(titulo, {
+          const n = new Notification(titulo, {
             body: corpo,
-            icon: icone || 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%2328A745%27 rx=%278%27/%3E%3Ctext x=%2732%27 y=%2745%27 font-size=%2740%27 text-anchor=%27middle%27%3E%E2%9A%A1%3C/text%3E%3C/svg%3E',
-            badge: 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%2764%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 fill=%27%2328A745%27 rx=%278%27/%3E%3C/svg%3E',
-            vibrate: [200, 100, 200]
+            icon: NOTIF_ICON,
+            badge: NOTIF_ICON,
+            vibrate: [300, 100, 300, 100, 300],
+            requireInteraction: !!comAlarme
           });
+          if(comAlarme){
+            n.onclick = () => { tocarAlarme(1); n.close(); };
+          }
         } catch(e){ console.warn('Erro ao disparar notificação', e); }
       }
+
+      // ── Solicitar permissão automaticamente ──
+      async function solicitarPermissaoAuto(){
+        if(!('Notification' in window)) return;
+        if(Notification.permission === 'default'){
+          try{
+            const perm = await Notification.requestPermission();
+            if(perm === 'granted'){
+              const cfg = loadNotifConfig();
+              if(!cfg.ativo){
+                cfg.ativo = true;
+                cfg.manha = cfg.manha || '08:00';
+                cfg.tarde = cfg.tarde || '14:00';
+                saveNotifConfig(cfg);
+              }
+              atualizarStatusNotif();
+            }
+          } catch(e){}
+        } else if(Notification.permission === 'granted'){
+          const cfg = loadNotifConfig();
+          if(!cfg.ativo){ cfg.ativo = true; saveNotifConfig(cfg); }
+          atualizarStatusNotif();
+        }
+      }
+      // Solicitar após 2s para não ser intrusivo
+      setTimeout(solicitarPermissaoAuto, 2000);
 
       function checarNotificacoes(){
         const cfg = loadNotifConfig();
@@ -1993,9 +2089,9 @@
           const ultimo = cfg.ultimaManha;
           if(ultimo !== hoje){
             if(total === 0){
-              dispararNotificacao('☀️ Bom dia!', 'Você ainda não tem tarefas para hoje. Que tal adicionar uma?');
+              dispararNotificacao('☀️ Bom dia!', 'Você ainda não tem tarefas para hoje. Que tal adicionar uma?', false);
             } else {
-              dispararNotificacao('☀️ Bom dia!', `Você tem ${total} tarefa${total>1?'s':''} para hoje. Bora lá! 💪`);
+              dispararNotificacao('☀️ Bom dia!', `Você tem ${total} tarefa${total>1?'s':''} para hoje. Bora lá! 💪`, false);
             }
             cfg.ultimaManha = hoje;
             saveNotifConfig(cfg);
@@ -2007,16 +2103,99 @@
           const ultimo = cfg.ultimaTarde;
           if(ultimo !== hoje){
             if(total > 0 && concluidas === total){
-              dispararNotificacao('🏆 Incrível!', 'Você concluiu TODAS as tarefas de hoje. Parabéns, continue assim! 🎉');
+              dispararNotificacao('🏆 Incrível!', 'Você concluiu TODAS as tarefas de hoje. Parabéns! 🎉', false);
             } else if(pendentes > 0){
-              dispararNotificacao('🌅 Boa tarde!', `Ainda tem ${pendentes} tarefa${pendentes>1?'s':''} pendente${pendentes>1?'s':''}. Você consegue! 💪`);
+              dispararNotificacao('🌅 Boa tarde!', `Ainda tem ${pendentes} tarefa${pendentes>1?'s':''} pendente${pendentes>1?'s':''}. Você consegue! 💪`, false);
             } else {
-              dispararNotificacao('🌅 Boa tarde!', 'Tudo certo por aqui! Continue focado. 🎯');
+              dispararNotificacao('🌅 Boa tarde!', 'Tudo certo por aqui! Continue focado. 🎯', false);
             }
             cfg.ultimaTarde = hoje;
             saveNotifConfig(cfg);
           }
         }
+
+        // ── Alarmes por tarefa ──
+        const alarms = loadTaskAlarms();
+        const firedKey = 'produtivme_alarms_fired_v1';
+        let fired;
+        try{ fired = JSON.parse(localStorage.getItem(firedKey)||'{}'); }catch(e){ fired = {}; }
+        const firedChanged = { changed: false };
+
+        tarefasHoje.forEach(task => {
+          const alarm = alarms[task.id];
+          if(!alarm || !alarm.hora) return;
+          if(task.done) return; // não alarmar tarefa já feita
+          if(hhmm === alarm.hora){
+            const firedKey2 = hoje + '_' + task.id;
+            if(!fired[firedKey2]){
+              dispararNotificacao('⏰ ' + task.title, `Hora da sua tarefa! ${task.description ? task.description.slice(0,60) : 'Bora lá! 💪'}`, true);
+              fired[firedKey2] = true;
+              firedChanged.changed = true;
+            }
+          }
+        });
+        if(firedChanged.changed){
+          // Limpar entradas antigas (mais de 2 dias)
+          const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
+          const cutoffStr = cutoff.toISOString().split('T')[0];
+          Object.keys(fired).forEach(k => { if(k < cutoffStr) delete fired[k]; });
+          localStorage.setItem(firedKey, JSON.stringify(fired));
+        }
+      }
+
+      // ── Renderizar lista de alarmes por tarefa nas configurações ──
+      function renderTaskAlarmsList(){
+        const container = q('task-alarms-list');
+        if(!container) return;
+        const hoje = app.getTodayKey ? app.getTodayKey() : new Date().toISOString().split('T')[0];
+        const tarefasHoje = (app.state?.data?.routines?.[hoje]) || [];
+        const alarms = loadTaskAlarms();
+        if(!tarefasHoje.length){
+          container.innerHTML = '<div style="color:var(--text-3);font-size:.82rem;padding:.5rem 0">Nenhuma tarefa hoje. Adicione tarefas para configurar alarmes.</div>';
+          return;
+        }
+        container.innerHTML = tarefasHoje.map(task => {
+          const alarm = alarms[task.id] || {};
+          const alarmHora = alarm.hora || '';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.6rem .75rem;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border);margin-bottom:.4rem">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:.84rem;${task.done?'text-decoration:line-through;color:var(--text-3)':''}">${escapeHtml(task.title)}</div>
+              ${task.done ? '<div style="font-size:.72rem;color:var(--primary)">✅ Concluída</div>' : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0">
+              <input type="time" value="${alarmHora}" data-alarm-task="${escapeHtml(task.id)}"
+                style="width:105px;padding:.3rem .5rem;font-size:.82rem;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:var(--font)">
+              <button data-alarm-clear="${escapeHtml(task.id)}" class="btn btn-icon btn-sm" title="Remover alarme" style="${alarmHora?'':'opacity:.35;pointer-events:none'}"><i class="fas fa-bell-slash" style="font-size:.8rem"></i></button>
+            </div>
+          </div>`;
+        }).join('');
+
+        // Events: salvar quando mudar horário
+        container.querySelectorAll('input[data-alarm-task]').forEach(inp => {
+          inp.addEventListener('change', () => {
+            const taskId = inp.getAttribute('data-alarm-task');
+            const alarms2 = loadTaskAlarms();
+            if(inp.value){
+              alarms2[taskId] = { hora: inp.value };
+            } else {
+              delete alarms2[taskId];
+            }
+            saveTaskAlarms(alarms2);
+            showToast(inp.value ? `Alarme definido para ${inp.value} ⏰` : 'Alarme removido', 'success');
+            renderTaskAlarmsList();
+          });
+        });
+        // Events: remover alarme
+        container.querySelectorAll('[data-alarm-clear]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const taskId = btn.getAttribute('data-alarm-clear');
+            const alarms2 = loadTaskAlarms();
+            delete alarms2[taskId];
+            saveTaskAlarms(alarms2);
+            showToast('Alarme removido', 'default');
+            renderTaskAlarmsList();
+          });
+        });
       }
 
       // Verifica parabéns quando todas tarefas são concluídas
@@ -2030,7 +2209,8 @@
           const ultimoParabens = cfg.ultimoParabens;
           if(ultimoParabens !== hoje){
             setTimeout(()=>{
-              dispararNotificacao('🎉 Parabéns!', `Você concluiu todas as ${total} tarefas de hoje! Você é incrível! 🏆`);
+              dispararNotificacao('🎉 Parabéns!', `Você concluiu todas as ${total} tarefas de hoje! Você é incrível! 🏆`, false);
+              tocarAlarme(2);
             }, 1500);
             cfg.ultimoParabens = hoje;
             saveNotifConfig(cfg);
@@ -2043,6 +2223,8 @@
 
       // Checa a cada minuto
       setInterval(checarNotificacoes, 60000);
+      // Checar imediatamente ao carregar também (para casos de alarme na hora exata de abrir)
+      setTimeout(checarNotificacoes, 3000);
 
       // Botão ativar
       q('btn-ativar-notif').addEventListener('click', async ()=>{
@@ -2058,7 +2240,7 @@
           saveNotifConfig(cfg);
           atualizarStatusNotif();
           showToast('Notificações ativadas! 🔔','success');
-          dispararNotificacao('✅ produtiv.me', 'Notificações ativadas com sucesso!');
+          dispararNotificacao('✅ produtiv.me', 'Notificações e alarmes ativados com sucesso!', false);
         } else {
           showToast('Permissão negada. Habilite nas configurações do navegador.','error');
           atualizarStatusNotif();
@@ -2080,7 +2262,7 @@
         const cfg = loadNotifConfig();
         if(q('notif-manha')) q('notif-manha').value = cfg.manha || '08:00';
         if(q('notif-tarde')) q('notif-tarde').value = cfg.tarde || '14:00';
-        setTimeout(atualizarStatusNotif, 100);
+        setTimeout(()=>{ atualizarStatusNotif(); renderTaskAlarmsList(); }, 100);
       }, true);
       // PWA install prompt
       window.addEventListener('beforeinstallprompt', (e)=>{
