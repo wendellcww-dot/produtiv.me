@@ -1038,6 +1038,7 @@
           <div class="task-meta">
             <span class="badge badge-${task.priority||'media'}">${priorityLabel}</span>
             <span class="badge badge-focus">${focusLabel}</span>
+            ${task.alarmTime ? `<span class="badge" style="background:#fff3e0;color:#e65100"><i class="fas fa-bell" style="font-size:.65rem"></i> ${task.alarmTime}</span>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:.35rem;flex-shrink:0">
@@ -1494,7 +1495,8 @@
               title: t.title, description: t.description||'',
               priority: t.priority||'media', estimate_min: t.estimateMin||30,
               focus: t.focus||'consistente', goal_id: t.linkedGoalId||null,
-              done: !!t.done, created_at: t.created_at||now,
+              done: !!t.done, alarm_time: t.alarmTime||null,
+              created_at: t.created_at||now,
               updated_at: t.updated_at||now
             }))
         );
@@ -2000,11 +2002,18 @@
       // Pede permissão automaticamente ao abrir o app pela primeira vez
       async function pedirPermissaoNotif(){
         if(!('Notification' in window)) return;
+        // Se já foi concedida mas cfg.ativo não está marcado, corrige agora
+        if(Notification.permission === 'granted'){
+          const cfg = loadNotifConfig();
+          if(!cfg.ativo){ cfg.ativo = true; if(!cfg.manha) cfg.manha='08:00'; if(!cfg.tarde) cfg.tarde='14:00'; saveNotifConfig(cfg); }
+          return;
+        }
         if(Notification.permission === 'default'){
           setTimeout(async () => {
             const perm = await Notification.requestPermission();
             if(perm === 'granted'){
               const cfg = loadNotifConfig();
+              cfg.ativo = true;
               if(!cfg.manha) cfg.manha = '08:00';
               if(!cfg.tarde) cfg.tarde = '14:00';
               saveNotifConfig(cfg);
@@ -2017,7 +2026,9 @@
 
       function checarNotificacoes(){
         if(Notification.permission !== 'granted') return;
+        // Garante que o flag ativo está marcado se a permissão já foi concedida
         const cfg = loadNotifConfig();
+        if(!cfg.ativo){ cfg.ativo = true; saveNotifConfig(cfg); }
         const agora = new Date();
         const hhmm = String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
         const hoje = app.getTodayKey ? app.getTodayKey() : agora.getFullYear()+'-'+String(agora.getMonth()+1).padStart(2,'0')+'-'+String(agora.getDate()).padStart(2,'0');
@@ -2073,11 +2084,20 @@
         }
       };
 
-      // Checa a cada minuto
-      setInterval(checarNotificacoes, 60000);
+      // Sincroniza o intervalo com a virada real do minuto para nunca pular um horário
+      function iniciarChecagemNotificacoes(){
+        checarNotificacoes(); // checa imediatamente ao carregar
+        const agora = new Date();
+        const msAteProximoMinuto = (60 - agora.getSeconds()) * 1000 - agora.getMilliseconds() + 200;
+        setTimeout(function(){
+          checarNotificacoes();
+          setInterval(checarNotificacoes, 60000); // a partir daqui, bate sempre na virada do minuto
+        }, msAteProximoMinuto);
+      }
 
       // Pede permissão automaticamente
       pedirPermissaoNotif();
+      iniciarChecagemNotificacoes();
 
       // Botão ativar manualmente
       q('btn-ativar-notif').addEventListener('click', async function(){
@@ -2085,6 +2105,7 @@
         const perm = await Notification.requestPermission();
         if(perm==='granted'){
           const cfg = loadNotifConfig();
+          cfg.ativo = true;
           cfg.manha=q('notif-manha').value||'08:00'; cfg.tarde=q('notif-tarde').value||'14:00';
           saveNotifConfig(cfg); atualizarStatusNotif();
           showToast('Notificações ativadas! 🔔','success');
@@ -2098,6 +2119,7 @@
       // Salvar horários
       q('btn-salvar-notif').addEventListener('click', function(){
         const cfg = loadNotifConfig();
+        cfg.ativo = Notification.permission === 'granted' ? true : cfg.ativo;
         cfg.manha=q('notif-manha').value||'08:00'; cfg.tarde=q('notif-tarde').value||'14:00';
         saveNotifConfig(cfg); atualizarStatusNotif();
         showToast('Horários salvos! ⏰','success');
