@@ -2126,7 +2126,7 @@ if('serviceWorker' in navigator){
         const cfg=loadNotifConfig();
         if(q('notif-manha')) q('notif-manha').value=cfg.manha||'08:00';
         if(q('notif-tarde')) q('notif-tarde').value=cfg.tarde||'14:00';
-        setTimeout(atualizarStatusNotif,5000);
+        setTimeout(atualizarStatusNotif,10000);
       },true);
 
       // PWA install prompt
