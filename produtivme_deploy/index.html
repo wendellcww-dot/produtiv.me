@@ -1301,8 +1301,8 @@ document.addEventListener('visibilitychange', async () => {
         done: !!task.done,
         estimate_min: task.estimateMin || 30,
         goal_id: task.linkedGoalId || null,
-        alarm_time: t.alarmTime
-  ? new Date(`${date}T${t.alarmTime}:00`).toISOString()
+        alarm_time: task.alarmTime
+  ? new Date(`${this.getTodayKey()}T${t.alarmTime}:00`).toISOString()
   : null,
         created_at: task.created_at || now,
         updated_at: task.updated_at || now
