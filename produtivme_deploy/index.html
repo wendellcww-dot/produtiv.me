@@ -1502,17 +1502,24 @@ if('serviceWorker' in navigator){
         const now = new Date().toISOString();
 
         // Enviar TODAS as tarefas ao servidor (garante sync completo entre dispositivos)
-        const tasksFlat = Object.entries(this.state.data.routines||{}).flatMap(([date, arr]) =>
-          (arr||[]).map(t => ({
-              id: t.id, user_id: uid,
-              title: t.title, description: t.description||'',
-              priority: t.priority||'media', estimate_min: t.estimateMin||30,
-              focus: t.focus||'consistente', goal_id: t.linkedGoalId||null,
-              alarm_time: t.alarmTime||null,
-              done: !!t.done, created_at: t.created_at||now,
-              updated_at: t.updated_at||now
-            }))
-        );
+        const tasksFlat = Object.entries(this.state.data.routines || {})
+  .flatMap(([date, arr]) =>
+    (arr || []).map(t => ({
+      id: t.id,
+      user_id: uid,
+      title: t.title,
+      description: t.description || '',
+      priority: t.priority || 'media',
+      estimate_min: t.estimateMin || 30,
+      focus: t.focus || 'consistente',
+      goal_id: t.linkedGoalId || null,
+      alarm_time: t.alarmTime || null,
+      done: !!t.done,
+      created_at: t.created_at || now,
+      updated_at: t.updated_at || now
+    }))
+  )
+  .filter(t => !lastSync || t.updated_at > lastSync);
         if(tasksFlat.length){
           const { error } = await supabase.from('tarefas').upsert(tasksFlat, { onConflict: 'id' });
           if(error) throw error;
@@ -1725,9 +1732,8 @@ if('serviceWorker' in navigator){
         setInterval(() => {
           if(this.state.user && !this.state.user.local && _isOnline){
             this.syncRemote();
-            this.loadTasksRemote();
           }
-        }, 15000);
+        }, 60000);
       } else {
         setSyncStatus('local');
       }
