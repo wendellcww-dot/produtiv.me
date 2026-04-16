@@ -1521,8 +1521,10 @@ document.addEventListener('visibilitychange', async () => {
       estimate_min: t.estimateMin || 30,
       focus: t.focus || 'consistente',
       goal_id: t.linkedGoalId || null,
-      alarm_time: t.alarmTime || null,
-      done: !!t.done,
+      alarm_time: t.alarmTime
+  ? new Date(`${date}T${t.alarmTime}:00`).toISOString()
+  : null,
+done: !!t.done,
       created_at: t.created_at || now,
       updated_at: t.updated_at || now
     }))
