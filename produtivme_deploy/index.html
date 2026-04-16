@@ -800,9 +800,17 @@ if('serviceWorker' in navigator){
   }
   window.addEventListener('online',  () => updateOnlineStatus());
   window.addEventListener('offline', () => updateOnlineStatus(false));
-  // Verificação periódica de conectividade (a cada 15s)
-  setInterval(() => updateOnlineStatus(), 15000);
+  // Verificação periódica de conectividade (a cada 30s)
+  setInterval(() => updateOnlineStatus(), 30000);
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden) {
+    await updateOnlineStatus();
 
+    if (app?.state?.user && !app.state.user.local) {
+      await app.syncRemote();
+    }
+  }
+});
   function setSyncStatus(status){
     const dot = q('sync-dot');
     const label = q('sync-label');
