@@ -1079,11 +1079,12 @@ checkAlarms(){
       return `<div class="task-item ${task.done?'task-done':''}" id="task-item-${escapeHtml(task.id)}">
         <input type="checkbox" ${task.done?'checked':''} data-id="${escapeHtml(task.id)}" title="Marcar como concluída" />
         <div style="flex:1;min-width:0">
-          <div class="task-title">   ${escapeHtml(task.title)}   ${task.alarmTime ? '<span class="alarm-icon">⏰</span>' : ''} </div>
+          <div class="task-title">   ${escapeHtml(task.title)} </div>
           ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ''}
           <div class="task-meta">
             <span class="badge badge-${task.priority||'media'}">${priorityLabel}</span>
             <span class="badge badge-focus">${focusLabel}</span>
+             ${task.alarmTime ? `<span class="badge badge-alarm">⏰ ${task.alarmTime}</span>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:.35rem;flex-shrink:0">
