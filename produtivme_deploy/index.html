@@ -1515,23 +1515,23 @@ document.addEventListener('visibilitychange', async () => {
         const tasksFlat = Object.entries(this.state.data.routines || {})
   .flatMap(([date, arr]) =>
     (arr || []).map(t => ({
-      id: t.id,
+      id: task.id,
       user_id: uid,
-      title: t.title,
-      description: t.description || '',
-      priority: t.priority || 'media',
-      estimate_min: t.estimateMin || 30,
-      focus: t.focus || 'consistente',
-      goal_id: t.linkedGoalId || null,
-      alarm_time: t.alarmTime
-  ? new Date(`${date}T${t.alarmTime}:00`).toISOString()
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'media',
+      estimate_min: task.estimateMin || 30,
+      focus: task.focus || 'consistente',
+      goal_id: task.linkedGoalId || null,
+      alarm_time: task.alarmTime
+  ? new Date(`${date}T${task.alarmTime}:00`).toISOString()
   : null,
 done: !!t.done,
-      created_at: t.created_at || now,
-      updated_at: t.updated_at || now
+      created_at: task.created_at || now,
+      updated_at: task.updated_at || now
     }))
   )
-  .filter(t => !lastSync || t.updated_at > lastSync);
+  .filter(task => !lastSync || task.updated_at > lastSync);
         if(tasksFlat.length){
           const { error } = await supabase.from('tarefas').upsert(tasksFlat, { onConflict: 'id' });
           if(error) throw error;
