@@ -1562,7 +1562,7 @@ document.addEventListener('visibilitychange', async () => {
     })
   );
       created_at: task.created_at || now,
-      updated_at: task.updated_at || now
+      updated_at: task.updated_at || now,
     }))
   )
   .filter(task => !lastSync || task.updated_at > lastSync);
