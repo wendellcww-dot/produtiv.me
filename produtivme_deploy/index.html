@@ -41,6 +41,14 @@
       --font:'Plus Jakarta Sans',system-ui,sans-serif;
       --transition:0.18s cubic-bezier(.4,0,.2,1);
     }
+      /* 🔔 ÍCONE DE ALARME */
+.alarm-icon {
+  color: #f59e0b;
+  margin-left: 6px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+    
 
     body{
       font-family:var(--font);
@@ -1024,6 +1032,20 @@ document.addEventListener('visibilitychange', async () => {
         });
       });
     },
+    // 🔔 FUNÇÃO DE ALARME
+checkAlarms(){
+  const now = new Date().toTimeString().slice(0,5);
+  const today = this.getTodayKey();
+  const tasks = this.state.data.routines[today] || [];
+
+  tasks.forEach(task => {
+    if(task.alarmTime === now && !task.done && !task.notified){
+      task.notified = true;
+
+      alert(`⏰ ${task.title}`);
+    }
+  });
+},
 
     // ── UI ──
     updateCurrentDate(){
@@ -1057,7 +1079,7 @@ document.addEventListener('visibilitychange', async () => {
       return `<div class="task-item ${task.done?'task-done':''}" id="task-item-${escapeHtml(task.id)}">
         <input type="checkbox" ${task.done?'checked':''} data-id="${escapeHtml(task.id)}" title="Marcar como concluída" />
         <div style="flex:1;min-width:0">
-          <div class="task-title">${escapeHtml(task.title)}</div>
+          <div class="task-title">   ${escapeHtml(task.title)}   ${task.alarmTime ? '<span class="alarm-icon">⏰</span>' : ''} </div>
           ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ''}
           <div class="task-meta">
             <span class="badge badge-${task.priority||'media'}">${priorityLabel}</span>
@@ -1783,7 +1805,7 @@ if(this._alarmInterval){
 }
 
 this._alarmInterval = setInterval(() => {
-  this.checkAlarms();
+  app.checkAlarms();
 }, 60000);
         // Verificar conectividade real antes de tentar sync
         updateOnlineStatus().then(() => {
