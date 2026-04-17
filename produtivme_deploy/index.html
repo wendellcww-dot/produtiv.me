@@ -1810,15 +1810,17 @@ this._alarmInterval = setInterval(() => {
           });
         this.state.realtimeChannel = channel;
         // Sync a cada 15s: envia local → servidor E puxa servidor → local
-        setInterval(() => {
-          if(this.state.user && !this.state.user.local && _isOnline){
-            this.syncRemote();
-          }
-        }, 60000);
-      } else {
-        setSyncStatus('local');
-      }
-    },
+      if(this.state.user && !this.state.user.local){
+
+  setInterval(() => {
+    if(_isOnline){
+      this.syncRemote();
+    }
+  }, 60000);
+
+} else {
+  setSyncStatus('local');
+},
     showUIAuth(){ q('auth-screen').classList.remove('hidden'); q('main-app').classList.add('hidden'); },
 
     async init(){
