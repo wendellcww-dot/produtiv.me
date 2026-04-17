@@ -1288,30 +1288,52 @@ document.addEventListener('visibilitychange', async () => {
     },
 
     // ── SUPABASE — TAREFAS ──
-    async saveTaskRemote(task){
-      if(!this.state.user || this.state.user.local) return;
-      const now = new Date().toISOString();
-      const payload = {
-        id: task.id,
-        user_id: this.state.user.id,
-        title: task.title,
-        description: task.description || '',
-        priority: task.priority || 'media',
-        focus: task.focus || null,
-        done: !!task.done,
-        estimate_min: task.estimateMin || 30,
-        goal_id: task.linkedGoalId || null,
-        alarm_time: task.alarmTime
+   async saveTaskRemote(task){
+  if(!this.state.user || this.state.user.local) return;
+
+  const now = new Date().toISOString();
+
+  // ✅ FORA do payload
   const [hours, minutes] = (task.alarmTime || "00:00").split(':');
-const alarmDate = new Date();
-alarmDate.setHours(hours, minutes, 0, 0);
-        created_at: task.created_at || now,
-        updated_at: task.updated_at || now
-      };
-      if(!_isOnline){
-        offlineQueue.push({ type:'upsert_task', id: task.id, user_id: this.state.user.id, payload });
-        setSyncStatus('offline'); return;
-      }
+  const alarmDate = new Date();
+  alarmDate.setHours(hours, minutes, 0, 0);
+
+  // ✅ payload correto
+  const payload = {
+    id: task.id || crypto.randomUUID(),
+    user_id: this.state.user.id,
+    title: task.title || 'Sem título',
+    description: task.description || '',
+    priority: task.priority || 'media',
+    focus: task.focus || null,
+    done: !!task.done,
+    estimate_min: Number(task.estimateMin) || 30,
+    goal_id: task.linkedGoalId || null,
+
+    alarm_time: task.alarmTime
+      ? alarmDate.toISOString()
+      : null,
+
+    created_at: task.created_at || now,
+    updated_at: task.updated_at || now
+  };
+
+  if(!_isOnline){
+    offlineQueue.push({ type:'upsert_task', id: task.id, user_id: this.state.user.id, payload });
+    setSyncStatus('offline');
+    return;
+  }
+
+  const { error } = await supabase
+    .from('tarefas')
+    .upsert([payload], { onConflict: 'id' });
+
+  if(error){
+    console.error('Erro ao salvar tarefa remota', error);
+    offlineQueue.push({ type:'upsert_task', id: task.id, user_id: this.state.user.id, payload });
+    setSyncStatus('error');
+  }
+}
       const { error } = await supabase.from('tarefas').upsert([payload], { onConflict: 'id' });
       if(error){
         console.error('Erro ao salvar tarefa remota', error);
