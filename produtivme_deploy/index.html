@@ -1333,6 +1333,7 @@ document.addEventListener('visibilitychange', async () => {
     },
 
     async loadTasksRemote(){
+      this.state.syncPending = true;
       if(!this.state.user || this.state.user.local) return;
       const { data, error } = await supabase.from('tarefas').select('*').eq('user_id', this.state.user.id);
       if(error){ console.error('Erro ao buscar tarefas', error); return; }
@@ -1348,7 +1349,9 @@ document.addEventListener('visibilitychange', async () => {
           description: task.description, priority: task.priority||'media',
           estimateMin: task.estimate_min||30, focus: task.focus||'consistente',
           linkedGoalId: task.goal_id||'', done: !!task.done,
-          alarmTime: task.alarm_time||'',
+          alarmTime: task.alarm_time
+  ? new Date(task.alarm_time).toTimeString().slice(0,5)
+  : '',
           created_at: task.created_at, updated_at: task.updated_at
         });
       });
@@ -1363,8 +1366,10 @@ document.addEventListener('visibilitychange', async () => {
         const resultado = remoteTasks.map(rt => {
           const local = localMap[rt.id];
           // Preserva done local se o servidor ainda não recebeu a atualização
-          if(local && local.done && !rt.done) return { ...rt, done: true };
-          return rt;
+          if(local && local.updated_at > rt.updated_at){
+  return local;
+}
+return rt;
         });
         // Mantém tarefas locais recém criadas que ainda não chegaram no servidor
         localList.forEach(lt => { if(!remoteIds.has(lt.id)) resultado.push(lt); });
@@ -1374,6 +1379,7 @@ document.addEventListener('visibilitychange', async () => {
       this.applyDoneOverrides();
       this.saveLocal();
       this.renderAll();
+      this.state.syncPending = false;
     },
 
     async addTask(obj){
@@ -1390,6 +1396,7 @@ document.addEventListener('visibilitychange', async () => {
     },
 
     async updateTask(task){
+      if(this.state.syncPending) return;
       const today = this.getTodayKey();
       const list = this.state.data.routines[today] || [];
       const idx = list.findIndex(x => x.id === task.id);
@@ -1746,6 +1753,38 @@ document.addEventListener('visibilitychange', async () => {
       this.loadRoutineForToday();
       this.renderAll();
       if(this.state.user && !this.state.user.local){
+
+  // 🔥 evita múltiplas conexões realtime
+  if(this.state.realtimeChannel){
+    this.state.realtimeChannel.unsubscribe();
+  }
+
+  this.state.realtimeChannel = supabase
+    .channel('tasks-realtime')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'tarefas',
+        filter: `user_id=eq.${this.state.user.id}`
+      },
+      () => {
+        console.log('🔄 Atualização recebida');
+        this.loadTasksRemote();
+      }
+    )
+    .subscribe();
+}
+
+// 🔔 evita múltiplos intervalos
+if(this._alarmInterval){
+  clearInterval(this._alarmInterval);
+}
+
+this._alarmInterval = setInterval(() => {
+  this.checkAlarms();
+}, 60000);
         // Verificar conectividade real antes de tentar sync
         updateOnlineStatus().then(() => {
           if(_isOnline){
