@@ -1514,7 +1514,7 @@ document.addEventListener('visibilitychange', async () => {
         // Enviar TODAS as tarefas ao servidor (garante sync completo entre dispositivos)
         const tasksFlat = Object.entries(this.state.data.routines || {})
   .flatMap(([date, arr]) =>
-    (arr || []).map(t => ({
+    (arr || []).map(task => ({
       id: task.id,
       user_id: uid,
       title: task.title,
