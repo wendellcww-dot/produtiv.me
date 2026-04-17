@@ -1302,8 +1302,9 @@ document.addEventListener('visibilitychange', async () => {
         estimate_min: task.estimateMin || 30,
         goal_id: task.linkedGoalId || null,
         alarm_time: task.alarmTime
-  ? new Date(`${this.getTodayKey()}T${t.alarmTime}:00`).toISOString()
-  : null,
+  const [hours, minutes] = (task.alarmTime || "00:00").split(':');
+const alarmDate = new Date();
+alarmDate.setHours(hours, minutes, 0, 0);
         created_at: task.created_at || now,
         updated_at: task.updated_at || now
       };
