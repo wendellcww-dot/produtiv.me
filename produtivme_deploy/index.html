@@ -1324,16 +1324,6 @@ document.addEventListener('visibilitychange', async () => {
     return;
   }
 
-  const { error } = await supabase
-    .from('tarefas')
-    .upsert([payload], { onConflict: 'id' });
-
-  if(error){
-    console.error('Erro ao salvar tarefa remota', error);
-    offlineQueue.push({ type:'upsert_task', id: task.id, user_id: this.state.user.id, payload });
-    setSyncStatus('error');
-  }
-}
       const { error } = await supabase.from('tarefas').upsert([payload], { onConflict: 'id' });
       if(error){
         console.error('Erro ao salvar tarefa remota', error);
