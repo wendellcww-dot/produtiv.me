@@ -1525,21 +1525,42 @@ document.addEventListener('visibilitychange', async () => {
         const now = new Date().toISOString();
 
         // Enviar TODAS as tarefas ao servidor (garante sync completo entre dispositivos)
-        const tasksFlat = Object.entries(this.state.data.routines || {})
+      const tasksFlat = Object.entries(this.state.data.routines || {})
   .flatMap(([date, arr]) =>
-    (arr || []).map(task => ({
-      id: task.id,
-      user_id: uid,
-      title: task.title,
-      description: task.description || '',
-      priority: task.priority || 'media',
-      estimate_min: task.estimateMin || 30,
-      focus: task.focus || 'consistente',
-      goal_id: task.linkedGoalId || null,
-      alarm_time: task.alarmTime
-  ? new Date(`${date}T${task.alarmTime}:00`).toISOString()
-  : null,
-done: !!t.done,
+    (arr || []).map(task => {
+
+      // ✅ tratamento seguro do alarme
+      let alarm_time = null;
+
+      if (task.alarmTime && task.alarmTime.includes(':')) {
+        const [hours, minutes] = task.alarmTime.split(':');
+
+        const alarmDate = new Date(date);
+        alarmDate.setHours(hours, minutes, 0, 0);
+
+        if (!isNaN(alarmDate.getTime())) {
+          alarm_time = alarmDate.toISOString();
+        }
+      }
+
+      return {
+        id: task.id,
+        user_id: uid,
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority || 'media',
+        estimate_min: Number(task.estimateMin) || 30,
+        focus: task.focus || 'consistente',
+        goal_id: task.linkedGoalId || null,
+
+        alarm_time: alarm_time,
+
+        done: !!task.done, // ✅ corrigido aqui
+        created_at: task.created_at || now,
+        updated_at: task.updated_at || now
+      };
+    })
+  );
       created_at: task.created_at || now,
       updated_at: task.updated_at || now
     }))
