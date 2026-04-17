@@ -1561,10 +1561,6 @@ document.addEventListener('visibilitychange', async () => {
       };
     })
   );
-      created_at: task.created_at || now,
-      updated_at: task.updated_at || now,
-    }))
-  )
   .filter(task => !lastSync || task.updated_at > lastSync);
         if(tasksFlat.length){
           const { error } = await supabase.from('tarefas').upsert(tasksFlat, { onConflict: 'id' });
