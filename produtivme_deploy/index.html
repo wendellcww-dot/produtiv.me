@@ -1769,9 +1769,26 @@ return rt;
 
     // ── INIT ──
     loadRoutineForToday(){
-      const todayKey = this.getTodayKey();
-      if(!this.state.data.routines[todayKey]) this.state.data.routines[todayKey] = [];
-    },
+  const todayKey = this.getTodayKey();
+
+  if (!this.state.data.routines[todayKey]) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const yesterdayKey = yesterday.toISOString().split("T")[0];
+    const yesterdayRoutines =
+      this.state.data.routines[yesterdayKey] || [];
+
+    this.state.data.routines[todayKey] =
+      yesterdayRoutines.map(task => ({
+        ...task,
+        done: false,
+        updated_at: new Date().toISOString()
+      }));
+
+    this.saveLocal();
+  }
+},
 
     showUIApp(){
       q('auth-screen').classList.add('hidden');
