@@ -1479,19 +1479,26 @@ const app = {
     const now=new Date().toISOString();
     let alarmIso=null;
     if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const ad=new Date(); ad.setHours(+h,+m,0,0); alarmIso=ad.toISOString(); }
-    const payload={
-      id:task.id||crypto.randomUUID(), user_id:this.state.user.id,
-      title:task.title||'Sem título', description:task.description||'',
-      priority:task.priority||'media', focus:task.focus||null, done:!!task.done,
-      estimate_min:Number(task.estimateMin)||30, goal_id:task.linkedGoalId||null,
-      alarm_time:alarmIso, date_key:dateKey||todayKey(),
-      created_at:task.created_at||now, updated_at:new Date().toISOString()
-    };
-    if(!_isOnline){ offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload}); return; }
-    const {error}=await supabase.from('tarefas').upsert([payload],{onConflict:'id'});
-    if(error) offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
-  },
 
+    const payload = {
+  id: task.id || crypto.randomUUID(),
+  user_id: this.state.user.id,
+
+  title: task.title || 'Sem título',
+  description: task.description || '',
+
+  // 🔥 AGORA CORRETO
+  priority: Number(task.priority) || 1,
+  focus: Number(task.focus) || 1,
+
+  done: !!task.done,
+  estimate_min: Number(task.estimateMin) || 30,
+
+  goal_id: task.linkedGoalId || null,
+
+  alarm_time: alarmIso || null,
+  date_key: dateKey || todayKey()
+};
   async deleteTaskRemote(id){
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); return; }
