@@ -1,21 +1,21 @@
 {
-  "name": "produtiv.me — Produtividade",
-  "short_name": "produtiv.me",
-  "description": "Organize sua vida com produtividade",
+  "name": "produtiv.me — Rotina, Mente & Vida",
+  "short_name": "produtiv",
+  "description": "Sistema de evolução pessoal baseado em rotina, mente e finanças.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f3f6f4",
-  "theme_color": "#28A745",
+  "background_color": "#0d0d1a",
+  "theme_color": "#7c3aed",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icon_192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon_512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
