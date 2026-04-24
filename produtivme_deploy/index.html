@@ -1498,7 +1498,7 @@ const app = {
 
   alarm_time: alarmIso || null,
   date_key: dateKey || todayKey()
-};
+},
   async deleteTaskRemote(id){
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); return; }
