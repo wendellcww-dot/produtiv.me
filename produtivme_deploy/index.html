@@ -1969,9 +1969,9 @@ function  saveGoal(){
     }).join('');
   }
 
-function  last7Days(){ const days=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); } return days; },
+function  last7Days(){ const days=[]; for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); } return days; }
 
- function habitStreak(h){ let s=0, d=new Date(), days=h.days||[]; for(let i=0;i<365;i++){ const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); if(days.includes(k)) s++; else if(i>0) break; d.setDate(d.getDate()-1); } return s; },
+ function habitStreak(h){ let s=0, d=new Date(), days=h.days||[]; for(let i=0;i<365;i++){ const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); if(days.includes(k)) s++; else if(i>0) break; d.setDate(d.getDate()-1); } return s; }
 
  function toggleHabitDay(habitId, day){
     const habits=loadHabits(), h=habits.find(x=>x.id===habitId); if(!h) return;
