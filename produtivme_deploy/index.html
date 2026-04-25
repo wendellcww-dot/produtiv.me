@@ -1743,12 +1743,12 @@ async function loadAnswersRemote(){
     q('task-modal').classList.add('active');
   }
 
- populateGoalSelect(selected=''){
+function populateGoalSelect(selected=''){
     const sel=q('task-goal'); if(!sel) return;
     sel.innerHTML='<option value="">Nenhuma</option>'+(this.state.data.goals||[]).map(g=>`<option value="${g.id}" ${g.id===selected?'selected':''}>${esc(g.title)}</option>`).join('');
   }
 
-  saveTask(){
+ function saveTask(){
     const title=q('task-title').value.trim();
     if(!title){ showToast('Digite um título','error'); return; }
     const today=todayKey();
@@ -1779,7 +1779,7 @@ async function loadAnswersRemote(){
     closeModal('task-modal');
   }
 
-  deleteTask(id){
+ function deleteTask(id){
     if(!confirm('Excluir esta tarefa?')) return;
     const today=todayKey();
     if(!this.state.data.routines[today]) return;
@@ -1789,7 +1789,7 @@ async function loadAnswersRemote(){
   }
 
   /* ── STREAK ── */
-  computeStreak(){
+  function computeStreak(){
     const r=this.state.data.routines||{};
     let streak=0, d=new Date();
     for(let i=0;i<365;i++){
@@ -1803,7 +1803,7 @@ async function loadAnswersRemote(){
   }
 
   /* ── XP ── */
-  renderXP(){
+ function renderXP(){
     const g=getGamifyState(), lv=computeLevel(g.totalXp);
     if(q('xp-level-badge')) q('xp-level-badge').textContent='Nv.'+lv.level;
     if(q('xp-level-name')) q('xp-level-name').textContent=lv.name;
@@ -1814,7 +1814,7 @@ async function loadAnswersRemote(){
   }
 
   /* ── MEDALHAS ── */
-  renderMedals(){
+ function renderMedals(){
     const grid=q('medals-grid'); if(!grid) return;
     const g=getGamifyState();
     grid.innerHTML=MEDALS.map(m=>`
@@ -1825,7 +1825,7 @@ async function loadAnswersRemote(){
   }
 
   /* ── INSIGHT IA ── */
-  renderInsight(tasks, pct){
+ function renderInsight(tasks, pct){
     const c=q('insight-container'); if(!c) return;
     const today=todayKey(), r=this.state.data.routines||{};
     const yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
