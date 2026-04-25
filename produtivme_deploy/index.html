@@ -2652,7 +2652,7 @@ q('btn-salvar-notif').addEventListener('click',()=>{
 });
 
 setInterval(checarNotificacoes, 60000);
-(async()=>{ if('Notification' in window && Notification.permission==='default') setTimeout(async()=>{ await Notification.requestPermission(); atualizarStatusNotif(); },3000); })();
+(async()=>{ if('Notification' in window && Notification.permission==='default') setTimeout(async()=>{ await Notification.requestPermission(); atualizarStatusNotif(); },3000); 
 
 /* ── PWA ── */
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); setTimeout(()=>showToast('📱 Instale o app na tela inicial!','',5000),3500); });
