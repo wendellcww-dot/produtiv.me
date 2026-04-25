@@ -1682,7 +1682,7 @@ async function loadAnswersRemote(){
         <div style="text-align:center;font-size:.88rem;color:rgba(255,255,255,.7)">Dia perfeito! Você é incrível 🎉</div>`;
     }
     checkMedals(streak);
-  },
+  }
 
   taskHTML(task){
     const priColors={alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'};
@@ -1703,7 +1703,7 @@ async function loadAnswersRemote(){
         <button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteTask('${task.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
       </div>
     </div>`;
-  },
+  }
 
   toggleTask(id){
     const today=todayKey();
@@ -1718,7 +1718,7 @@ async function loadAnswersRemote(){
       addXp(10, el); showToast('✅ Tarefa concluída! +10 XP','success');
       if(tasks.every(t=>t.done)&&tasks.length>0) window._verificarParabens?.();
     }
-  },
+  }
 
   openAddTask(){
     q('task-modal-title').innerHTML='<i class="fas fa-plus" style="color:var(--primary);margin-right:.4rem"></i>Nova Tarefa';
@@ -1728,7 +1728,7 @@ async function loadAnswersRemote(){
     this.populateGoalSelect();
     q('task-modal').classList.add('active');
     setTimeout(()=>q('task-title').focus(),100);
-  },
+  }
 
   openEditTask(id){
     const today=todayKey();
@@ -1741,12 +1741,12 @@ async function loadAnswersRemote(){
     q('task-alarm').value=task.alarmTime||'';
     this.populateGoalSelect(task.linkedGoalId);
     q('task-modal').classList.add('active');
-  },
+  }
 
   populateGoalSelect(selected=''){
     const sel=q('task-goal'); if(!sel) return;
     sel.innerHTML='<option value="">Nenhuma</option>'+(this.state.data.goals||[]).map(g=>`<option value="${g.id}" ${g.id===selected?'selected':''}>${esc(g.title)}</option>`).join('');
-  },
+  }
 
   saveTask(){
     const title=q('task-title').value.trim();
@@ -1777,7 +1777,7 @@ async function loadAnswersRemote(){
       showToast('Tarefa criada! 🎯','success');
     }
     closeModal('task-modal');
-  },
+  }
 
   deleteTask(id){
     if(!confirm('Excluir esta tarefa?')) return;
@@ -1786,7 +1786,7 @@ async function loadAnswersRemote(){
     this.state.data.routines[today]=this.state.data.routines[today].filter(t=>t.id!==id);
     this.saveLocal(); this.renderDashboard(); this.deleteTaskRemote(id);
     showToast('Tarefa excluída','default');
-  },
+  }
 
   /* ── STREAK ── */
   computeStreak(){
@@ -1800,7 +1800,7 @@ async function loadAnswersRemote(){
       d.setDate(d.getDate()-1);
     }
     return streak;
-  },
+  }
 
   /* ── XP ── */
   renderXP(){
@@ -1811,7 +1811,7 @@ async function loadAnswersRemote(){
     if(q('xp-next')) q('xp-next').textContent=lv.xpNext;
     if(q('xp-bar-fill')) q('xp-bar-fill').style.width=lv.pct+'%';
     if(q('stat-total-xp')) q('stat-total-xp').textContent=g.totalXp;
-  },
+  }
 
   /* ── MEDALHAS ── */
   renderMedals(){
@@ -1822,7 +1822,7 @@ async function loadAnswersRemote(){
         <div class="medal-icon">${m.icon}</div>
         <div class="medal-name">${m.name}</div>
       </div>`).join('');
-  },
+  }
 
   /* ── INSIGHT IA ── */
   renderInsight(tasks, pct){
