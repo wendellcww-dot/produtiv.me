@@ -2398,12 +2398,14 @@ function  renderFrases(cat){
     }).join('');
   }
 
- function deleteFrase(id){
-    if(!confirm('Excluir esta frase?')) return;
-    const customs=loadCustomFrases().filter(f=>f.id!==id);
-    saveCustomFrases(customs); this.renderFrases(); showToast('Frase removida','default');
-  }
-  };
+function deleteFrase(id){
+  if(!confirm('Excluir esta frase?')) return;
+  const customs = loadCustomFrases().filter(f=>f.id!==id);
+  saveCustomFrases(customs);
+  app.renderFrases(); // 🔥 importante ajustar aqui
+  showToast('Frase removida','default');
+}
+
 /* end app */
 
 /* ══════════════════════════════════════
