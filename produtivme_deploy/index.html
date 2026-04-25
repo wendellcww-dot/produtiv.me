@@ -1705,7 +1705,7 @@ async function loadAnswersRemote(){
     </div>`;
   }
 
-  toggleTask(id){
+  function toggleTask(id){
     const today=todayKey();
     const tasks=(this.state.data.routines||{})[today]||[];
     const task=tasks.find(t=>t.id===id);
@@ -1720,7 +1720,7 @@ async function loadAnswersRemote(){
     }
   }
 
-  openAddTask(){
+  function openAddTask(){
     q('task-modal-title').innerHTML='<i class="fas fa-plus" style="color:var(--primary);margin-right:.4rem"></i>Nova Tarefa';
     q('task-id').value=''; q('task-title').value=''; q('task-description').value='';
     q('task-priority').value='media'; q('task-estimate').value='30';
@@ -1730,7 +1730,7 @@ async function loadAnswersRemote(){
     setTimeout(()=>q('task-title').focus(),100);
   }
 
-  openEditTask(id){
+  function openEditTask(id){
     const today=todayKey();
     const task=((this.state.data.routines||{})[today]||[]).find(t=>t.id===id);
     if(!task) return;
@@ -1743,7 +1743,7 @@ async function loadAnswersRemote(){
     q('task-modal').classList.add('active');
   }
 
-  populateGoalSelect(selected=''){
+ populateGoalSelect(selected=''){
     const sel=q('task-goal'); if(!sel) return;
     sel.innerHTML='<option value="">Nenhuma</option>'+(this.state.data.goals||[]).map(g=>`<option value="${g.id}" ${g.id===selected?'selected':''}>${esc(g.title)}</option>`).join('');
   }
