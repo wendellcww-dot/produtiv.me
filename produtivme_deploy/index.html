@@ -2402,7 +2402,7 @@ function  renderFrases(cat){
     if(!confirm('Excluir esta frase?')) return;
     const customs=loadCustomFrases().filter(f=>f.id!==id);
     saveCustomFrases(customs); this.renderFrases(); showToast('Frase removida','default');
-  },
+  }
 
 };/* end app */
 
