@@ -1684,7 +1684,7 @@ async function loadAnswersRemote(){
     checkMedals(streak);
   }
 
-  taskHTML(task){
+  function taskHTML(task){
     const priColors={alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'};
     const priLabels={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
     return `<div class="task-item ${task.done?'task-done':''}" id="task-${task.id}">
