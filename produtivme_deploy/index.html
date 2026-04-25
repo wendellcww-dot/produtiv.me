@@ -1498,12 +1498,12 @@ const app = {
 
   alarm_time: alarmIso || null,
   date_key: dateKey || todayKey()
-},
-  async deleteTaskRemote(id){
+};
+  async function deleteTaskRemote(id){
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); return; }
     await supabase.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
-  },
+  };
 
   async saveGoalRemote(goal){
     if(!this.state.user||this.state.user.local) return;
