@@ -1585,7 +1585,7 @@ async function loadAnswersRemote(){
   }catch(e){}
 }
   /* Canal realtime ÚNICO por usuário */
-  initRealtimeSync(){
+  async function initRealtimeSync(){
     if(!this.state.user||this.state.user.local) return;
     if(this.state.realtimeChannel) supabase.removeChannel(this.state.realtimeChannel);
     this.state.realtimeChannel=supabase
