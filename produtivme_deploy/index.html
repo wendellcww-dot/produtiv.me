@@ -1480,14 +1480,13 @@ const app = {
     let alarmIso=null;
     if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const ad=new Date(); ad.setHours(+h,+m,0,0); alarmIso=ad.toISOString(); }
 
-    const payload = {
+  const payload = {
   id: task.id || crypto.randomUUID(),
   user_id: this.state.user.id,
 
   title: task.title || 'Sem título',
   description: task.description || '',
 
-  // 🔥 AGORA CORRETO
   priority: Number(task.priority) || 1,
   focus: Number(task.focus) || 1,
 
@@ -1499,46 +1498,92 @@ const app = {
   alarm_time: alarmIso || null,
   date_key: dateKey || todayKey()
 };
-  async function deleteTaskRemote(id){
-    if(!this.state.user||this.state.user.local) return;
-    if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); return; }
-    await supabase.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
+
+async function deleteTaskRemote(id){
+  if(!this.state.user||this.state.user.local) return;
+
+  if(!_isOnline){
+    offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id});
+    return;
+  }
+
+  await supabase
+    .from('tarefas')
+    .delete()
+    .eq('id',id)
+    .eq('user_id',this.state.user.id);
+}
+
+async function saveGoalRemote(goal){
+  if(!this.state.user||this.state.user.local) return;
+
+  const payload = {
+    id: goal.id,
+    user_id: this.state.user.id,
+
+    title: goal.title,
+    description: goal.desc || '',
+
+    type: goal.type || 'semanal',
+    priority: Number(goal.priority) || 1,
+
+    start: goal.start || null,
+    end: goal.end || null,
+
+    progress: Number(goal.progress) || 0
   };
 
-  async saveGoalRemote(goal){
-    if(!this.state.user||this.state.user.local) return;
-    const payload={
-      id:goal.id, user_id:this.state.user.id, title:goal.title,
-      description:goal.desc||'', type:goal.type, priority:goal.priority||'media',
-      start_date:goal.start, end_date:goal.end, progress:Number(goal.progress)||0,
-      completed:!!goal.completed, created_at:goal.created_at||new Date().toISOString()
-    };
-    if(!_isOnline){ offlineQueue.push({type:'upsert_goal',id:goal.id,user_id:this.state.user.id,payload}); return; }
-    await supabase.from('metas').upsert([payload],{onConflict:'id'});
-  },
+  if(!_isOnline){
+    offlineQueue.push({type:'upsert_goal',id:goal.id,user_id:this.state.user.id,payload});
+    return;
+  }
 
-  async deleteGoalRemote(id){
-    if(!this.state.user||this.state.user.local) return;
-    if(!_isOnline){ offlineQueue.push({type:'delete_goal',id,user_id:this.state.user.id}); return; }
-    await supabase.from('metas').delete().eq('id',id).eq('user_id',this.state.user.id);
-  },
+  await supabase
+    .from('metas')
+    .upsert([payload],{onConflict:'id'});
+}
 
-  async loadAnswersRemote(){
-    if(!this.state.user||this.state.user.local) return;
-    try{
-      const {data,error}=await supabase.from('questione_respostas').select('question_id,answer,updated_at').eq('user_id',this.state.user.id);
-      if(error||!data) return;
-      const local=this.loadQuestionAnswers();
-      data.forEach(row=>{
-        const localTs=local['_ts_'+row.question_id]||'';
-        if(!local[row.question_id]||(row.updated_at||'')>=localTs){
-          local[row.question_id]=row.answer; local['_ts_'+row.question_id]=row.updated_at||'';
-        }
-      });
-      localStorage.setItem(QUESTIONS_KEY, JSON.stringify(local));
-    }catch(e){}
-  },
+async function deleteGoalRemote(id){
+  if(!this.state.user||this.state.user.local) return;
 
+  if(!_isOnline){
+    offlineQueue.push({type:'delete_goal',id,user_id:this.state.user.id});
+    return;
+  }
+
+  await supabase
+    .from('metas')
+    .delete()
+    .eq('id',id)
+    .eq('user_id',this.state.user.id);
+}
+
+async function loadAnswersRemote(){
+  if(!this.state.user||this.state.user.local) return;
+
+  try{
+    const {data,error} = await supabase
+      .from('questione_respostas')
+      .select('question_id,answer,updated_at')
+      .eq('user_id',this.state.user.id);
+
+    if(error||!data) return;
+
+    const local = this.loadQuestionAnswers();
+
+    data.forEach(row=>{
+      const localTs = local['_ts_'+row.question_id] || '';
+
+      if(!local[row.question_id] || (row.updated_at||'') >= localTs){
+        local[row.question_id] = row.answer;
+        local['_ts_'+row.question_id] = row.updated_at || '';
+      }
+    });
+
+    localStorage.setItem(QUESTIONS_KEY, JSON.stringify(local));
+
+  }catch(e){}
+}
   /* Canal realtime ÚNICO por usuário */
   initRealtimeSync(){
     if(!this.state.user||this.state.user.local) return;
