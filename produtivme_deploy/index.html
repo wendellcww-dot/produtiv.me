@@ -1600,7 +1600,7 @@ async function loadAnswersRemote(){
   /* ══════════════════════════════════════
      RENDER ALL
   ══════════════════════════════════════ */
-  renderAll(){
+  function renderAll(){
     if(q('user-name-display')) q('user-name-display').textContent=this.state.user?.name||'';
     this.renderDashboard();
     this.renderGoals();
@@ -1611,12 +1611,12 @@ async function loadAnswersRemote(){
     this.renderMedals();
     this.renderFinance();
     this.renderFrases();
-  },
+  }
 
   /* ══════════════════════════════════════
      DASHBOARD
   ══════════════════════════════════════ */
-  renderDashboard(){
+ function renderDashboard(){
     const today=todayKey();
     const tasks=(this.state.data.routines||{})[today]||[];
     const total=tasks.length, done=tasks.filter(t=>t.done).length;
