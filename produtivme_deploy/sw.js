@@ -1,6 +1,17 @@
 // produtiv.me — Service Worker
 // Responsável por: notificações em background + clique abre o app
+self.addEventListener('message', function(event) {
+  console.log('SW recebeu mensagem:', event.data);
+});
 
+self.addEventListener('push', function(event) {
+  const data = event.data ? event.data.json() : {};
+
+  self.registration.showNotification(data.title || 'Notificação', {
+    body: data.body || 'Você tem uma nova mensagem',
+    data: data,
+  });
+});
 const CACHE_NAME = 'produtivme-v1';
 
 // Instala o SW
