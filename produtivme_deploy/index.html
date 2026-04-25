@@ -1595,7 +1595,7 @@ async function loadAnswersRemote(){
       .on('postgres_changes',{event:'*',schema:'public',table:'metas',filter:`user_id=eq.${this.state.user.id}`},
         debounce(async()=>{ await this.loadGoalsRemote(); this.renderGoals(); this.saveLocal(); },800))
       .subscribe();
-  },
+  }
 
   /* ══════════════════════════════════════
      RENDER ALL
