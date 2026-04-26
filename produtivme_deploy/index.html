@@ -2,26 +2,29 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#0d0d1a" />
   <meta name="description" content="produtiv.me — Rotina, mente e vida financeira em um só lugar." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="/manifest.json" />
+  <meta name="apple-mobile-web-app-title" content="produtiv.me" />
+  <!-- manifest injetado via JS para funcionar em qualquer host -->
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d0d1a' rx='24'/%3E%3Cpath d='M96 40C65 40 40 65 40 96s25 56 56 56 56-25 56-56-25-56-56-56zm20 76h-12V96h12v20zm-6-28c-4 0-7-3-7-7s3-7 7-7 7 3 7 7-3 7-7 7z' fill='%23a78bfa'/%3E%3C/svg%3E" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d0d1a' rx='4'/%3E%3Cpath d='M16 8c-4 0-8 4-8 8s4 8 8 8 8-4 8-8-4-8-8-8zm3 11h-2v-3h2v3zm-1-4c-1 0-1-1-1-1s0-1 1-1 1 0 1 1 0 1-1 1z' fill='%23a78bfa'/%3E%3C/svg%3E" />
   <title>produtiv.me — Rotina, Mente & Vida</title>
-
-  <!-- OneSignal Push -->
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "be6de359-7e7d-403d-9aeb-43933df52127",
-    });
-  });
-</script>
+  <!-- OneSignal: só carrega em HTTPS para não gerar erros no console -->
+  <script>
+    if(location.protocol==='https:'){
+      var _os=document.createElement('script');
+      _os.src='https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+      _os.defer=true; document.head.appendChild(_os);
+      window.OneSignalDeferred=window.OneSignalDeferred||[];
+      window.OneSignalDeferred.push(async function(OneSignal){
+        try{ await OneSignal.init({appId:'be6de359-7e7d-403d-9aeb-43933df52127',notifyButton:{enable:false}}); }catch(e){}
+      });
+    }
+  </script>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -981,8 +984,83 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
      JAVASCRIPT
 ══════════════════════════════════ -->
 <script>
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+/* ── PWA: manifest + SW embutidos como blob ─────────────────────
+   Funciona em qualquer host (Vercel, Netlify, local, etc.)
+   Sem depender de manifest.json ou sw.js externos.
+─────────────────────────────────────────────────────────────── */
+(function initPWA(){
+  // Manifest
+  try{
+    const m={name:'produtiv.me',short_name:'produtiv.me',
+      description:'Rotina, mente e vida financeira em um só lugar.',
+      start_url:'./',display:'standalone',orientation:'portrait',
+      background_color:'#0d0d1a',theme_color:'#0d0d1a',
+      icons:[
+        {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d0d1a' rx='24'/%3E%3Cpath d='M96 40C65 40 40 65 40 96s25 56 56 56 56-25 56-56-25-56-56-56zm20 76h-12V96h12v20zm-6-28c-4 0-7-3-7-7s3-7 7-7 7 3 7 7-3 7-7 7z' fill='%23a78bfa'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'},
+        {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230d0d1a' rx='64'/%3E%3Cpath d='M256 96C167 96 96 167 96 256s71 160 160 160 160-71 160-160S345 96 256 96zm54 213h-32v-80h32v80zm-16-96c-11 0-20-9-20-20s9-20 20-20 20 9 20 20-9 20-20 20z' fill='%23a78bfa'/%3E%3C/svg%3E",sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}
+      ]};
+    const blob=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+    const l=document.createElement('link'); l.rel='manifest'; l.href=URL.createObjectURL(blob);
+    document.head.appendChild(l);
+  }catch(e){}
+
+  // Service Worker embutido
+  if(!('serviceWorker' in navigator)) return;
+  const swCode=`
+const CACHE='pm18-v4';
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>{
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch',()=>{}); /* não intercepta — deixa Supabase funcionar */
+self.addEventListener('push',e=>{
+  let d={title:'produtiv.me',body:'Nova notificação'};
+  try{d=e.data.json();}catch(x){try{d.body=e.data.text();}catch(y){}}
+  e.waitUntil(self.registration.showNotification(d.title||'produtiv.me',{
+    body:d.body||'',vibrate:[300,100,300],tag:d.tag||'pm18',
+    icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d0d1a' rx='24'/%3E%3Cpath d='M96 40C65 40 40 65 40 96s25 56 56 56 56-25 56-56-25-56-56-56zm20 76h-12V96h12v20zm-6-28c-4 0-7-3-7-7s3-7 7-7 7 3 7 7-3 7-7 7z' fill='%23a78bfa'/%3E%3C/svg%3E"
+  }));
+});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+    for(const c of list){if('focus' in c) return c.focus();}
+    if(clients.openWindow) return clients.openWindow('./');
+  }));
+});`;
+  try{
+    const blob=new Blob([swCode],{type:'application/javascript'});
+    const url=URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url,{scope:'./'})
+      .then(reg=>{window._swReg=reg; console.log('[PM] SW registrado ✅');})
+      .catch(()=>{
+        // fallback para sw.js externo (Vercel/Netlify com arquivo real)
+        navigator.serviceWorker.register('/sw.js',{scope:'/'})
+          .then(reg=>{window._swReg=reg;}).catch(()=>{});
+      });
+  }catch(e){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+})();
+
+// Banner de instalação PWA
+let _installPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); _installPrompt=e;
+  setTimeout(()=>{ if(_installPrompt && !window.matchMedia('(display-mode:standalone)').matches) showInstallBanner(); },4000);
+});
+window.addEventListener('appinstalled',()=>{
+  _installPrompt=null;
+  document.getElementById('pm-install-banner')?.remove();
+});
+function showInstallBanner(){
+  if(document.getElementById('pm-install-banner')) return;
+  if(window.matchMedia('(display-mode:standalone)').matches) return;
+  const b=document.createElement('div'); b.id='pm-install-banner';
+  b.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;padding:.75rem 1.1rem;border-radius:14px;border:1px solid rgba(167,139,250,.4);box-shadow:0 8px 32px rgba(0,0,0,.55);z-index:1400;display:flex;align-items:center;gap:.75rem;font-size:.85rem;font-weight:600;max-width:340px;width:90%;animation:slideIn .3s ease';
+  b.innerHTML='<span style="font-size:1.4rem">📱</span><div style="flex:1;line-height:1.4">Instale o app na <strong style="color:#c4b5fd">tela inicial</strong></div>'
+    +'<button onclick="(async()=>{if(window._installPrompt){await window._installPrompt.prompt();window._installPrompt=null;document.getElementById(\'pm-install-banner\')?.remove();}})()" style="padding:.38rem .75rem;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:.82rem;white-space:nowrap">Instalar</button>'
+    +'<button onclick="document.getElementById(\'pm-install-banner\').remove()" style="background:none;border:none;color:rgba(255,255,255,.55);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem .1rem">✕</button>';
+  document.body.appendChild(b);
+  setTimeout(()=>{const el=document.getElementById('pm-install-banner');if(el){el.style.transition='opacity .5s';el.style.opacity='0';setTimeout(()=>el?.remove(),500);}},15000);
 }
 
 (async function(){
@@ -993,8 +1071,193 @@ if('serviceWorker' in navigator){
 const SUPABASE_URL = 'https://ddybuxzdvbvvgnixzijx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWJ1eHpkdmJ2dmduaXh6aWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0NzkxMjEsImV4cCI6MjA4MzA1NTEyMX0.Z9FDJdKthsMFUm4uDrtGaVxWYpwssILoM8wvMr6EBwE';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  realtime:{ params:{ eventsPerSecond:5 } }
+  realtime:{ params:{ eventsPerSecond:5 }, timeout:20000 },
+  auth:{ persistSession:true, autoRefreshToken:true }
 });
+
+/* ─── UPSERT ROBUSTO: INSERT → UPDATE fallback ───────────────────
+   O .upsert({onConflict}) retorna 400 quando a tabela não tem
+   a constraint PRIMARY KEY configurada. Esta função resolve.
+────────────────────────────────────────────────────────────────*/
+async function upsertRow(table, payload, conflictCols){
+  const {error:insErr}=await supabase.from(table).insert([payload]);
+  if(!insErr) return {error:null};
+  const isDup=insErr.code==='23505'||insErr.code==='409'
+    ||(insErr.message||'').includes('duplicate')
+    ||(insErr.message||'').includes('unique');
+  if(isDup){
+    const cols=conflictCols.split(',').map(c=>c.trim());
+    let q2=supabase.from(table).update(payload);
+    cols.forEach(col=>{q2=q2.eq(col,payload[col]);});
+    const {error:updErr}=await q2;
+    return {error:updErr};
+  }
+  return {error:insErr};
+}
+
+/* ─── VERIFICAR TABELAS ──────────────────────────────────────── */
+let _dbChecked=false;
+async function checkDbSetup(){
+  if(_dbChecked) return true;
+  try{
+    const {error}=await supabase.from('tarefas').select('id').limit(1);
+    _dbChecked=true;
+    if(error&&(error.code==='42P01'||error.code==='PGRST116'||(error.message||'').includes('does not exist'))){
+      showDbSetupModal(); return false;
+    }
+    return true;
+  }catch(e){_dbChecked=true; return true;}
+}
+
+function showDbSetupModal(){
+  if(document.getElementById('db-setup-modal')) return;
+  const sql=`-- =============================================
+-- COLE NO SUPABASE: SQL Editor → New query → Run
+-- =============================================
+
+-- 1. TAREFAS
+create table if not exists public.tarefas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  title text not null default '',
+  description text default '',
+  priority text default 'media',
+  focus text,
+  done boolean default false,
+  estimate_min integer default 30,
+  goal_id uuid,
+  alarm_time timestamptz,
+  date_key text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 2. METAS
+create table if not exists public.metas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  title text not null default '',
+  description text default '',
+  type text default 'mensal',
+  priority text default 'media',
+  start_date date,
+  end_date date,
+  progress integer default 0,
+  completed boolean default false,
+  created_at timestamptz default now()
+);
+
+-- 3. QUESTIONE-SE
+create table if not exists public.questione_respostas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  question_id text not null,
+  answer text default '',
+  updated_at timestamptz default now(),
+  unique(user_id, question_id)
+);
+
+-- 4. FINANÇAS — TRANSAÇÕES
+create table if not exists public.financas_transacoes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  type text not null default 'expense',
+  description text not null default '',
+  value numeric(12,2) not null default 0,
+  category text default 'outros',
+  date date not null,
+  created_at timestamptz default now()
+);
+
+-- 5. FINANÇAS — METAS
+create table if not exists public.financas_metas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null default '',
+  target numeric(12,2) default 0,
+  saved numeric(12,2) default 0,
+  deadline date,
+  created_at timestamptz default now()
+);
+
+-- 6. HÁBITOS
+create table if not exists public.habitos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null default '',
+  icon text default '⭐',
+  days jsonb default '[]',
+  created_at timestamptz default now()
+);
+
+-- 7. HUMOR
+create table if not exists public.humor_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  date date not null,
+  value integer not null default 3,
+  unique(user_id, date)
+);
+
+-- 8. GAMIFICAÇÃO
+create table if not exists public.gamificacao (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  total_xp integer default 0,
+  total_done integer default 0,
+  medals jsonb default '[]',
+  fin_trans integer default 0,
+  fin_goals integer default 0,
+  updated_at timestamptz default now()
+);
+
+-- ── ROW LEVEL SECURITY ──
+alter table public.tarefas enable row level security;
+alter table public.metas enable row level security;
+alter table public.questione_respostas enable row level security;
+alter table public.financas_transacoes enable row level security;
+alter table public.financas_metas enable row level security;
+alter table public.habitos enable row level security;
+alter table public.humor_logs enable row level security;
+alter table public.gamificacao enable row level security;
+
+-- ── POLICIES (cada user vê só seus dados) ──
+create policy "tarefas_rls" on public.tarefas for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "metas_rls" on public.metas for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "respostas_rls" on public.questione_respostas for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "fin_trans_rls" on public.financas_transacoes for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "fin_metas_rls" on public.financas_metas for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "habitos_rls" on public.habitos for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "humor_rls" on public.humor_logs for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+create policy "gamify_rls" on public.gamificacao for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+
+-- ── ÍNDICES ──
+create index if not exists idx_tarefas_user_date on public.tarefas(user_id,date_key);
+create index if not exists idx_fin_trans_user on public.financas_transacoes(user_id,date);
+create index if not exists idx_habitos_user on public.habitos(user_id);
+create index if not exists idx_humor_user on public.humor_logs(user_id,date);`;
+
+  const modal=document.createElement('div'); modal.id='db-setup-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+  modal.innerHTML=`<div style="background:#1e1e38;border:1px solid rgba(167,139,250,.35);border-radius:20px;padding:1.5rem;max-width:640px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.75)">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+      <div style="font-size:2rem">⚙️</div>
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;color:#f0eeff">Configurar Banco de Dados</div>
+      <div style="font-size:.8rem;color:#6a6390">Tabelas não encontradas no Supabase</div></div>
+    </div>
+    <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.82rem;color:#f87171;line-height:1.5">
+      ⚠️ Execute o SQL abaixo no <strong>Supabase → SQL Editor → New query → Run</strong>
+    </div>
+    <div style="position:relative;margin-bottom:1rem">
+      <pre id="setup-sql-pre" style="background:#0d0d1a;border:1px solid rgba(167,139,250,.15);border-radius:10px;padding:.85rem 1rem;font-size:.7rem;color:#a78bfa;white-space:pre;overflow:auto;max-height:280px;line-height:1.55">${sql}</pre>
+      <button id="copy-sql-btn" onclick="navigator.clipboard.writeText(document.getElementById('setup-sql-pre').textContent).then(()=>{this.textContent='✅ Copiado!';setTimeout(()=>this.textContent='📋 Copiar SQL',2500);})" style="position:absolute;top:.5rem;right:.5rem;padding:.28rem .65rem;border-radius:6px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.28);color:#a78bfa;font-size:.74rem;font-weight:700;cursor:pointer">📋 Copiar SQL</button>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button onclick="document.getElementById('db-setup-modal').remove();_dbChecked=false;location.reload();" style="flex:1;padding:.7rem;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border:0;color:#fff;font-weight:700;font-size:.9rem;cursor:pointer">✅ Já executei — Recarregar</button>
+      <button onclick="document.getElementById('db-setup-modal').remove();" style="padding:.7rem 1rem;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(167,139,250,.2);color:#b0a8d4;font-weight:600;font-size:.85rem;cursor:pointer">Ignorar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
 
 const STORAGE_KEY   = 'pm18_data_v1';
 const SESSION_KEY   = 'pm18_session_v1';
@@ -1107,11 +1370,19 @@ const offlineQueue = {
     const remaining=[];
     for(const a of list){
       try{
-        if(a.type==='upsert_task') await supabase.from('tarefas').upsert([a.payload],{onConflict:'id'});
+        if(a.type==='upsert_task') await upsertRow('tarefas',a.payload,'id');
         else if(a.type==='delete_task') await supabase.from('tarefas').delete().eq('id',a.id).eq('user_id',a.user_id);
-        else if(a.type==='upsert_goal') await supabase.from('metas').upsert([a.payload],{onConflict:'id'});
+        else if(a.type==='upsert_goal') await upsertRow('metas',a.payload,'id');
         else if(a.type==='delete_goal') await supabase.from('metas').delete().eq('id',a.id).eq('user_id',a.user_id);
-        else if(a.type==='upsert_answer') await supabase.from('questione_respostas').upsert([a.payload],{onConflict:'user_id,question_id'});
+        else if(a.type==='upsert_answer') await upsertRow('questione_respostas',a.payload,'user_id,question_id');
+        else if(a.type==='upsert_fin_trans') await upsertRow('financas_transacoes',a.payload,'id');
+        else if(a.type==='delete_fin_trans') await supabase.from('financas_transacoes').delete().eq('id',a.id).eq('user_id',a.user_id);
+        else if(a.type==='upsert_fin_goal') await upsertRow('financas_metas',a.payload,'id');
+        else if(a.type==='delete_fin_goal') await supabase.from('financas_metas').delete().eq('id',a.id).eq('user_id',a.user_id);
+        else if(a.type==='upsert_habit') await upsertRow('habitos',a.payload,'id');
+        else if(a.type==='delete_habit') await supabase.from('habitos').delete().eq('id',a.id).eq('user_id',a.user_id);
+        else if(a.type==='upsert_mood') await upsertRow('humor_logs',a.payload,'user_id,date');
+        else if(a.type==='upsert_gamify') await upsertRow('gamificacao',a.payload,'user_id');
       }catch(e){ remaining.push(a); }
     }
     this.save(remaining);
@@ -1222,6 +1493,9 @@ function addXp(amount, sourceEl){
   saveGamify(g);
   if(sourceEl) showXpFloat(amount, sourceEl);
   app.renderXP();
+  // Sincroniza gamificação remotamente (debounce 2s para não sobrecarregar)
+  clearTimeout(window._gamifySyncTimer);
+  window._gamifySyncTimer=setTimeout(()=>{ if(app.state?.user&&!app.state.user.local) app.saveGamifyRemote(); },2000);
 }
 
 function checkMedals(streak){
@@ -1235,7 +1509,11 @@ function checkMedals(streak){
       setTimeout(()=>showToast('🏅 Nova medalha: '+m.name,'gold',4000),1000);
     }
   });
-  if(newMs.length){ g.medals=[...current,...newMs]; saveGamify(g); }
+  if(newMs.length){
+    g.medals=[...current,...newMs]; saveGamify(g);
+    clearTimeout(window._gamifySyncTimer);
+    window._gamifySyncTimer=setTimeout(()=>{ if(app.state?.user&&!app.state.user.local) app.saveGamifyRemote(); },2000);
+  }
   app.renderMedals();
 }
 
@@ -1379,11 +1657,11 @@ const app = {
 
   },
 
-  showApp(){
+  async showApp(){
     q('auth-screen').classList.add('hidden');
     q('main-app').classList.remove('hidden');
     this.renderAll();
-    this.initRealtimeSync();
+    await this.initRealtimeSync();
   },
 
   showAuth(){
@@ -1423,12 +1701,18 @@ const app = {
     if(!_isOnline){ setSyncStatus('offline'); return; }
     setSyncStatus('syncing');
     try{
+      const dbOk=await checkDbSetup();
+      if(!dbOk){ setSyncStatus('error'); return; }
       await this.loadTasksRemote();
       await this.loadGoalsRemote();
       await this.loadAnswersRemote();
+      await this.loadFinanceRemote();
+      await this.loadHabitsRemote();
+      await this.loadMoodRemote();
+      await this.loadGamifyRemote();
       this.saveLocal();
       setSyncStatus('online');
-    }catch(e){ setSyncStatus('error'); }
+    }catch(e){ console.error('syncRemote',e); setSyncStatus('error'); }
   },
 
   async loadTasksRemote(){
@@ -1484,7 +1768,7 @@ const app = {
       created_at:task.created_at||now, updated_at:new Date().toISOString()
     };
     if(!_isOnline){ offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload}); return; }
-    const {error}=await supabase.from('tarefas').upsert([payload],{onConflict:'id'});
+    const {error}=await upsertRow('tarefas',payload,'id');
     if(error) offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
   },
 
@@ -1503,7 +1787,7 @@ const app = {
       completed:!!goal.completed, created_at:goal.created_at||new Date().toISOString()
     };
     if(!_isOnline){ offlineQueue.push({type:'upsert_goal',id:goal.id,user_id:this.state.user.id,payload}); return; }
-    await supabase.from('metas').upsert([payload],{onConflict:'id'});
+    await upsertRow('metas',payload,'id');
   },
 
   async deleteGoalRemote(id){
@@ -1528,17 +1812,167 @@ const app = {
     }catch(e){}
   },
 
-  /* Canal realtime ÚNICO por usuário */
-  initRealtimeSync(){
+  /* ── FINANÇAS REMOTO ── */
+  async loadFinanceRemote(){
     if(!this.state.user||this.state.user.local) return;
-    if(this.state.realtimeChannel) supabase.removeChannel(this.state.realtimeChannel);
-    this.state.realtimeChannel=supabase
-      .channel('pm18-'+this.state.user.id)
-      .on('postgres_changes',{event:'*',schema:'public',table:'tarefas',filter:`user_id=eq.${this.state.user.id}`},
-        debounce(async()=>{ await this.syncRemote(); this.renderDashboard(); },800))
-      .on('postgres_changes',{event:'*',schema:'public',table:'metas',filter:`user_id=eq.${this.state.user.id}`},
-        debounce(async()=>{ await this.loadGoalsRemote(); this.renderGoals(); this.saveLocal(); },800))
-      .subscribe();
+    try{
+      const [tRes,gRes]=await Promise.all([
+        supabase.from('financas_transacoes').select('*').eq('user_id',this.state.user.id).order('date',{ascending:false}),
+        supabase.from('financas_metas').select('*').eq('user_id',this.state.user.id)
+      ]);
+      const finance=loadFinance();
+      if(tRes.data){
+        // Merge: remote tem prioridade, mas mantém locais não enviados ainda
+        const remoteIds=new Set(tRes.data.map(t=>t.id));
+        const localOnly=(finance.transactions||[]).filter(t=>!remoteIds.has(t.id));
+        finance.transactions=[
+          ...tRes.data.map(t=>({id:t.id,type:t.type,desc:t.description,value:Number(t.value),cat:t.category,date:t.date})),
+          ...localOnly
+        ];
+      }
+      if(gRes.data){
+        const remoteIds=new Set(gRes.data.map(g=>g.id));
+        const localOnly=(finance.goals||[]).filter(g=>!remoteIds.has(g.id));
+        finance.goals=[
+          ...gRes.data.map(g=>({id:g.id,name:g.name,target:Number(g.target),saved:Number(g.saved),deadline:g.deadline})),
+          ...localOnly
+        ];
+      }
+      saveFinance(finance);
+    }catch(e){}
+  },
+
+  async saveTransactionRemote(trans){
+    if(!this.state.user||this.state.user.local) return;
+    const payload={id:trans.id,user_id:this.state.user.id,type:trans.type,
+      description:trans.desc,value:Number(trans.value),category:trans.cat||'outros',
+      date:trans.date||todayKey()};
+    if(!_isOnline){ offlineQueue.push({type:'upsert_fin_trans',id:trans.id,user_id:this.state.user.id,payload}); return; }
+    const {error}=await upsertRow('financas_transacoes',payload,'id');
+    if(error) offlineQueue.push({type:'upsert_fin_trans',id:trans.id,user_id:this.state.user.id,payload});
+  },
+
+  async deleteTransactionRemote(id){
+    if(!this.state.user||this.state.user.local) return;
+    if(!_isOnline){ offlineQueue.push({type:'delete_fin_trans',id,user_id:this.state.user.id}); return; }
+    await supabase.from('financas_transacoes').delete().eq('id',id).eq('user_id',this.state.user.id);
+  },
+
+  async saveFinGoalRemote(goal){
+    if(!this.state.user||this.state.user.local) return;
+    const payload={id:goal.id,user_id:this.state.user.id,name:goal.name,
+      target:Number(goal.target),saved:Number(goal.saved||0),deadline:goal.deadline||null};
+    if(!_isOnline){ offlineQueue.push({type:'upsert_fin_goal',id:goal.id,user_id:this.state.user.id,payload}); return; }
+    const {error}=await upsertRow('financas_metas',payload,'id');
+    if(error) offlineQueue.push({type:'upsert_fin_goal',id:goal.id,user_id:this.state.user.id,payload});
+  },
+
+  async deleteFinGoalRemote(id){
+    if(!this.state.user||this.state.user.local) return;
+    if(!_isOnline){ offlineQueue.push({type:'delete_fin_goal',id,user_id:this.state.user.id}); return; }
+    await supabase.from('financas_metas').delete().eq('id',id).eq('user_id',this.state.user.id);
+  },
+
+  /* ── HÁBITOS REMOTO ── */
+  async loadHabitsRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    try{
+      const {data,error}=await supabase.from('habitos').select('*').eq('user_id',this.state.user.id);
+      if(error||!data) return;
+      const remoteIds=new Set(data.map(h=>h.id));
+      const localOnly=loadHabits().filter(h=>!remoteIds.has(h.id));
+      saveHabits([
+        ...data.map(h=>({id:h.id,name:h.name,icon:h.icon||'⭐',days:Array.isArray(h.days)?h.days:(h.days?JSON.parse(h.days):[]) })),
+        ...localOnly
+      ]);
+    }catch(e){}
+  },
+
+  async saveHabitRemote(habit){
+    if(!this.state.user||this.state.user.local) return;
+    const payload={id:habit.id,user_id:this.state.user.id,name:habit.name,icon:habit.icon||'⭐',days:habit.days||[]};
+    if(!_isOnline){ offlineQueue.push({type:'upsert_habit',id:habit.id,user_id:this.state.user.id,payload}); return; }
+    await upsertRow('habitos',payload,'id');
+  },
+
+  async deleteHabitRemote(id){
+    if(!this.state.user||this.state.user.local) return;
+    if(!_isOnline){ offlineQueue.push({type:'delete_habit',id,user_id:this.state.user.id}); return; }
+    await supabase.from('habitos').delete().eq('id',id).eq('user_id',this.state.user.id);
+  },
+
+  /* ── HUMOR REMOTO ── */
+  async loadMoodRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    try{
+      const {data,error}=await supabase.from('humor_logs').select('date,value').eq('user_id',this.state.user.id).order('date',{ascending:true});
+      if(error||!data) return;
+      // Merge com local (local pode ter entradas não enviadas ainda)
+      const remote=data.map(r=>({date:r.date,value:r.value}));
+      const remoteDates=new Set(remote.map(r=>r.date));
+      const localOnly=loadMood().filter(m=>!remoteDates.has(m.date));
+      saveMood([...remote,...localOnly]);
+    }catch(e){}
+  },
+
+  async saveMoodRemote(date,value){
+    if(!this.state.user||this.state.user.local) return;
+    const payload={user_id:this.state.user.id,date,value};
+    if(!_isOnline){ offlineQueue.push({type:'upsert_mood',id:date,user_id:this.state.user.id,payload}); return; }
+    await upsertRow('humor_logs',payload,'user_id,date');
+  },
+
+  /* ── GAMIFICAÇÃO REMOTO ── */
+  async loadGamifyRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    try{
+      const {data,error}=await supabase.from('gamificacao').select('*').eq('user_id',this.state.user.id).single();
+      if(error||!data) return;
+      const local=loadGamify();
+      // Remote wins se XP remoto for maior (evita perda de progresso)
+      if((data.total_xp||0)>=(local.totalXp||0)){
+        saveGamify({totalXp:data.total_xp||0,totalDone:data.total_done||0,
+          medals:Array.isArray(data.medals)?data.medals:(data.medals?JSON.parse(data.medals):[]),
+          finTrans:data.fin_trans||0,finGoals:data.fin_goals||0});
+      }
+    }catch(e){}
+  },
+
+  async saveGamifyRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const g=loadGamify();
+    const payload={user_id:this.state.user.id,total_xp:g.totalXp||0,total_done:g.totalDone||0,
+      medals:g.medals||[],fin_trans:g.finTrans||0,fin_goals:g.finGoals||0,updated_at:new Date().toISOString()};
+    if(!_isOnline){ offlineQueue.push({type:'upsert_gamify',id:'gamify',user_id:this.state.user.id,payload}); return; }
+    await upsertRow('gamificacao',payload,'user_id');
+  },
+
+
+
+  /* Canal realtime ÚNICO por usuário */
+  async initRealtimeSync(){
+    if(!this.state.user||this.state.user.local) return;
+    const dbOk=await checkDbSetup();
+    if(!dbOk) return;
+    if(this.state.realtimeChannel){
+      try{ supabase.removeChannel(this.state.realtimeChannel); }catch(e){}
+    }
+    try{
+      this.state.realtimeChannel=supabase
+        .channel('pm18-'+this.state.user.id)
+        .on('postgres_changes',{event:'*',schema:'public',table:'tarefas',filter:`user_id=eq.${this.state.user.id}`},
+          debounce(async()=>{ await this.loadTasksRemote(); this.saveLocal(); this.renderDashboard(); },800))
+        .on('postgres_changes',{event:'*',schema:'public',table:'metas',filter:`user_id=eq.${this.state.user.id}`},
+          debounce(async()=>{ await this.loadGoalsRemote(); this.saveLocal(); this.renderGoals(); },800))
+        .on('postgres_changes',{event:'*',schema:'public',table:'financas_transacoes',filter:`user_id=eq.${this.state.user.id}`},
+          debounce(async()=>{ await this.loadFinanceRemote(); this.renderFinance(); },800))
+        .on('postgres_changes',{event:'*',schema:'public',table:'habitos',filter:`user_id=eq.${this.state.user.id}`},
+          debounce(async()=>{ await this.loadHabitsRemote(); this.renderHabits(); },800))
+        .subscribe(status=>{
+          if(status==='SUBSCRIBED') setSyncStatus('online');
+          else if(status==='CHANNEL_ERROR') setSyncStatus('error');
+        });
+    }catch(e){}
   },
 
   /* ══════════════════════════════════════
@@ -1923,20 +2357,22 @@ const app = {
     const idx=h.days.indexOf(day);
     if(idx===-1) h.days.push(day); else h.days.splice(idx,1);
     saveHabits(habits); this.renderHabits();
+    this.saveHabitRemote(h);
     if(idx===-1){ addXp(5); showToast('Hábito marcado! +5 XP','success'); }
   },
 
   saveHabit(){
     const name=q('habit-name').value.trim(); if(!name){ showToast('Digite o nome do hábito','error'); return; }
     const habits=loadHabits();
-    habits.push({id:crypto.randomUUID(),name,icon:q('habit-icon').value||'⭐',days:[]});
-    saveHabits(habits); this.renderHabits(); closeModal('habit-modal'); showToast('Hábito criado! 🔥','success');
+    const newHabit={id:crypto.randomUUID(),name,icon:q('habit-icon').value||'⭐',days:[]};
+    habits.push(newHabit);
+    saveHabits(habits); this.renderHabits(); this.saveHabitRemote(newHabit); closeModal('habit-modal'); showToast('Hábito criado! 🔥','success');
   },
 
   deleteHabit(id){
     if(!confirm('Excluir hábito?')) return;
     saveHabits(loadHabits().filter(h=>h.id!==id));
-    this.renderHabits(); showToast('Hábito removido','default');
+    this.renderHabits(); this.deleteHabitRemote(id); showToast('Hábito removido','default');
   },
 
   /* ══════════════════════════════════════
@@ -2005,7 +2441,7 @@ const app = {
     if(!silent) showToast('Resposta salva! 💪','success');
     if(this.state.user&&!this.state.user.local){
       const payload={user_id:this.state.user.id,question_id:questionId,answer:val,updated_at:new Date().toISOString()};
-      if(_isOnline) supabase.from('questione_respostas').upsert([payload],{onConflict:'user_id,question_id'}).then(({error})=>{ if(error) offlineQueue.push({type:'upsert_answer',id:questionId,user_id:this.state.user.id,payload}); });
+      if(_isOnline) upsertRow('questione_respostas',payload,'user_id,question_id').then(({error})=>{ if(error) offlineQueue.push({type:'upsert_answer',id:questionId,user_id:this.state.user.id,payload}); });
       else offlineQueue.push({type:'upsert_answer',id:questionId,user_id:this.state.user.id,payload});
     }
   },
@@ -2136,6 +2572,8 @@ const app = {
       addXp(15); checkMedals(this.computeStreak());
     }
     saveFinance(finance); this.renderFinance(); closeModal('fin-goal-modal');
+    if(existId){ const g2=finance.goals.find(x=>x.id===existId); if(g2) this.saveFinGoalRemote(g2); }
+    else { const last=finance.goals[finance.goals.length-1]; if(last) this.saveFinGoalRemote(last); this.saveGamifyRemote(); }
     showToast('Meta salva! 🎯','success');
   },
 
@@ -2143,7 +2581,7 @@ const app = {
     if(!confirm('Excluir esta meta?')) return;
     const finance=loadFinance();
     finance.goals=(finance.goals||[]).filter(g=>g.id!==id);
-    saveFinance(finance); this.renderFinGoals(); showToast('Meta removida','default');
+    saveFinance(finance); this.renderFinGoals(); this.deleteFinGoalRemote(id); showToast('Meta removida','default');
   },
 
   renderTransactionsList(){
@@ -2179,7 +2617,7 @@ const app = {
     if(!confirm('Excluir esta transação?')) return;
     const finance=loadFinance();
     finance.transactions=(finance.transactions||[]).filter(t=>t.id!==id);
-    saveFinance(finance); this.renderFinance(); showToast('Transação removida','default');
+    saveFinance(finance); this.renderFinance(); this.deleteTransactionRemote(id); showToast('Transação removida','default');
   },
 
   saveTransaction(){
@@ -2192,12 +2630,17 @@ const app = {
       const t=finance.transactions.find(x=>x.id===existId);
       if(t){ t.desc=desc; t.value=value; t.type=q('trans-type-hidden').value; t.cat=q('trans-cat').value; t.date=q('trans-date').value||todayKey(); }
     } else {
-      finance.transactions.push({id:crypto.randomUUID(),type:q('trans-type-hidden').value,desc,value,cat:q('trans-cat').value,date:q('trans-date').value||todayKey()});
+    const newTrans={id:crypto.randomUUID(),type:q('trans-type-hidden').value,desc,value,cat:q('trans-cat').value,date:q('trans-date').value||todayKey()};
+      finance.transactions.push(newTrans);
       const g=loadGamify(); g.finTrans=(g.finTrans||0)+1; saveGamify(g);
       addXp(5); checkMedals(this.computeStreak());
+      saveFinance(finance); this.renderFinance(); closeModal('transaction-modal');
+      this.saveTransactionRemote(newTrans); this.saveGamifyRemote();
+      showToast(q('trans-type-hidden').value==='income'?'Entrada registrada 💚':'Saída registrada 🔴','success');
+      return;
     }
     saveFinance(finance); this.renderFinance(); closeModal('transaction-modal');
-    showToast(q('trans-type-hidden').value==='income'?'Entrada registrada 💚':'Saída registrada 🔴','success');
+    showToast(q('trans-type-hidden').value==='income'?'Entrada atualizada 💚':'Saída atualizada 🔴','success');
   },
 
   openNewTransaction(type){
@@ -2435,6 +2878,7 @@ q('btn-save-mood').addEventListener('click',()=>{
   else moods.push({date:today,value:selectedMood});
   saveMood(moods); app.renderMoodChart(); showToast('Humor registrado! 💙','success');
   addXp(5);
+  app.saveMoodRemote(today, selectedMood);
 });
 q('btn-save-reflection').addEventListener('click',()=>{
   showToast('Reflexão salva! 📖','success'); addXp(5);
@@ -2535,10 +2979,17 @@ function tocarAlarme(){
 
 function dispararNotificacao(titulo,corpo,comSom){
   if(Notification.permission!=='granted') return;
-  const opts={body:corpo,vibrate:[300,100,300,100,300],data:{url:'/'},requireInteraction:true,tag:'pm18-'+Date.now()};
-  if(navigator.serviceWorker&&navigator.serviceWorker.controller){
-    navigator.serviceWorker.ready.then(reg=>reg.showNotification(titulo,opts)).catch(()=>{ try{new Notification(titulo,opts);}catch(e){} });
-  }else{ try{new Notification(titulo,opts);}catch(e){} }
+  const opts={
+    body:corpo,vibrate:[300,100,300,100,300],requireInteraction:false,
+    tag:'pm18-'+Date.now(),
+    icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d0d1a' rx='24'/%3E%3Cpath d='M96 40C65 40 40 65 40 96s25 56 56 56 56-25 56-56-25-56-56-56zm20 76h-12V96h12v20zm-6-28c-4 0-7-3-7-7s3-7 7-7 7 3 7 7-3 7-7 7z' fill='%23a78bfa'/%3E%3C/svg%3E"
+  };
+  const reg=window._swReg;
+  if(reg&&reg.active){
+    reg.showNotification(titulo,opts).catch(()=>{ try{new Notification(titulo,opts);}catch(ex){} });
+  } else {
+    try{ new Notification(titulo,opts); }catch(e){}
+  }
   if(comSom) setTimeout(tocarAlarme,300);
 }
 
@@ -2598,8 +3049,7 @@ q('btn-salvar-notif').addEventListener('click',()=>{
 setInterval(checarNotificacoes, 60000);
 (async()=>{ if('Notification' in window && Notification.permission==='default') setTimeout(async()=>{ await Notification.requestPermission(); atualizarStatusNotif(); },3000); })();
 
-/* ── PWA ── */
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); setTimeout(()=>showToast('📱 Instale o app na tela inicial!','',5000),3500); });
+/* ── PWA install já gerenciado pelo initPWA() no topo ── */
 
 /* ══════════════════════════════════════
    INIT
@@ -2608,17 +3058,6 @@ window.app = app;
 window.closeModal = closeModal;
 await app.init();
 })();
-</script>
-  <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => {
-        console.log('SW registrado:', reg);
-      })
-      .catch(err => {
-        console.error('Erro ao registrar SW:', err);
-      });
-  }
 </script>
 </body>
 </html>
