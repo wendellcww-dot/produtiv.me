@@ -1,5 +1,4 @@
-// produtiv.me — Service Worker
-// Responsável por: notificações em background + clique abre o app
+
 self.addEventListener('message', function(event) {
   console.log('SW recebeu mensagem:', event.data);
 });
