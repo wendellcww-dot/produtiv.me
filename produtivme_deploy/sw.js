@@ -1,43 +1,27 @@
-
-self.addEventListener('message', function(event) {
-  console.log('SW recebeu mensagem:', event.data);
+self.addEventListener('message', event => {
+  console.log('SW recebeu:', event.data);
 });
 
-const CACHE_NAME = 'produtivme-v1';
+self.addEventListener('install', e => self.skipWaiting());
 
-// Instala o SW
-self.addEventListener('install', function(e){
-  self.skipWaiting();
-});
-
-// Ativa o SW
-self.addEventListener('activate', function(e){
+self.addEventListener('activate', e => {
   e.waitUntil(self.clients.claim());
 });
 
-// Clique na notificação → abre ou foca o app
 self.addEventListener('notificationclick', function(e){
   e.notification.close();
 
-  const url = (e.notification.data && e.notification.data.url) 
-    ? e.notification.data.url 
-    : '/';
+  const url = e.notification.data?.url || '/';
 
   e.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clients){
-      for (let client of clients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(clients => {
+        for (let client of clients) {
+          if (client.url.includes(self.location.origin)) {
+            return client.focus();
+          }
         }
-      }
-      if (self.clients.openWindow) {
         return self.clients.openWindow(url);
-      }
-    })
+      })
   );
-});
-
-// Fecha notificação
-self.addEventListener('notificationclose', function(e){
-  // opcional
 });
