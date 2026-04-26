@@ -2,7 +2,8 @@
   "name": "produtiv.me — Rotina, Mente & Vida",
   "short_name": "produtiv",
   "description": "Sistema de evolução pessoal baseado em rotina, mente e finanças.",
-  "start_url": "."
+  "start_url": "./",
+  "scope": "./"
   "display": "standalone",
   "background_color": "#0d0d1a",
   "theme_color": "#7c3aed",
