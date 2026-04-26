@@ -2607,8 +2607,18 @@ window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); setTimeou
 window.app = app;
 window.closeModal = closeModal;
 await app.init();
-
 })();
+</script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        console.log('SW registrado:', reg);
+      })
+      .catch(err => {
+        console.error('Erro ao registrar SW:', err);
+      });
+  }
 </script>
 </body>
 </html>
