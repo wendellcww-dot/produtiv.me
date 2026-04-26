@@ -3,12 +3,18 @@ self.addEventListener('message', function(event) {
   console.log('SW recebeu mensagem:', event.data);
 });
 
+// ✅ EVENTO DE PUSH (ESTAVA FALTANDO)
+self.addEventListener('push', function(event) {
+  const data = event.data ? event.data.json() : {};
 
-  self.registration.showNotification(data.title || 'Notificação', {
-    body: data.body || 'Você tem uma nova mensagem',
-    data: data,
-  });
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Notificação', {
+      body: data.body || 'Você tem uma nova mensagem',
+      data: data,
+    })
+  );
 });
+
 const CACHE_NAME = 'produtivme-v1';
 
 // Instala o SW
@@ -24,25 +30,26 @@ self.addEventListener('activate', function(e){
 // Clique na notificação → abre ou foca o app
 self.addEventListener('notificationclick', function(e){
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) ? e.notification.data.url : '/';
+
+  const url = (e.notification.data && e.notification.data.url) 
+    ? e.notification.data.url 
+    : '/';
+
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clients){
-      // Se já tem o app aberto, foca nele
-      for(var i = 0; i < clients.length; i++){
-        var client = clients[i];
-        if(client.url.indexOf(self.location.origin) !== -1 && 'focus' in client){
+      for (let client of clients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus();
         }
       }
-      // Se não tem, abre uma nova janela
-      if(self.clients.openWindow){
+      if (self.clients.openWindow) {
         return self.clients.openWindow(url);
       }
     })
   );
 });
 
-// Fecha notificação ao clicar em "fechar"
+// Fecha notificação
 self.addEventListener('notificationclose', function(e){
-  // pode logar analytics aqui se quiser
+  // opcional
 });
