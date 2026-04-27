@@ -1481,7 +1481,7 @@ const app = {
       created_at:task.created_at||now, updated_at:new Date().toISOString()
     };
     if(!_isOnline){ offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload}); return; }
-    const {error}=await supabase.from('tarefas').upsert([payload],
+    const {error}=await supabase.from('tarefas').upsert([payload]);
     if(error) offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
   },
 
