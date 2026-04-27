@@ -1112,33 +1112,76 @@ function setSyncStatus(s){
    OFFLINE QUEUE
 ══════════════════════════════════════ */
 const offlineQueue = {
-  load(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); }catch(e){ return []; } },
-  save(l){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(l)); }catch(e){} },
+  load(){ 
+    try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); } 
+    catch(e){ return []; } 
+  },
+
+  save(l){ 
+    try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(l)); } 
+    catch(e){} 
+  },
+
   push(action){
     const list=this.load();
     const idx=list.findIndex(a=>a.type===action.type && a.id===action.id);
     if(idx!==-1) list[idx]=action; else list.push(action);
     this.save(list);
   },
+
   async flush(){
     if(!_isOnline) return;
+
     const list=this.load();
     if(!list.length) return;
+
     const remaining=[];
+
     for(const a of list){
       try{
-        if(a.type==='upsert_task') await supabase.from('tarefas').upsert([a.payload],{onConflict:'id'});
-        else if(a.type==='delete_task') await supabase.from('tarefas').delete().eq('id',a.id).eq('user_id',a.user_id);
-        else if(a.type==='upsert_goal') await supabase.from('metas').upsert([a.payload],{onConflict:'id'});
-        else if(a.type==='delete_goal') await supabase.from('metas').delete().eq('id',a.id).eq('user_id',a.user_id);
-        else if(a.type==='upsert_answer') await supabase.from('questione_respostas').upsert([a.payload],{onConflict:'user_id,question_id'});
-      }catch(e){ remaining.push(a); }
+
+        if(a.type==='upsert_task'){
+          await window.supabaseClient
+            .from('tarefas')
+            .upsert([a.payload],{onConflict:'id'});
+        }
+
+        else if(a.type==='delete_task'){
+          await window.supabaseClient
+            .from('tarefas')
+            .delete()
+            .eq('id',a.id)
+            .eq('user_id',a.user_id);
+        }
+
+        else if(a.type==='upsert_goal'){
+          await window.supabaseClient
+            .from('goals')
+            .upsert([a.payload],{onConflict:'id'});
+        }
+
+        else if(a.type==='delete_goal'){
+          await window.supabaseClient
+            .from('goals')
+            .delete()
+            .eq('id',a.id)
+            .eq('user_id',a.user_id);
+        }
+
+      }catch(e){
+        console.error('ERRO NO FLUSH:', a.type, e);
+        remaining.push(a);
+      }
     }
+
     this.save(remaining);
-    if(!remaining.length) setSyncStatus('online');
+
+    if(!remaining.length){
+      setSyncStatus('online');
+      console.log('SYNC OK ✅');
+    }
   }
 };
-
 /* ══════════════════════════════════════
    FINANÇAS — LOCAL STORAGE
 ══════════════════════════════════════ */
@@ -1453,7 +1496,7 @@ const app = {
 
   async loadTasksRemote(){
     if(!this.state.user||this.state.user.local) return;
-    const {data,error}=await supabase.from('tarefas').select('*').eq('user_id',this.state.user.id);
+    const {data,error}=await window.supabaseClient.from('tarefas').select('*').eq('user_id',this.state.user.id);
     if(error||!data) return;
     // Rebuild routines sem duplicar
     const newRoutines={};
@@ -1481,7 +1524,7 @@ const app = {
 
   async loadGoalsRemote(){
     if(!this.state.user||this.state.user.local) return;
-    const {data,error}=await supabase.from('metas').select('*').eq('user_id',this.state.user.id);
+    const {data,error}=await window.supabaseClient.from('metas').select('*').eq('user_id',this.state.user.id);
     if(error) return;
     this.state.data.goals=(data||[]).map(g=>({
       id:g.id,title:g.title,desc:g.description,type:g.type||'mensal',
@@ -1531,14 +1574,14 @@ const payload = {
   updated_at: new Date().toISOString()
 };
     if(!_isOnline){ offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload}); return; }
-    const {error}=await supabase.from('tarefas').upsert([payload]);
+    const {error}=await window.supabaseClient.from('tarefas').upsert([payload]);
     if(error) offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
   },
 
   async deleteTaskRemote(id){
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); return; }
-    await supabase.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
+    await window.supabaseClient.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
   },
 
   async saveGoalRemote(goal){
@@ -1550,19 +1593,19 @@ const payload = {
       completed:!!goal.completed, created_at:goal.created_at||new Date().toISOString()
     };
     if(!_isOnline){ offlineQueue.push({type:'upsert_goal',id:goal.id,user_id:this.state.user.id,payload}); return; }
-    await supabase.from('metas').upsert([payload],{onConflict:'id'});
+    await window.supabaseClient.from('metas').upsert([payload],{onConflict:'id'});
   },
 
   async deleteGoalRemote(id){
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ offlineQueue.push({type:'delete_goal',id,user_id:this.state.user.id}); return; }
-    await supabase.from('metas').delete().eq('id',id).eq('user_id',this.state.user.id);
+    await window.supabaseClient.from('metas').delete().eq('id',id).eq('user_id',this.state.user.id);
   },
 
   async loadAnswersRemote(){
     if(!this.state.user||this.state.user.local) return;
     try{
-      const {data,error}=await supabase.from('questione_respostas').select('question_id,answer,updated_at').eq('user_id',this.state.user.id);
+      const {data,error}=await window.supabaseClient.from('questione_respostas').select('question_id,answer,updated_at').eq('user_id',this.state.user.id);
       if(error||!data) return;
       const local=this.loadQuestionAnswers();
       data.forEach(row=>{
@@ -2052,7 +2095,7 @@ const payload = {
     if(!silent) showToast('Resposta salva! 💪','success');
     if(this.state.user&&!this.state.user.local){
       const payload={user_id:this.state.user.id,question_id:questionId,answer:val,updated_at:new Date().toISOString()};
-      if(_isOnline) supabase.from('questione_respostas').upsert([payload],{onConflict:'user_id,question_id'}).then(({error})=>{ if(error) offlineQueue.push({type:'upsert_answer',id:questionId,user_id:this.state.user.id,payload}); });
+      if(_isOnline) window.supabaseClient.from('questione_respostas').upsert([payload],{onConflict:'user_id,question_id'}).then(({error})=>{ if(error) offlineQueue.push({type:'upsert_answer',id:questionId,user_id:this.state.user.id,payload}); });
       else offlineQueue.push({type:'upsert_answer',id:questionId,user_id:this.state.user.id,payload});
     }
   },
