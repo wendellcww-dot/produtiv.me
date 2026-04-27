@@ -2530,13 +2530,22 @@ function tocarAlarme(){
   }catch(e){}
 }
 
-function dispararNotificacao(titulo,corpo,comSom){
-  if(Notification.permission!=='granted') return;
-  const opts={body:corpo,vibrate:[300,100,300,100,300],data:{url:'/'},requireInteraction:true,tag:'pm18-'+Date.now()};
-  if(navigator.serviceWorker&&navigator.serviceWorker.controller){
-    navigator.serviceWorker.ready.then(reg=>reg.showNotification(titulo,opts)).catch(()=>{ try{new Notification(titulo,opts);}catch(e){} });
-  }else{ try{new Notification(titulo,opts);}catch(e){} }
-  if(comSom) setTimeout(tocarAlarme,300);
+function dispararNotificacao(titulo, corpo, comSom){
+  if (Notification.permission !== 'granted') return;
+
+  const opts = {
+    body: corpo,
+    vibrate: [300,100,300],
+    tag: 'pm18-' + Date.now()
+  };
+
+  try {
+    new Notification(titulo, opts);
+  } catch (e) {
+    console.error('Erro ao notificar:', e);
+  }
+
+  if (comSom) setTimeout(tocarAlarme, 300);
 }
 
 function checarNotificacoes(){
