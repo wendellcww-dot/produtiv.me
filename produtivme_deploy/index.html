@@ -64,7 +64,14 @@ OneSignalDeferred.push(async function(OneSignal) {
 <script>
 window.supabaseClient = window.supabase.createClient(
   "https://ddybuxzdvbvvgnixzijx.supabase.co",
-  "sb_publishable_EfpfB5RHuxIHB3Y7d14H6w_-phgrd-0"
+  "sb_publishable_EfpfB5RHuxIHB3Y7d14H6w_-phgrd-0",
+  {
+    realtime: {
+      params: {
+        eventsPerSecond: 5
+      }
+    }
+  }
 );
 </script>
 <style>
@@ -1027,9 +1034,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 /* ══════════════════════════════════════
    CONFIG
 ══════════════════════════════════════ */
-const SUPABASE_URL = 'https://ddybuxzdvbvvgnixzijx.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeWJ1eHpkdmJ2dmduaXh6aWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0NzkxMjEsImV4cCI6MjA4MzA1NTEyMX0.Z9FDJdKthsMFUm4uDrtGaVxWYpwssILoM8wvMr6EBwE';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   realtime:{ params:{ eventsPerSecond:5 } }
 });
 
