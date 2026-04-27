@@ -2724,7 +2724,8 @@ window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); setTimeou
 /* ══════════════════════════════════════
    INIT
 ══════════════════════════════════════ */
-window.app = app;
+(async function(){
+    window.app = app;
 window.closeModal = closeModal;
 await app.init();
 
