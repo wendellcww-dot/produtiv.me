@@ -2665,13 +2665,7 @@ window.closeModal = closeModal;
 await app.init();
 
 })();
-</script>
- <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
-    .then(() => console.log('SW OK'))
-    .catch(err => console.error('SW erro:', err));
-}
+
 </script> 
  </body> 
 </html>
