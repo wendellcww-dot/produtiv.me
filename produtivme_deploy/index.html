@@ -35,12 +35,10 @@ OneSignalDeferred.push(async function(OneSignal) {
 
   // salva no banco (se existir)
   if (playerId && window.app?.state?.user?.id) {
-    await supabase
-      .from('profiles')
-      .update({ player_id: playerId })
-      .eq('id', window.app.state.user.id);
-  }
-
+   await window.supabaseClient
+  .from('profiles')
+  .update({ player_id: playerId })
+  .eq('id', user.id);
 });
 </script>
 
