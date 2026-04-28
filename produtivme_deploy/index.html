@@ -1642,9 +1642,8 @@ const payload = {
   /* Canal realtime ÚNICO por usuário */
   initRealtimeSync(){
     if(!this.state.user||this.state.user.local) return;
-    if(this.state.realtimeChannel) supabase.removeChannel(this.state.realtimeChannel);
-    this.state.realtimeChannel=supabase
-      .channel('pm18-'+this.state.user.id)
+    if(this.state.realtimeChannel)supabase.removeChannel(this.state.realtimeChannel);
+    this.state.realtimeChannel=window.supabaseClient.channel('pm18-'+this.state.user.id)
       .on('postgres_changes',{event:'*',schema:'public',table:'tarefas',filter:`user_id=eq.${this.state.user.id}`},
         debounce(async()=>{ await this.syncRemote(); this.renderDashboard(); },800))
       .on('postgres_changes',{event:'*',schema:'public',table:'metas',filter:`user_id=eq.${this.state.user.id}`},
