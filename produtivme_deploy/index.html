@@ -1393,7 +1393,7 @@ function saveMood(d){ localStorage.setItem(MOOD_KEY, JSON.stringify(d)); }
    APP
 ══════════════════════════════════════ */
 const app = {
-_isSyncing = false,
+_isSyncing: false,
   
   state:{ user:null, data:null, charts:{}, realtimeChannel:null },
 
