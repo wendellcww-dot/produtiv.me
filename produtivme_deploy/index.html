@@ -1393,6 +1393,8 @@ function saveMood(d){ localStorage.setItem(MOOD_KEY, JSON.stringify(d)); }
    APP
 ══════════════════════════════════════ */
 const app = {
+_isSyncing = false,
+  
   state:{ user:null, data:null, charts:{}, realtimeChannel:null },
 
   getDefaultData(){
@@ -1592,19 +1594,19 @@ const payload = {
   title: task.title || 'Sem título',
   description: task.description || null,
 
-  // ✅ corrigido
-  priority: typeof task.priority === 'number'
-    ? task.priority
-    : prioridadeMap[task.priority] || 1,
+  // ✅ STRING (igual UI)
+  priority: task.priority || 'media',
 
-  // ✅ boolean correto
-  focus: !!task.focus,
+  // ✅ STRING (igual UI)
+  focus: task.focus || 'trabalho',
+
   done: !!task.done,
 
   estimate_min: Number(task.estimateMin) || 30,
   goal_id: task.linkedGoalId || null,
 
   alarm_time: alarmIso,
+};
 
   // ✅ corrigido (date real)
   date_key: dateKey
@@ -1663,12 +1665,14 @@ const payload = {
 initRealtimeSync(){
   if(!this.state.user || this.state.user.local) return;
 
-  // 🔥 remove canal antigo corretamente
   if(this.state.realtimeChannel){
     window.supabaseClient.removeChannel(this.state.realtimeChannel);
   }
 
   const userId = this.state.user.id;
+
+  let timeoutTasks;
+  let timeoutGoals;
 
   this.state.realtimeChannel = window.supabaseClient
     .channel('pm18-' + userId)
@@ -1679,11 +1683,24 @@ initRealtimeSync(){
       schema: 'public',
       table: 'tarefas',
       filter: `user_id=eq.${userId}`
-    }, async (payload) => {
-      console.log('🔄 tarefas mudou:', payload);
+    }, (payload) => {
 
-      await this.loadTasksRemote();
-      this.renderDashboard();
+      clearTimeout(timeoutTasks);
+
+      timeoutTasks = setTimeout(async () => {
+
+        // 🔒 LOCK
+        if (this._isSyncing) return;
+        this._isSyncing = true;
+
+        console.log('🔄 tarefas mudou:', payload);
+
+        await this.syncRemote();
+        this.renderAll();
+
+        this._isSyncing = false;
+
+      }, 300);
     })
 
     // 🎯 METAS
@@ -1692,19 +1709,48 @@ initRealtimeSync(){
       schema: 'public',
       table: 'goals',
       filter: `user_id=eq.${userId}`
-    }, async (payload) => {
-      console.log('🔄 goals mudou:', payload);
+    }, (payload) => {
 
-      await this.loadGoalsRemote();
-      this.renderGoals();
-      this.saveLocal();
+      clearTimeout(timeoutGoals);
+
+      timeoutGoals = setTimeout(async () => {
+
+        // 🔒 LOCK
+        if (this._isSyncing) return;
+        this._isSyncing = true;
+
+        console.log('🔄 goals mudou:', payload);
+
+        await this.syncRemote();
+        this.renderAll();
+
+        this._isSyncing = false;
+
+      }, 300);
     })
 
-    // 📡 STATUS DA CONEXÃO
     .subscribe((status) => {
       console.log('Realtime status:', status);
+
+      if (status === 'SUBSCRIBED') {
+        setSyncStatus('online');
+      } else if (status === 'CHANNEL_ERROR') {
+        setSyncStatus('error');
+      }
     });
-},
+}
+
+    // 📡 STATUS
+    .subscribe((status) => {
+      console.log('Realtime status:', status);
+
+      if (status === 'SUBSCRIBED') {
+        setSyncStatus('online');
+      } else if (status === 'CHANNEL_ERROR') {
+        setSyncStatus('error');
+      }
+    });
+}
 
   /* ══════════════════════════════════════
      RENDER ALL
@@ -2794,6 +2840,7 @@ await app.init();
 
   }, 500);
 }
+   startRealtimeWhenReady();
 })();
 
 </script> 
