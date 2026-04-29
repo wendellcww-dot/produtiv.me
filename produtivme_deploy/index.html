@@ -1739,16 +1739,6 @@ initRealtimeSync(){
       }
     });
 }
-
-    // 📡 STATUS
-    .subscribe((status) => {
-      console.log('Realtime status:', status);
-
-      if (status === 'SUBSCRIBED') {
-        setSyncStatus('online');
-      } else if (status === 'CHANNEL_ERROR') {
-        setSyncStatus('error');
-      }
     });
 }
 
