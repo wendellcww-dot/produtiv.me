@@ -1521,16 +1521,36 @@ const app = {
     if(error||!data) return;
     // Rebuild routines sem duplicar
     const newRoutines={};
-    data.forEach(t=>{
-      const dk=t.date_key||todayKey();
-      if(!newRoutines[dk]) newRoutines[dk]=[];
-      newRoutines[dk].push({
-        id:t.id,title:t.title,description:t.description||'',priority:t.priority||'media',
-        focus:t.focus||'trabalho',done:!!t.done,estimateMin:t.estimate_min||30,
-        linkedGoalId:t.goal_id||'',alarmTime:t.alarm_time?new Date(t.alarm_time).toTimeString().slice(0,5):'',
-        created_at:t.created_at,updated_at:t.updated_at
-      });
-    });
+   data.forEach(t=>{
+  const dk = t.date_key || todayKey();
+
+  if(!newRoutines[dk]) newRoutines[dk] = [];
+
+  newRoutines[dk].push({
+    id: t.id,
+    title: t.title,
+    description: t.description || '',
+
+    // ✅ prioridade convertida corretamente
+    priority: Number(t.priority) || 1,
+
+    // ✅ boolean correto
+    focus: !!t.focus,
+
+    done: !!t.done,
+    estimateMin: t.estimate_min || 30,
+
+    linkedGoalId: t.goal_id || '',
+
+    // ✅ horário formatado
+    alarmTime: t.alarm_time
+      ? new Date(t.alarm_time).toTimeString().slice(0,5)
+      : '',
+
+    created_at: t.created_at,
+    updated_at: t.updated_at
+  });
+});
     // Merge: manter tarefas locais do dia atual se não sincronizadas
     const today=todayKey();
     if((this.state.data.routines||{})[today]){
@@ -1640,16 +1660,51 @@ const payload = {
   },
 
   /* Canal realtime ÚNICO por usuário */
-  initRealtimeSync(){
-    if(!this.state.user||this.state.user.local) return;
-    if(this.state.realtimeChannel)supabase.removeChannel(this.state.realtimeChannel);
-    this.state.realtimeChannel=window.supabaseClient.channel('pm18-'+this.state.user.id)
-      .on('postgres_changes',{event:'*',schema:'public',table:'tarefas',filter:`user_id=eq.${this.state.user.id}`},
-        debounce(async()=>{ await this.syncRemote(); this.renderDashboard(); },800))
-      .on('postgres_changes',{event:'*',schema:'public',table:'metas',filter:`user_id=eq.${this.state.user.id}`},
-        debounce(async()=>{ await this.loadGoalsRemote(); this.renderGoals(); this.saveLocal(); },800))
-      .subscribe();
-  },
+initRealtimeSync(){
+  if(!this.state.user || this.state.user.local) return;
+
+  // 🔥 remove canal antigo corretamente
+  if(this.state.realtimeChannel){
+    window.supabaseClient.removeChannel(this.state.realtimeChannel);
+  }
+
+  const userId = this.state.user.id;
+
+  this.state.realtimeChannel = window.supabaseClient
+    .channel('pm18-' + userId)
+
+    // 🔄 TAREFAS
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'tarefas',
+      filter: `user_id=eq.${userId}`
+    }, async (payload) => {
+      console.log('🔄 tarefas mudou:', payload);
+
+      await this.loadTasksRemote();
+      this.renderDashboard();
+    })
+
+    // 🎯 METAS
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'goals',
+      filter: `user_id=eq.${userId}`
+    }, async (payload) => {
+      console.log('🔄 goals mudou:', payload);
+
+      await this.loadGoalsRemote();
+      this.renderGoals();
+      this.saveLocal();
+    })
+
+    // 📡 STATUS DA CONEXÃO
+    .subscribe((status) => {
+      console.log('Realtime status:', status);
+    });
+}
 
   /* ══════════════════════════════════════
      RENDER ALL
@@ -2728,6 +2783,17 @@ window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); setTimeou
 window.closeModal = closeModal;
 await app.init();
 
+  function startRealtimeWhenReady() {
+  const interval = setInterval(() => {
+    const user = window.app?.state?.user;
+
+    if (user && window.supabaseClient) {
+      clearInterval(interval);
+      window.app.initRealtimeSync();
+    }
+
+  }, 500);
+}
 })();
 
 </script> 
