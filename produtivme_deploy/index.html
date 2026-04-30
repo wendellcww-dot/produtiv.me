@@ -1666,8 +1666,9 @@ initRealtimeSync(){
   if(!this.state.user || this.state.user.local) return;
 
   if(this.state.realtimeChannel){
-    window.supabaseClient.removeChannel(this.state.realtimeChannel);
-  }
+  console.log('⚠️ Realtime já ativo');
+  return; // 🛑 NÃO recria
+}
 
   const userId = this.state.user.id;
 
