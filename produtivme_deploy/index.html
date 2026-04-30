@@ -1678,13 +1678,13 @@ initRealtimeSync(){
     .channel('pm18-' + userId)
 
     // 🔄 TAREFAS
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'tarefas',
-      filter: `user_id=eq.${userId}`
-    }, (payload) => {
-
+  
+.on('postgres_changes', {
+  event: '*',
+  schema: 'public',
+  table: 'tarefas'
+}, (payload) => {
+  console.log('🔥 REALTIME TESTE:', payload);
       clearTimeout(timeoutTasks);
 
       timeoutTasks = setTimeout(async () => {
@@ -1705,11 +1705,11 @@ initRealtimeSync(){
 
     // 🎯 METAS
     .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'goals',
-      filter: `user_id=eq.${userId}`
-    }, (payload) => {
+  event: '*',
+  schema: 'public',
+  table: 'tarefas'
+}, (payload) => {
+  console.log('🔥 REALTIME TESTE:', payload);
 
       clearTimeout(timeoutGoals);
 
