@@ -1409,7 +1409,7 @@ _isSyncing: false,
 
     q('login-form').addEventListener('submit', async e=>{
       e.preventDefault(); showLoading('Entrando...');
-      const {data,error}=await supabase.auth.signInWithPassword({email:q('login-email').value,password:q('login-password').value});
+      const {data,error}=await window.supabaseClient.auth.signInWithPassword({email:q('login-email').value,password:q('login-password').value});
       hideLoading();
       if(error){ showAlert('❌ '+error.message, true); return; }
       this.state.user={id:data.user.id,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
@@ -1423,7 +1423,7 @@ _isSyncing: false,
       if(pass!==q('register-confirm').value){ showAlert('❌ Senhas não conferem',true); return; }
       if(pass.length<6){ showAlert('❌ Senha muito curta',true); return; }
       showLoading('Criando conta...');
-      const {data,error}=await supabase.auth.signUp({email:q('register-email').value,password:pass,options:{data:{name}}});
+      const {data,error}=await window.supabaseClient.auth.signUp({email:q('register-email').value,password:pass,options:{data:{name}}});
       hideLoading();
       if(error){ showAlert('❌ '+error.message,true); return; }
       showAlert('✅ Conta criada! Verifique seu email.',false);
