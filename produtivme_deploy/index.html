@@ -2573,7 +2573,7 @@ q('btn-logout').addEventListener('click',async()=>{
   if(!confirm('Sair da conta?')) return;
   showLoading('Saindo...');
   await RealtimeManager.destroy();
-  await supabase.auth.signOut();
+  await window.supabaseClient.auth.signOut();
   localStorage.removeItem(SESSION_KEY);
   app.state.user=null; app.state.data=app.getDefaultData();
   hideLoading(); app.showAuth(); closeModal('settings-modal');
