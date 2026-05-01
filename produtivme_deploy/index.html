@@ -2733,6 +2733,16 @@ const RealtimeManager = (() => {
         p => onTableChange('tarefas', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'metas', filter:`user_id=eq.${userId}` },
         p => onTableChange('metas', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'habitos', filter:`user_id=eq.${userId}` },
+        p => onTableChange('habitos', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'financas_transacoes', filter:`user_id=eq.${userId}` },
+        p => onTableChange('financas_transacoes', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'financas_metas', filter:`user_id=eq.${userId}` },
+        p => onTableChange('financas_metas', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'humor_logs', filter:`user_id=eq.${userId}` },
+        p => onTableChange('humor_logs', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'gamificacao', filter:`user_id=eq.${userId}` },
+        p => onTableChange('gamificacao', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
