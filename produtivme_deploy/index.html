@@ -2790,15 +2790,6 @@ const RealtimeManager = (() => {
   // 1. Registra o SW próprio PRIMEIRO (antes do OneSignal init)
   if ('serviceWorker' in navigator) {
     try {
-      // Remove SWs conflitantes de versões anteriores
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) {
-        const url = reg.active?.scriptURL || '';
-        if (url && !url.endsWith('/sw.js')) {
-          await reg.unregister();
-          console.log('[PWA] SW antigo removido:', url);
-        }
-      }
       await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
       console.log('[PWA] SW registrado ✅');
 
