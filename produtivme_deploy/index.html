@@ -1478,10 +1478,46 @@ _isSyncing: false,
     try{
       await this.loadTasksRemote();
       await this.loadGoalsRemote();
+      await this.loadFinancasRemote();
       await this.loadAnswersRemote();
       this.saveLocal();
       setSyncStatus('online');
     }catch(e){ setSyncStatus('error'); }
+  },
+
+  // Carrega transações e metas financeiras do Supabase
+  async loadFinancasRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const userId = this.state.user.id;
+
+    const [{data:trans,error:e1},{data:metas,error:e2}] = await Promise.all([
+      window.supabaseClient.from('financas_transacoes').select('*').eq('user_id',userId).order('date',{ascending:false}),
+      window.supabaseClient.from('financas_metas').select('*').eq('user_id',userId)
+    ]);
+
+    if(e1||e2) return;
+
+    const finance = {
+      transactions: (trans||[]).map(t=>({
+        id: t.id,
+        type: t.type,       // 'income' | 'expense'
+        desc: t.title,
+        value: parseFloat(t.amount)||0,
+        cat: t.category||'outros',
+        date: t.date,
+        created_at: t.created_at
+      })),
+      goals: (metas||[]).map(g=>({
+        id: g.id,
+        name: g.title,
+        target: parseFloat(g.goal)||0,
+        saved: parseFloat(g.saved)||0,
+        deadline: g.deadline,
+        created_at: g.created_at
+      }))
+    };
+
+    saveFinance(finance);
   },
 
   async loadTasksRemote(){
@@ -2220,6 +2256,18 @@ const payload = {
     }
     saveFinance(finance); this.renderFinance(); closeModal('fin-goal-modal');
     showToast('Meta salva! 🎯','success');
+    if(this.state.user&&!this.state.user.local){
+      const gId=existId||finance.goals[finance.goals.length-1]?.id;
+      const g=finance.goals.find(x=>x.id===gId);
+      if(g){
+        window.supabaseClient.from('financas_metas').upsert([{
+          id: g.id, user_id: this.state.user.id,
+          title: g.name, goal: g.target,
+          saved: g.saved||0, deadline: g.deadline||null,
+          created_at: g.created_at||new Date().toISOString()
+        }]).then(({error})=>{ if(error) console.error('[Fin] Erro ao salvar meta:', error); });
+      }
+    }
   },
 
   deleteFinGoal(id){
@@ -2227,6 +2275,11 @@ const payload = {
     const finance=loadFinance();
     finance.goals=(finance.goals||[]).filter(g=>g.id!==id);
     saveFinance(finance); this.renderFinGoals(); showToast('Meta removida','default');
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('financas_metas').delete()
+        .eq('id',id).eq('user_id',this.state.user.id)
+        .then(({error})=>{ if(error) console.error('[Fin] Erro ao deletar meta:', error); });
+    }
   },
 
   renderTransactionsList(){
@@ -2263,6 +2316,11 @@ const payload = {
     const finance=loadFinance();
     finance.transactions=(finance.transactions||[]).filter(t=>t.id!==id);
     saveFinance(finance); this.renderFinance(); showToast('Transação removida','default');
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('financas_transacoes').delete()
+        .eq('id',id).eq('user_id',this.state.user.id)
+        .then(({error})=>{ if(error) console.error('[Fin] Erro ao deletar transação:', error); });
+    }
   },
 
   saveTransaction(){
@@ -2281,6 +2339,18 @@ const payload = {
     }
     saveFinance(finance); this.renderFinance(); closeModal('transaction-modal');
     showToast(q('trans-type-hidden').value==='income'?'Entrada registrada 💚':'Saída registrada 🔴','success');
+    // Salva no Supabase em background
+    if(this.state.user&&!this.state.user.local){
+      const t=finance.transactions.find(x=>x.id===(existId||finance.transactions[finance.transactions.length-1]?.id));
+      if(t){
+        window.supabaseClient.from('financas_transacoes').upsert([{
+          id: t.id, user_id: this.state.user.id,
+          title: t.desc, amount: t.value,
+          type: t.type, category: t.cat,
+          date: t.date, created_at: t.created_at||new Date().toISOString()
+        }]).then(({error})=>{ if(error) console.error('[Fin] Erro ao salvar transação:', error); });
+      }
+    }
   },
 
   openNewTransaction(type){
