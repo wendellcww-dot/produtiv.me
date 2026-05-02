@@ -1479,10 +1479,38 @@ _isSyncing: false,
       await this.loadTasksRemote();
       await this.loadGoalsRemote();
       await this.loadFinancasRemote();
+      await this.loadHabitosRemote();
+      await this.loadMoodRemote();
       await this.loadAnswersRemote();
       this.saveLocal();
       setSyncStatus('online');
     }catch(e){ setSyncStatus('error'); }
+  },
+
+  // Carrega hábitos do Supabase
+  async loadHabitosRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('habitos').select('*').eq('user_id',this.state.user.id);
+    if(error||!data) return;
+    // Mantém os dias marcados locais que são mais recentes
+    const local=loadHabits();
+    const merged=data.map(h=>({
+      id:h.id, name:h.title, icon:h.icon||'⭐',
+      days: local.find(l=>l.id===h.id)?.days || (h.days||[])
+    }));
+    saveHabits(merged);
+  },
+
+  // Carrega humor do Supabase
+  async loadMoodRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('humor_logs').select('*').eq('user_id',this.state.user.id)
+      .order('date',{ascending:false}).limit(60);
+    if(error||!data) return;
+    const moods=data.map(m=>({date:m.date,value:m.value}));
+    saveMood(moods);
   },
 
   // Carrega transações e metas financeiras do Supabase
@@ -2043,19 +2071,37 @@ const payload = {
     if(idx===-1) h.days.push(day); else h.days.splice(idx,1);
     saveHabits(habits); this.renderHabits();
     if(idx===-1){ addXp(5); showToast('Hábito marcado! +5 XP','success'); }
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('habitos').update({days:h.days})
+        .eq('id',habitId).eq('user_id',this.state.user.id)
+        .then(({error})=>{ if(error) console.error('[Habitos] Erro ao atualizar dias:',error); });
+    }
   },
 
   saveHabit(){
     const name=q('habit-name').value.trim(); if(!name){ showToast('Digite o nome do hábito','error'); return; }
     const habits=loadHabits();
-    habits.push({id:crypto.randomUUID(),name,icon:q('habit-icon').value||'⭐',days:[]});
+    const newHabit={id:crypto.randomUUID(),name,icon:q('habit-icon').value||'⭐',days:[]};
+    habits.push(newHabit);
     saveHabits(habits); this.renderHabits(); closeModal('habit-modal'); showToast('Hábito criado! 🔥','success');
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('habitos').upsert([{
+        id:newHabit.id, user_id:this.state.user.id,
+        title:newHabit.name, icon:newHabit.icon,
+        days:newHabit.days, created_at:new Date().toISOString()
+      }]).then(({error})=>{ if(error) console.error('[Habitos] Erro ao salvar:',error); });
+    }
   },
 
   deleteHabit(id){
     if(!confirm('Excluir hábito?')) return;
     saveHabits(loadHabits().filter(h=>h.id!==id));
     this.renderHabits(); showToast('Hábito removido','default');
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('habitos').delete()
+        .eq('id',id).eq('user_id',this.state.user.id)
+        .then(({error})=>{ if(error) console.error('[Habitos] Erro ao deletar:',error); });
+    }
   },
 
   /* ══════════════════════════════════════
@@ -2588,6 +2634,11 @@ q('btn-save-mood').addEventListener('click',()=>{
   else moods.push({date:today,value:selectedMood});
   saveMood(moods); app.renderMoodChart(); showToast('Humor registrado! 💙','success');
   addXp(5);
+  if(app.state.user&&!app.state.user.local){
+    window.supabaseClient.from('humor_logs').upsert([{
+      user_id:app.state.user.id, date:today, value:selectedMood
+    },{onConflict:'user_id,date'}]).then(({error})=>{ if(error) console.error('[Mood] Erro ao salvar:',error); });
+  }
 });
 q('btn-save-reflection').addEventListener('click',()=>{
   showToast('Reflexão salva! 📖','success'); addXp(5);
