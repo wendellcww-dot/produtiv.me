@@ -1519,15 +1519,7 @@ _isSyncing: false,
     updated_at: t.updated_at
   });
 });
-    // Merge: manter tarefas locais do dia atual se não sincronizadas
-    const today=todayKey();
-    if((this.state.data.routines||{})[today]){
-      const localToday=(this.state.data.routines[today]||[]).filter(lt=>!data.find(r=>r.id===lt.id));
-      if(localToday.length){
-        if(!newRoutines[today]) newRoutines[today]=[];
-        newRoutines[today]=[...newRoutines[today],...localToday];
-      }
-    }
+    // Substitui completamente pelo estado do banco (fonte da verdade)
     this.state.data.routines=newRoutines;
   },
 
