@@ -1054,35 +1054,37 @@ window.navTo = function(screen){
 let _isOnline = navigator.onLine;
 
 async function checkRealConnectivity(){
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),3000);
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/tarefas?select=id&limit=1`,{
-      headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`},
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    return r.status < 500;
-  }catch(e){ return navigator.onLine; }
+  // Usa apenas navigator.onLine — o Realtime já cuida da reconexão
+  // Fetch paralelo causava oscilação ao competir com o WebSocket
+  return navigator.onLine;
 }
 
 async function updateOnlineStatus(force){
   const was=_isOnline;
   if(force!==undefined) _isOnline=force;
-  else _isOnline=navigator.onLine ? await checkRealConnectivity() : false;
+  else _isOnline=navigator.onLine;
   const banner=q('offline-banner');
   if(banner){ _isOnline ? banner.classList.remove('show') : banner.classList.add('show'); }
-  if(!was && _isOnline){ setSyncStatus('syncing'); await offlineQueue.flush(); }
+  if(!was && _isOnline){
+    setSyncStatus('syncing');
+    await offlineQueue.flush();
+    if(app?.state?.user && !app.state.user.local) await app.syncRemote();
+  }
   if(!_isOnline) setSyncStatus('offline');
 }
 window.addEventListener('online', ()=>updateOnlineStatus());
 window.addEventListener('offline', ()=>updateOnlineStatus(false));
-setInterval(()=>updateOnlineStatus(), 30000);
+// Polling a cada 60s apenas para checar fila offline — não para status
+setInterval(()=>{ if(!_isOnline && navigator.onLine) updateOnlineStatus(); }, 60000);
 document.addEventListener('visibilitychange', async ()=>{
-  if(!document.hidden){
-    await updateOnlineStatus();
-    if(app?.state?.user && !app.state.user.local) await app.syncRemote();
+  if(!document.hidden && _isOnline){
+    // Só sincroniza se ficou mais de 2min em background
+    const now=Date.now();
+    if(!window._lastVisible || now-window._lastVisible > 120000){
+      if(app?.state?.user && !app.state.user.local) await app.syncRemote();
+    }
   }
+  if(document.hidden) window._lastVisible=Date.now();
 });
 
 function setSyncStatus(s){
@@ -1476,15 +1478,28 @@ _isSyncing: false,
     if(!_isOnline){ setSyncStatus('offline'); return; }
     setSyncStatus('syncing');
     try{
-      await this.loadTasksRemote();
-      await this.loadGoalsRemote();
-      await this.loadFinancasRemote();
-      await this.loadHabitosRemote();
-      await this.loadMoodRemote();
-      await this.loadAnswersRemote();
+      await Promise.all([
+        this.loadTasksRemote(),
+        this.loadGoalsRemote(),
+        this.loadFinancasRemote(),
+        this.loadHabitosRemote(),
+        this.loadMoodRemote(),
+        this.loadAnswersRemote(),
+        this.loadFrasesRemote(),
+      ]);
       this.saveLocal();
       setSyncStatus('online');
-    }catch(e){ setSyncStatus('error'); }
+    }catch(e){ console.error('[Sync] Erro:',e); setSyncStatus('error'); }
+  },
+
+  // Carrega frases customizadas do Supabase
+  async loadFrasesRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('frases_custom').select('*').eq('user_id',this.state.user.id);
+    if(error||!data) return;
+    const frases=data.map(f=>({id:f.id,text:f.text,author:f.author||'Desconhecido',cat:f.cat||'produtividade'}));
+    saveCustomFrases(frases);
   },
 
   // Carrega hábitos do Supabase
@@ -2545,6 +2560,11 @@ const payload = {
     if(!confirm('Excluir esta frase?')) return;
     const customs=loadCustomFrases().filter(f=>f.id!==id);
     saveCustomFrases(customs); this.renderFrases(); showToast('Frase removida','default');
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('frases_custom').delete()
+        .eq('id',id).eq('user_id',this.state.user.id)
+        .then(({error})=>{ if(error) console.error('[Frases] Erro ao deletar:',error); });
+    }
   },
 
 };/* end app */
@@ -2610,6 +2630,14 @@ q('btn-salvar-frase').addEventListener('click',()=>{
   customs.push({id:'cf'+Date.now(),text,author:q('frase-author').value.trim()||'Desconhecido',cat:q('frase-cat').value});
   saveCustomFrases(customs); app.renderFrases();
   closeModal('frase-modal'); showToast('Frase adicionada! ✨','success');
+  if(app.state.user&&!app.state.user.local){
+    const f=customs[customs.length-1];
+    window.supabaseClient.from('frases_custom').upsert([{
+      id:f.id, user_id:app.state.user.id,
+      text:f.text, author:f.author, cat:f.cat,
+      created_at:new Date().toISOString()
+    }]).then(({error})=>{ if(error) console.error('[Frases] Erro ao salvar:',error); });
+  }
 });
 document.querySelectorAll('.frase-filter').forEach(btn=>{
   btn.addEventListener('click',()=>{
@@ -2856,6 +2884,8 @@ const RealtimeManager = (() => {
         p => onTableChange('humor_logs', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'gamificacao', filter:`user_id=eq.${userId}` },
         p => onTableChange('gamificacao', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'frases_custom', filter:`user_id=eq.${userId}` },
+        p => onTableChange('frases_custom', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
