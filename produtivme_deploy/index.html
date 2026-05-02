@@ -1498,6 +1498,7 @@ _isSyncing: false,
         this.loadFrasesRemote(),
         this.loadGamifyRemote(),
         this.loadDiarioRemote(),
+        this.loadCustomQRemote(),
       ]);
       this.saveLocal();
       setSyncStatus('online');
@@ -1537,6 +1538,14 @@ _isSyncing: false,
     });
   },
 
+  async loadCustomQRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('questione_custom').select('*').eq('user_id',this.state.user.id);
+    if(error||!data) return;
+    saveCustomQuestions(data.map(q=>({id:q.id,icon:q.icon||'💭',text:q.text})));
+  },
+
   async loadFrasesRemote(){
     if(!this.state.user||this.state.user.local) return;
     const {data,error}=await window.supabaseClient
@@ -1560,6 +1569,7 @@ _isSyncing: false,
         this.loadFrasesRemote(),
         this.loadGamifyRemote(),
         this.loadDiarioRemote(),
+        this.loadCustomQRemote(),
       ]);
       this.saveLocal();
       setSyncStatus('online');
@@ -1602,6 +1612,14 @@ _isSyncing: false,
   },
 
   // Carrega frases customizadas do Supabase
+  async loadCustomQRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('questione_custom').select('*').eq('user_id',this.state.user.id);
+    if(error||!data) return;
+    saveCustomQuestions(data.map(q=>({id:q.id,icon:q.icon||'💭',text:q.text})));
+  },
+
   async loadFrasesRemote(){
     if(!this.state.user||this.state.user.local) return;
     const {data,error}=await window.supabaseClient
@@ -1821,11 +1839,13 @@ const payload = {
     this.renderGoals();
     this.renderHabits();
     this.renderMental();
+    this.renderMoodChart();
     this.renderQuestions();
     this.renderXP();
     this.renderMedals();
     this.renderFinance();
     this.renderFrases();
+    this.renderAnalytics();
   },
 
   /* ══════════════════════════════════════
@@ -2316,6 +2336,11 @@ const payload = {
     if(!confirm('Excluir pergunta?')) return;
     saveCustomQuestions(loadCustomQuestions().filter(x=>x.id!==id));
     this.renderQuestions(); showToast('Pergunta removida','default');
+    if(this.state.user&&!this.state.user.local){
+      window.supabaseClient.from('questione_custom').delete()
+        .eq('id',id).eq('user_id',this.state.user.id)
+        .then(({error})=>{ if(error) console.error('[CustomQ] Erro ao deletar:',error); });
+    }
   },
 
   /* ══════════════════════════════════════
@@ -2732,6 +2757,13 @@ q('btn-save-question').addEventListener('click',()=>{
   customs.push({id:'cq-'+Date.now(),icon:q('question-emoji').value||'💭',text});
   saveCustomQuestions(customs); app.renderQuestions();
   closeModal('question-modal'); showToast('Pergunta adicionada! 🔮','success');
+  if(app.state.user&&!app.state.user.local){
+    const nq=customs[customs.length-1];
+    window.supabaseClient.from('questione_custom').upsert([{
+      id:nq.id, user_id:app.state.user.id, icon:nq.icon||'💭', text:nq.text,
+      created_at:new Date().toISOString()
+    }]).then(({error})=>{ if(error) console.error('[CustomQ] Erro:',error); });
+  }
 });
 
 // Frases
@@ -3018,6 +3050,12 @@ const RealtimeManager = (() => {
         p => onTableChange('humor_logs', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'gamificacao', filter:`user_id=eq.${userId}` },
         p => onTableChange('gamificacao', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'frases_custom', filter:`user_id=eq.${userId}` },
+        p => onTableChange('frases_custom', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'questione_respostas', filter:`user_id=eq.${userId}` },
+        p => onTableChange('questione_respostas', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'diario_reflexao', filter:`user_id=eq.${userId}` },
+        p => onTableChange('diario_reflexao', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
