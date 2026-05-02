@@ -1654,7 +1654,7 @@ const payload = {
     const payload={
       id:goal.id, user_id:this.state.user.id, title:goal.title,
       description:goal.desc||'', type:goal.type, priority:goal.priority||'media',
-      start_date:goal.start, end_date:goal.end, progress:Number(goal.progress)||0,
+      start_date:goal.start||null, end_date:goal.end||null, progress:Number(goal.progress)||0,
       completed:!!goal.completed, created_at:goal.created_at||new Date().toISOString()
     };
     if(!_isOnline){ offlineQueue.push({type:'upsert_goal',id:goal.id,user_id:this.state.user.id,payload}); return; }
