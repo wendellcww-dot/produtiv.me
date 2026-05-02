@@ -765,7 +765,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
       <button class="nav-item" data-screen="mental"><i class="fas fa-brain"></i>Mental</button>
       <button class="nav-item" data-screen="frases"><i class="fas fa-quote-left"></i>Frases</button>
       <button class="nav-item" data-screen="questione"><i class="fas fa-search"></i>Refletir</button>
-      <button class="nav-item" data-screen="analytics"><i class="fas fa-chart-pie"></i>Stats</button>
+      <button class="nav-item" data-screen="analytics"><i class="fas fa-chart-pie"></i>Análise</button>
     </nav>
   </div>
 </div>
@@ -1053,11 +1053,7 @@ window.navTo = function(screen){
 ══════════════════════════════════════ */
 let _isOnline = navigator.onLine;
 
-async function checkRealConnectivity(){
-  // Usa apenas navigator.onLine — o Realtime já cuida da reconexão
-  // Fetch paralelo causava oscilação ao competir com o WebSocket
-  return navigator.onLine;
-}
+async function checkRealConnectivity(){ return navigator.onLine; }
 
 async function updateOnlineStatus(force){
   const was=_isOnline;
@@ -1074,11 +1070,9 @@ async function updateOnlineStatus(force){
 }
 window.addEventListener('online', ()=>updateOnlineStatus());
 window.addEventListener('offline', ()=>updateOnlineStatus(false));
-// Polling a cada 60s apenas para checar fila offline — não para status
 setInterval(()=>{ if(!_isOnline && navigator.onLine) updateOnlineStatus(); }, 60000);
 document.addEventListener('visibilitychange', async ()=>{
   if(!document.hidden && _isOnline){
-    // Só sincroniza se ficou mais de 2min em background
     const now=Date.now();
     if(!window._lastVisible || now-window._lastVisible > 120000){
       if(app?.state?.user && !app.state.user.local) await app.syncRemote();
@@ -1249,6 +1243,21 @@ const MEDALS = [
 
 function loadGamify(){ try{ return JSON.parse(localStorage.getItem(GAMIFY_KEY)||'{}'); }catch(e){ return {}; } }
 function saveGamify(d){ try{ localStorage.setItem(GAMIFY_KEY, JSON.stringify(d)); }catch(e){} }
+function syncGamifyRemote(g){
+  if(!window.app?.state?.user?.id||window.app.state.user.local) return;
+  const userId=window.app.state.user.id;
+  window.supabaseClient.from('gamificacao').upsert([{
+    user_id:userId,
+    total_xp:g.totalXp||0,
+    total_done:g.totalDone||0,
+    medals:(g.medals||[]).length,
+    fin_trans:g.finTrans||0,
+    fin_goals:g.finGoals||0,
+    updated_at:new Date().toISOString()
+  }],{onConflict:'user_id'}).then(({error})=>{
+    if(error) console.error('[Gamify] Erro ao sincronizar:',error);
+  });
+}
 function getGamifyState(){ const d=loadGamify(); return {totalXp:d.totalXp||0,totalDone:d.totalDone||0,medals:d.medals||[],finTrans:d.finTrans||0,finGoals:d.finGoals||0}; }
 
 function computeLevel(xp){
@@ -1273,6 +1282,7 @@ function addXp(amount, sourceEl){
   g.totalXp=(g.totalXp||0)+amount;
   if(amount>=10) g.totalDone=(g.totalDone||0)+1;
   saveGamify(g);
+  syncGamifyRemote(g);
   if(sourceEl) showXpFloat(amount, sourceEl);
   app.renderXP();
 }
@@ -1486,10 +1496,109 @@ _isSyncing: false,
         this.loadMoodRemote(),
         this.loadAnswersRemote(),
         this.loadFrasesRemote(),
+        this.loadGamifyRemote(),
+        this.loadDiarioRemote(),
       ]);
       this.saveLocal();
       setSyncStatus('online');
-    }catch(e){ console.error('[Sync] Erro:',e); setSyncStatus('error'); }
+    }catch(e){ console.error('[Sync]',e); setSyncStatus('error'); }
+  },
+
+  async loadGamifyRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('gamificacao').select('*').eq('user_id',this.state.user.id).single();
+    if(error||!data) return;
+    const local=loadGamify();
+    const merged={
+      totalXp:Math.max(local.totalXp||0,data.total_xp||0),
+      totalDone:Math.max(local.totalDone||0,data.total_done||0),
+      medals:local.medals||[],
+      finTrans:Math.max(local.finTrans||0,data.fin_trans||0),
+      finGoals:Math.max(local.finGoals||0,data.fin_goals||0),
+    };
+    saveGamify(merged);
+    if((local.totalXp||0)>(data.total_xp||0)) syncGamifyRemote(merged);
+  },
+
+  async loadDiarioRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('diario_reflexao').select('*').eq('user_id',this.state.user.id)
+      .order('date_key',{ascending:false}).limit(30);
+    if(error||!data) return;
+    const byDay={};
+    data.forEach(r=>{
+      if(!byDay[r.date_key]) byDay[r.date_key]={};
+      byDay[r.date_key][r.question_index]=r.answer;
+    });
+    Object.entries(byDay).forEach(([date,answers])=>{
+      localStorage.setItem('pm18_diario_'+date, JSON.stringify(answers));
+    });
+  },
+
+  async loadFrasesRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('frases_custom').select('*').eq('user_id',this.state.user.id);
+    if(error||!data) return;
+    saveCustomFrases(data.map(f=>({id:f.id,text:f.text,author:f.author||'Desconhecido',cat:f.cat||'produtividade'})));
+  },
+
+  async syncRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    if(!_isOnline){ setSyncStatus('offline'); return; }
+    setSyncStatus('syncing');
+    try{
+      await Promise.all([
+        this.loadTasksRemote(),
+        this.loadGoalsRemote(),
+        this.loadFinancasRemote(),
+        this.loadHabitosRemote(),
+        this.loadMoodRemote(),
+        this.loadAnswersRemote(),
+        this.loadFrasesRemote(),
+        this.loadGamifyRemote(),
+        this.loadDiarioRemote(),
+      ]);
+      this.saveLocal();
+      setSyncStatus('online');
+    }catch(e){ console.error('[Sync]',e); setSyncStatus('error'); }
+  },
+
+  // Carrega gamificação/XP do Supabase
+  async loadGamifyRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('gamificacao').select('*').eq('user_id',this.state.user.id).single();
+    if(error||!data) return;
+    const local=loadGamify();
+    const merged={
+      totalXp:Math.max(local.totalXp||0,data.total_xp||0),
+      totalDone:Math.max(local.totalDone||0,data.total_done||0),
+      medals:local.medals||[],
+      finTrans:Math.max(local.finTrans||0,data.fin_trans||0),
+      finGoals:Math.max(local.finGoals||0,data.fin_goals||0),
+    };
+    saveGamify(merged);
+    if((local.totalXp||0)>(data.total_xp||0)) syncGamifyRemote(merged);
+  },
+
+  // Carrega diário de reflexão do Supabase
+  async loadDiarioRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('diario_reflexao').select('*').eq('user_id',this.state.user.id)
+      .order('date_key',{ascending:false}).limit(30);
+    if(error||!data) return;
+    const byDay={};
+    data.forEach(r=>{
+      if(!byDay[r.date_key]) byDay[r.date_key]={};
+      byDay[r.date_key][r.question_index]=r.answer;
+    });
+    Object.entries(byDay).forEach(([date,answers])=>{
+      localStorage.setItem('pm18_diario_'+date, JSON.stringify(answers));
+    });
   },
 
   // Carrega frases customizadas do Supabase
@@ -1816,6 +1925,7 @@ const payload = {
     const tasks=(this.state.data.routines||{})[today]||[];
     const task=tasks.find(t=>t.id===id);
     if(!task) return;
+    const wasDone = task.done;
     task.done=!task.done; task.updated_at=new Date().toISOString();
     this.saveLocal(); this.renderDashboard(); this.saveTaskRemote(task, today);
     const el=q('task-'+id);
@@ -1823,6 +1933,14 @@ const payload = {
     if(task.done){
       addXp(10, el); showToast('✅ Tarefa concluída! +10 XP','success');
       if(tasks.every(t=>t.done)&&tasks.length>0) window._verificarParabens?.();
+    } else if(wasDone) {
+      // Desmarcou — remove XP
+      const g=loadGamify();
+      g.totalXp=Math.max(0,(g.totalXp||0)-10);
+      g.totalDone=Math.max(0,(g.totalDone||0)-1);
+      saveGamify(g);
+      syncGamifyRemote(g);
+      showToast('↩️ Tarefa desmarcada (-10 XP)','default');
     }
   },
 
@@ -2126,6 +2244,10 @@ const payload = {
     const questions=['Como foi seu dia?','O que você aprendeu hoje?','Pelo que você é grato?','O que pode melhorar amanhã?'];
     const pq=q('psico-questions');
     if(pq) pq.innerHTML=questions.map((qu,i)=>`<div class="form-group"><label>${qu}</label><textarea id="psico-q${i}" rows="2" placeholder="Escreva aqui..."></textarea></div>`).join('');
+    // Carrega respostas salvas do dia
+    const today=todayKey();
+    const saved=JSON.parse(localStorage.getItem('pm18_diario_'+today)||'{}');
+    questions.forEach((_,i)=>{ const el=q('psico-q'+i); if(el&&saved[i]) el.value=saved[i]; });
   },
 
   renderMoodChart(){
@@ -2560,11 +2682,6 @@ const payload = {
     if(!confirm('Excluir esta frase?')) return;
     const customs=loadCustomFrases().filter(f=>f.id!==id);
     saveCustomFrases(customs); this.renderFrases(); showToast('Frase removida','default');
-    if(this.state.user&&!this.state.user.local){
-      window.supabaseClient.from('frases_custom').delete()
-        .eq('id',id).eq('user_id',this.state.user.id)
-        .then(({error})=>{ if(error) console.error('[Frases] Erro ao deletar:',error); });
-    }
   },
 
 };/* end app */
@@ -2630,14 +2747,6 @@ q('btn-salvar-frase').addEventListener('click',()=>{
   customs.push({id:'cf'+Date.now(),text,author:q('frase-author').value.trim()||'Desconhecido',cat:q('frase-cat').value});
   saveCustomFrases(customs); app.renderFrases();
   closeModal('frase-modal'); showToast('Frase adicionada! ✨','success');
-  if(app.state.user&&!app.state.user.local){
-    const f=customs[customs.length-1];
-    window.supabaseClient.from('frases_custom').upsert([{
-      id:f.id, user_id:app.state.user.id,
-      text:f.text, author:f.author, cat:f.cat,
-      created_at:new Date().toISOString()
-    }]).then(({error})=>{ if(error) console.error('[Frases] Erro ao salvar:',error); });
-  }
 });
 document.querySelectorAll('.frase-filter').forEach(btn=>{
   btn.addEventListener('click',()=>{
@@ -2668,8 +2777,33 @@ q('btn-save-mood').addEventListener('click',()=>{
     },{onConflict:'user_id,date'}]).then(({error})=>{ if(error) console.error('[Mood] Erro ao salvar:',error); });
   }
 });
-q('btn-save-reflection').addEventListener('click',()=>{
+q('btn-save-reflection').addEventListener('click',async()=>{
+  const today=todayKey();
+  const answers={};
+  for(let i=0;i<4;i++){ const el=q('psico-q'+i); if(el) answers[i]=el.value; }
+  localStorage.setItem('pm18_diario_'+today, JSON.stringify(answers));
   showToast('Reflexão salva! 📖','success'); addXp(5);
+  // Salva cada resposta no Supabase
+  if(app.state.user&&!app.state.user.local){
+    const labels=['Como foi seu dia?','O que você aprendeu hoje?','Pelo que você é grato?','O que pode melhorar amanhã?'];
+    const upserts=Object.entries(answers)
+      .filter(([,v])=>v.trim())
+      .map(([i,v])=>({
+        user_id:app.state.user.id,
+        date_key:today,
+        question_index:Number(i),
+        question_label:labels[Number(i)],
+        answer:v,
+        updated_at:new Date().toISOString()
+      }));
+    if(upserts.length){
+      const {error}=await window.supabaseClient
+        .from('diario_reflexao')
+        .upsert(upserts,{onConflict:'user_id,date_key,question_index'});
+      if(error) console.error('[Diário] Erro ao salvar:',error);
+      else console.log('[Diário] Reflexão salva ✅');
+    }
+  }
 });
 
 /* ══════════════════════════════════════
@@ -2884,8 +3018,6 @@ const RealtimeManager = (() => {
         p => onTableChange('humor_logs', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'gamificacao', filter:`user_id=eq.${userId}` },
         p => onTableChange('gamificacao', p))
-      .on('postgres_changes', { event:'*', schema:'public', table:'frases_custom', filter:`user_id=eq.${userId}` },
-        p => onTableChange('frases_custom', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
