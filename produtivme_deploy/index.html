@@ -2806,7 +2806,7 @@ q('btn-save-mood').addEventListener('click',()=>{
   if(app.state.user&&!app.state.user.local){
     window.supabaseClient.from('humor_logs').upsert([{
       user_id:app.state.user.id, date:today, value:selectedMood
-    },{onConflict:'user_id,date'}]).then(({error})=>{ if(error) console.error('[Mood] Erro ao salvar:',error); });
+    }],{onConflict:'user_id,date'}).then(({error})=>{ if(error) console.error('[Mood] Erro ao salvar:',error); });
   }
 });
 q('btn-save-reflection').addEventListener('click',async()=>{
