@@ -2268,6 +2268,16 @@ const payload = {
     const today=todayKey();
     const saved=JSON.parse(localStorage.getItem('pm18_diario_'+today)||'{}');
     questions.forEach((_,i)=>{ const el=q('psico-q'+i); if(el&&saved[i]) el.value=saved[i]; });
+    // Restaura emoji de humor do dia
+    const moods=loadMood();
+    const todayMood=moods.find(m=>m.date===today);
+    if(todayMood){
+      document.querySelectorAll('.mood-btn').forEach(btn=>{
+        btn.classList.toggle('active', Number(btn.dataset.mood)===todayMood.value);
+      });
+      // Atualiza a variável global selectedMood
+      window.selectedMood=todayMood.value;
+    }
   },
 
   renderMoodChart(){
