@@ -1816,10 +1816,9 @@ const payload = {
       if(error||!data) return;
       const local=this.loadQuestionAnswers();
       data.forEach(row=>{
-        const localTs=local['_ts_'+row.question_id]||'';
-        if(!local[row.question_id]||(row.updated_at||'')>=localTs){
-          local[row.question_id]=row.answer; local['_ts_'+row.question_id]=row.updated_at||'';
-        }
+        // Banco sempre vence — é a fonte da verdade entre dispositivos
+        local[row.question_id]=row.answer;
+        local['_ts_'+row.question_id]=row.updated_at||'';
       });
       localStorage.setItem(QUESTIONS_KEY, JSON.stringify(local));
     }catch(e){}
