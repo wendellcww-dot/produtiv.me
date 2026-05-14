@@ -1398,62 +1398,9 @@ _isSyncing: false,
       this.showApp();
       showLoading('Sincronizando dados...');
       await this.syncRemote();
-      // Copia tarefas pendentes do dia anterior para hoje
-      this.carryOverTasks();
       hideLoading();
     }
     await updateOnlineStatus();
-  },
-
-  // Copia tarefas NÃO concluídas do dia anterior para hoje
-  carryOverTasks(){
-    const today = todayKey();
-    const r = this.state.data.routines || {};
-
-    // Pega todos os dias anteriores ordenados do mais recente
-    const pastDays = Object.keys(r)
-      .filter(dk => dk < today)
-      .sort()
-      .reverse();
-
-    if (!pastDays.length) return;
-
-    const lastDay = pastDays[0];
-    const lastTasks = r[lastDay] || [];
-    // Copia TODAS as tarefas, concluídas ou não
-    if (!lastTasks.length) return;
-
-    // Evita duplicar: só copia se ainda não existe tarefa com mesmo ID hoje
-    if (!r[today]) r[today] = [];
-    const todayIds = new Set(r[today].map(t => t.id));
-
-    let added = 0;
-    lastTasks.forEach(t => {
-      if (!todayIds.has(t.id)) {
-        const novaTarefa = {
-          ...t,
-          done: false,                        // sempre começa como pendente
-          date_key: today,
-          updated_at: new Date().toISOString(),
-          // alarmTime mantido — o usuário definiu, deve continuar
-        };
-        r[today].push(novaTarefa);
-        todayIds.add(t.id);
-        added++;
-
-        // Salva no banco com a nova date_key
-        if(this.state.user && !this.state.user.local){
-          this.saveTaskRemote(novaTarefa, today);
-        }
-      }
-    });
-
-    if (added > 0) {
-      this.state.data.routines = r;
-      this.saveLocal();
-      this.renderDashboard();
-      showToast(`📋 ${added} tarefa${added > 1 ? 's' : ''} pendente${added > 1 ? 's' : ''} copiada${added > 1 ? 's' : ''} de ontem`, 'default', 4000);
-    }
   },
 
   /* ── AUTH UI ── */
@@ -1877,6 +1824,30 @@ const payload = {
     }catch(e){}
   },
 
+
+  carryOverTasks(){
+    const today=todayKey();
+    const r=this.state.data.routines||{};
+    const pastDays=Object.keys(r).filter(dk=>dk<today).sort().reverse();
+    if(!pastDays.length) return;
+    const lastDay=pastDays[0];
+    const lastTasks=r[lastDay]||[];
+    if(!lastTasks.length) return;
+    if(!r[today]) r[today]=[];
+    const todayIds=new Set(r[today].map(t=>t.id));
+    let added=0;
+    lastTasks.forEach(t=>{
+      if(!todayIds.has(t.id)){
+        const nova={...t,done:false,date_key:today,updated_at:new Date().toISOString()};
+        r[today].push(nova); todayIds.add(t.id); added++;
+        if(this.state.user&&!this.state.user.local) this.saveTaskRemote(nova,today);
+      }
+    });
+    if(added>0){
+      this.state.data.routines=r; this.saveLocal(); this.renderDashboard();
+      showToast(`📋 ${added} tarefa${added>1?'s':''} copiada${added>1?'s':''} de ontem`,'default',4000);
+    }
+  },
   /* Canal realtime ÚNICO por usuário — gerenciado pelo RealtimeManager */
   initRealtimeSync(){
     RealtimeManager.init(this.state.user?.id);
