@@ -1827,22 +1827,52 @@ const payload = {
 
   carryOverTasks(){
     const today=todayKey();
+
+    // Evita rodar mais de uma vez por dia
+    const lastCarry=localStorage.getItem('pm18_carry_done');
+    if(lastCarry===today) return;
+
     const r=this.state.data.routines||{};
+
+    // Pega o dia anterior mais recente que tem tarefas
     const pastDays=Object.keys(r).filter(dk=>dk<today).sort().reverse();
-    if(!pastDays.length) return;
+    if(!pastDays.length){ localStorage.setItem('pm18_carry_done',today); return; }
+
     const lastDay=pastDays[0];
     const lastTasks=r[lastDay]||[];
-    if(!lastTasks.length) return;
+
+    // Só copia se o dia anterior é realmente ontem ou antes (não um dia futuro)
+    if(!lastTasks.length){ localStorage.setItem('pm18_carry_done',today); return; }
+
     if(!r[today]) r[today]=[];
-    const todayIds=new Set(r[today].map(t=>t.id));
+
+    // Gera novos IDs para evitar conflito com tarefas do dia anterior no banco
+    const todayTitles=new Set(r[today].map(t=>t.title));
     let added=0;
+
     lastTasks.forEach(t=>{
-      if(!todayIds.has(t.id)){
-        const nova={...t,done:false,date_key:today,updated_at:new Date().toISOString()};
-        r[today].push(nova); todayIds.add(t.id); added++;
+      // Não duplica se já existe tarefa com mesmo título hoje
+      if(!todayTitles.has(t.title)){
+        const novoId=crypto.randomUUID();
+        const nova={
+          ...t,
+          id:novoId,          // novo ID para o novo dia
+          done:false,
+          date_key:today,
+          updated_at:new Date().toISOString(),
+          created_at:new Date().toISOString(),
+          // alarmTime mantido
+        };
+        r[today].push(nova);
+        todayTitles.add(t.title);
+        added++;
         if(this.state.user&&!this.state.user.local) this.saveTaskRemote(nova,today);
       }
     });
+
+    // Marca que já rodou hoje
+    localStorage.setItem('pm18_carry_done',today);
+
     if(added>0){
       this.state.data.routines=r; this.saveLocal(); this.renderDashboard();
       showToast(`📋 ${added} tarefa${added>1?'s':''} copiada${added>1?'s':''} de ontem`,'default',4000);
