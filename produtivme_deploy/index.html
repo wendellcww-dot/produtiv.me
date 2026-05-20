@@ -1744,7 +1744,7 @@ _isSyncing: false,
     if(!this.state.user||this.state.user.local) return;
     const now=new Date().toISOString();
     let alarmIso=null;
-    if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const ad=new Date(); ad.setHours(+h,+m,0,0); alarmIso=ad.toISOString(); }
+    if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const base=dateKey||new Date().toISOString().split('T')[0]; const ad=new Date(base+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00'); alarmIso=ad.toISOString(); }
 const prioridadeMap = {
   baixa: 1,
   media: 2,
@@ -1772,10 +1772,8 @@ const payload = {
   alarm_time: alarmIso,
 
 
-  // ✅ corrigido (date real)
-  date_key: dateKey
-    ? new Date(dateKey).toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0],
+  // ✅ corrigido (date real, sem shift UTC)
+  date_key: dateKey || new Date().toISOString().split('T')[0],
 
   created_at: task.created_at || new Date().toISOString(),
   updated_at: new Date().toISOString()
