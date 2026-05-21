@@ -3215,19 +3215,17 @@ const RealtimeManager = (() => {
         await OneSignal.Notifications.requestPermission();
         console.log('[OneSignal] Init OK ✅');
 
-        // Aguarda player_id e usuário logado para salvar no banco
+        // Vincula o user_id do Supabase ao OneSignal (funciona em múltiplos dispositivos)
         let tries = 0;
         const waitId = setInterval(async () => {
           tries++;
           if (tries > 20) { clearInterval(waitId); return; }
-          const playerId = await OneSignal.User.PushSubscription.id;
           const userId = window.app?.state?.user?.id;
-          if (!playerId || !userId) return;
+          if (!userId) return;
           clearInterval(waitId);
-          console.log('[OneSignal] Player ID:', playerId);
-          const { error } = await window.supabaseClient
-            .from('profiles').update({ player_id: playerId }).eq('id', userId);
-          if (!error) console.log('[OneSignal] player_id salvo ✅');
+          // login() vincula TODOS os dispositivos do usuário ao mesmo external_id
+          await OneSignal.login(userId);
+          console.log('[OneSignal] External ID vinculado:', userId);
         }, 500);
 
       } catch(e) { console.error('[OneSignal] Erro:', e); }
