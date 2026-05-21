@@ -1719,7 +1719,7 @@ _isSyncing: false,
 
     // ✅ horário formatado
     alarmTime: t.alarm_time
-      ? new Date(t.alarm_time).toTimeString().slice(0,5)
+      ? new Date(new Date(t.alarm_time).toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).toTimeString().slice(0,5)
       : '',
 
     created_at: t.created_at,
@@ -1909,7 +1909,7 @@ const payload = {
     const total=tasks.length, done=tasks.filter(t=>t.done).length;
     const pct=total?Math.round(done/total*100):0;
 
-    const now=new Date();
+    const now=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
     if(q('current-date')) q('current-date').textContent=now.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
     const h=now.getHours(), greet=h<12?'Bom dia ☀️':h<18?'Boa tarde 🌤️':'Boa noite 🌙';
     const name=(this.state.user?.name||'').split(' ')[0];
