@@ -1399,6 +1399,7 @@ _isSyncing: false,
       showLoading('Sincronizando dados...');
       await this.syncRemote();
       hideLoading();
+      this.carryOverTasks();
     }
     await updateOnlineStatus();
   },
@@ -1426,7 +1427,7 @@ _isSyncing: false,
       if(error){ showAlert('❌ '+error.message, true); return; }
       this.state.user={id:data.user.id,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
-      this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); hideLoading();
+      this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); hideLoading(); this.carryOverTasks();
     });
 
     q('register-form').addEventListener('submit', async e=>{
@@ -3233,6 +3234,21 @@ const RealtimeManager = (() => {
   }, 1000);
 
   window.RealtimeManager = RealtimeManager;
+  // Detector de virada de dia — roda carryOver sem precisar reabrir o app
+  (function watchDayChange(){
+    let lastDay = new Date().toDateString();
+    setInterval(()=>{
+      const hoje = new Date().toDateString();
+      if(hoje !== lastDay){
+        lastDay = hoje;
+        if(app?.state?.user) {
+          localStorage.removeItem('pm18_carry_done'); // força rodar hoje
+          app.carryOverTasks();
+        }
+      }
+    }, 60000); // checa a cada 1 minuto
+  })();
+
   console.log('[App] Bootstrap completo ✅');
 })();
 
