@@ -1,6 +1,6 @@
 {
-  "name": "produtiv.me — Rotina, Mente & Vida",
-  "short_name": "produtiv",
+  "name": "produtiv.me",
+  "short_name": "produtiv.me",
   "description": "Sistema de evolução pessoal baseado em rotina, mente e finanças.",
   "start_url": "./",
   "scope": "./",
