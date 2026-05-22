@@ -2377,7 +2377,7 @@ const payload = {
     all.forEach(item=>{
       const ta=q('qanswer-'+item.id);
       if(!ta) return;
-      ta.addEventListener('input', debounce(()=>this.saveAnswer(item.id,true),1200));
+      ta.addEventListener('input', debounce(()=>this.saveAnswer(item.id,true),5000));
     });
   },
 
@@ -3085,6 +3085,11 @@ const RealtimeManager = (() => {
 
   function onTableChange(table, payload) {
     console.log(`[Realtime] ${table}:${payload.eventType}`);
+    // Ignora Realtime para questione/diario enquanto usuário está digitando
+    if(['questione_respostas','diario_reflexao'].includes(table)){
+      const active = document.activeElement;
+      if(active && (active.tagName==='TEXTAREA'||active.tagName==='INPUT')) return;
+    }
     clearTimeout(_s.debounceTimers[table]);
     _s.debounceTimers[table] = setTimeout(async () => {
       if (_s.isSyncing) { setTimeout(() => onTableChange(table, payload), 200); return; }
