@@ -1466,7 +1466,16 @@ _isSyncing: false,
         };
         showAlert('❌ '+(msgs[error.message]||error.message), true); return;
       }
-      this.state.user={id:data.user.id,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
+      const newUserId = data.user.id;
+      // Se usuário mudou, limpa dados locais do usuário anterior
+      const oldSess = localStorage.getItem(SESSION_KEY);
+      const oldUser = oldSess ? JSON.parse(oldSess) : null;
+      if(oldUser && oldUser.id !== newUserId){
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('pm18_carry_done');
+        this.state.data = this.getDefaultData();
+      }
+      this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
       this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); hideLoading(); this.carryOverTasks();
     });
@@ -3274,6 +3283,15 @@ const RealtimeManager = (() => {
   // 2. Detecta link de reset de senha (vindo do email)
   window.app = app;
   window.closeModal = closeModal;
+
+  // Listener global PASSWORD_RECOVERY — roda antes de qualquer init
+  window.supabaseClient.auth.onAuthStateChange((event, session) => {
+    if(event === 'PASSWORD_RECOVERY'){
+      q('auth-screen').classList.add('hidden');
+      q('main-app').classList.add('hidden');
+      q('reset-screen').classList.remove('hidden');
+    }
+  });
 
   // Detecta reset de senha — suporta hash (#), query string (?code=) e ?reset=1
   const hashParams  = new URLSearchParams(window.location.hash.replace('#',''));
