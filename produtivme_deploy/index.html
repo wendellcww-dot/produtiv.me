@@ -1517,14 +1517,16 @@ _isSyncing: false,
 
   async esqueceuSenha(){
     const email = q('login-email').value.trim();
-    if(!email){ showAlert('❌ Digite seu email primeiro', true); return; }
+    const alertEl = q('auth-alert');
+    const showA = (msg, err) => { alertEl.innerHTML=`<div class="alert ${err?'alert-error':'alert-success'}" style="margin-bottom:1rem">${msg}</div>`; };
+    if(!email){ showA('❌ Digite seu email primeiro', true); return; }
     showLoading('Enviando...');
     const {error} = await window.supabaseClient.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin
     });
     hideLoading();
-    if(error){ showAlert('❌ Erro ao enviar email', true); return; }
-    showAlert('✅ Email de recuperação enviado para '+email, false);
+    if(error){ showA('❌ Erro ao enviar email', true); return; }
+    showA('✅ Email de recuperação enviado para '+email, false);
   },
 
   showAuth(){
