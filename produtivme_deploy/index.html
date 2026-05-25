@@ -1522,7 +1522,7 @@ _isSyncing: false,
     if(!email){ showA('❌ Digite seu email primeiro', true); return; }
     showLoading('Enviando...');
     const {error} = await window.supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+      redirectTo: 'https://produtiv-me.vercel.app'
     });
     hideLoading();
     if(error){ showA('❌ Erro ao enviar email', true); return; }
