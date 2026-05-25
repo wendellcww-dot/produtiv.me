@@ -1472,8 +1472,10 @@ _isSyncing: false,
       const oldUser = oldSess ? JSON.parse(oldSess) : null;
       if(oldUser && oldUser.id !== newUserId){
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(GAMIFY_KEY);
         localStorage.removeItem('pm18_carry_done');
         this.state.data = this.getDefaultData();
+        saveGamify({});
       }
       this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
