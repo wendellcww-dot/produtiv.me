@@ -1428,6 +1428,29 @@ _isSyncing: false,
     this.loadLocal();
     this.initAuthUI();
     this.initNavUI();
+
+    // Verifica se o usuário da sessão Supabase é diferente do localStorage
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    if(session?.user){
+      const savedSess = localStorage.getItem(SESSION_KEY);
+      const savedUser = savedSess ? JSON.parse(savedSess) : null;
+      if(savedUser && savedUser.id !== session.user.id){
+        // Usuário diferente — limpa tudo
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(GAMIFY_KEY);
+        localStorage.removeItem('pm18_carry_done');
+        this.state.data = this.getDefaultData();
+        saveGamify({});
+      }
+      // Atualiza sessão local com dados do Supabase
+      this.state.user = {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.user_metadata?.name || session.user.email.split('@')[0]
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
+    }
+
     if(this.state.user){
       this.showApp();
       showLoading('Sincronizando dados...');
