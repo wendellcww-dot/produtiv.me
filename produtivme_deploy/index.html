@@ -3275,19 +3275,41 @@ const RealtimeManager = (() => {
   window.app = app;
   window.closeModal = closeModal;
 
-  // Supabase envia o token via hash (#access_token=...&type=recovery)
-  const hashParams = new URLSearchParams(window.location.hash.replace('#',''));
-  if(hashParams.get('type') === 'recovery'){
-    // Seta a sessão com o token do link
+  // Detecta reset de senha — suporta hash (#) e query string (?code=)
+  const hashParams  = new URLSearchParams(window.location.hash.replace('#',''));
+  const queryParams = new URLSearchParams(window.location.search);
+  const hashError   = hashParams.get('error_code') || queryParams.get('error_code');
+  const hashType    = hashParams.get('type') || queryParams.get('type');
+  const pkceCode    = queryParams.get('code'); // novo fluxo PKCE
+
+  if(hashError){
+    history.replaceState(null, '', window.location.pathname);
+    await app.init();
+    const alertEl = q('auth-alert');
+    alertEl.innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ O link de recuperação expirou. Clique em "Esqueci minha senha" para solicitar um novo.</div>';
+
+  } else if(pkceCode){
+    // Novo fluxo PKCE — troca o code por sessão
+    const { data, error } = await window.supabaseClient.auth.exchangeCodeForSession(pkceCode);
+    history.replaceState(null, '', window.location.pathname);
+    if(!error && data?.session){
+      q('auth-screen').classList.add('hidden');
+      q('reset-screen').classList.remove('hidden');
+    } else {
+      await app.init();
+      q('auth-alert').innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ Link inválido ou expirado. Solicite um novo.</div>';
+    }
+
+  } else if(hashType === 'recovery'){
+    // Fluxo antigo via hash
     await window.supabaseClient.auth.setSession({
       access_token: hashParams.get('access_token'),
       refresh_token: hashParams.get('refresh_token') || ''
     });
-    // Mostra tela de redefinição
     q('auth-screen').classList.add('hidden');
     q('reset-screen').classList.remove('hidden');
-    // Limpa o hash da URL
     history.replaceState(null, '', window.location.pathname);
+
   } else {
     await app.init();
   }
