@@ -1522,7 +1522,7 @@ _isSyncing: false,
     if(!email){ showA('❌ Digite seu email primeiro', true); return; }
     showLoading('Enviando...');
     const {error} = await window.supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://produtiv-me.vercel.app'
+      redirectTo: 'https://produtiv-me.vercel.app/?reset=1'
     });
     hideLoading();
     if(error){ showA('❌ Erro ao enviar email', true); return; }
@@ -3275,18 +3275,18 @@ const RealtimeManager = (() => {
   window.app = app;
   window.closeModal = closeModal;
 
-  // Detecta reset de senha — suporta hash (#) e query string (?code=)
+  // Detecta reset de senha — suporta hash (#), query string (?code=) e ?reset=1
   const hashParams  = new URLSearchParams(window.location.hash.replace('#',''));
   const queryParams = new URLSearchParams(window.location.search);
   const hashError   = hashParams.get('error_code') || queryParams.get('error_code');
   const hashType    = hashParams.get('type') || queryParams.get('type');
-  const pkceCode    = queryParams.get('code'); // novo fluxo PKCE
+  const pkceCode    = queryParams.get('code');
+  const isReset     = queryParams.get('reset') === '1';
 
   if(hashError){
     history.replaceState(null, '', window.location.pathname);
     await app.init();
-    const alertEl = q('auth-alert');
-    alertEl.innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ O link de recuperação expirou. Clique em "Esqueci minha senha" para solicitar um novo.</div>';
+    q('auth-alert').innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ O link de recuperação expirou. Clique em "Esqueci minha senha" para solicitar um novo.</div>';
 
   } else if(pkceCode){
     // Novo fluxo PKCE — troca o code por sessão
@@ -3309,6 +3309,17 @@ const RealtimeManager = (() => {
     q('auth-screen').classList.add('hidden');
     q('reset-screen').classList.remove('hidden');
     history.replaceState(null, '', window.location.pathname);
+
+  } else if(isReset){
+    // Supabase redirecionou com ?reset=1 mas sem code ainda — escuta o evento
+    await app.init();
+    window.supabaseClient.auth.onAuthStateChange((event, session) => {
+      if(event === 'PASSWORD_RECOVERY'){
+        q('auth-screen').classList.add('hidden');
+        q('main-app').classList.add('hidden');
+        q('reset-screen').classList.remove('hidden');
+      }
+    });
 
   } else {
     await app.init();
