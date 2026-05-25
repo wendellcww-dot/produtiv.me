@@ -437,6 +437,32 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     </div>
   </div>
 
+  <!-- ══════════ RESET PASSWORD SCREEN ══════════ -->
+  <div id="reset-screen" class="hidden">
+    <div class="auth-container">
+      <div class="auth-box">
+        <div class="auth-logo"><span style="color:var(--primary)">✦</span> produtiv<span style="color:var(--text-3)">.</span>me</div>
+        <div class="auth-sub" style="margin-bottom:1.5rem">Digite sua nova senha</div>
+        <div id="reset-alert"></div>
+        <div class="form-group">
+          <label>Nova senha</label>
+          <div style="position:relative">
+            <input id="reset-password" type="password" placeholder="Mínimo 6 caracteres" style="padding-right:2.5rem">
+            <button type="button" onclick="toggleSenha('reset-password',this)" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirmar nova senha</label>
+          <div style="position:relative">
+            <input id="reset-confirm" type="password" placeholder="Repita a senha" style="padding-right:2.5rem">
+            <button type="button" onclick="toggleSenha('reset-confirm',this)" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <button onclick="app.confirmarResetSenha()" class="btn btn-primary btn-block" style="margin-top:.5rem"><i class="fas fa-lock"></i> Redefinir senha</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══════════ MAIN APP ══════════ -->
   <div id="main-app" class="hidden">
     <header>
@@ -1472,6 +1498,21 @@ _isSyncing: false,
     q('main-app').classList.remove('hidden');
     this.renderAll();
     this.initRealtimeSync();
+  },
+
+  async confirmarResetSenha(){
+    const pass = q('reset-password').value;
+    const confirm = q('reset-confirm').value;
+    const alertEl = q('reset-alert');
+    const showResetAlert = (msg, err) => { alertEl.innerHTML=`<div class="alert ${err?'alert-error':'alert-success'}" style="margin-bottom:1rem">${msg}</div>`; };
+    if(pass.length < 6){ showResetAlert('❌ A senha deve ter pelo menos 6 caracteres', true); return; }
+    if(pass !== confirm){ showResetAlert('❌ As senhas não conferem', true); return; }
+    showLoading('Redefinindo senha...');
+    const { error } = await window.supabaseClient.auth.updateUser({ password: pass });
+    hideLoading();
+    if(error){ showResetAlert('❌ Erro ao redefinir: '+error.message, true); return; }
+    showResetAlert('✅ Senha redefinida com sucesso!', false);
+    setTimeout(()=>{ q('reset-screen').classList.add('hidden'); app.showAuth(); }, 2000);
   },
 
   async esqueceuSenha(){
@@ -3228,10 +3269,26 @@ const RealtimeManager = (() => {
     }
   }
 
-  // 2. Inicia o app
+  // 2. Detecta link de reset de senha (vindo do email)
   window.app = app;
   window.closeModal = closeModal;
-  await app.init();
+
+  // Supabase envia o token via hash (#access_token=...&type=recovery)
+  const hashParams = new URLSearchParams(window.location.hash.replace('#',''));
+  if(hashParams.get('type') === 'recovery'){
+    // Seta a sessão com o token do link
+    await window.supabaseClient.auth.setSession({
+      access_token: hashParams.get('access_token'),
+      refresh_token: hashParams.get('refresh_token') || ''
+    });
+    // Mostra tela de redefinição
+    q('auth-screen').classList.add('hidden');
+    q('reset-screen').classList.remove('hidden');
+    // Limpa o hash da URL
+    history.replaceState(null, '', window.location.pathname);
+  } else {
+    await app.init();
+  }
 
   // 3. Inicia Realtime se já logado
   if (window.app?.state?.user?.id) {
