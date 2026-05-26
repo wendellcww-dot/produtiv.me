@@ -1856,7 +1856,7 @@ _isSyncing: false,
     if(!this.state.user||this.state.user.local) return;
     const now=new Date().toISOString();
     let alarmIso=null;
-    if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const base=dateKey||new Date().toISOString().split('T')[0]; const ad=new Date(base+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00'); ad.setTime(ad.getTime()+(3*60*60*1000)); alarmIso=ad.toISOString(); }
+    if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const base=dateKey||new Date().toISOString().split('T')[0]; const ad=new Date(base+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00'); alarmIso=ad.toISOString(); }
 const prioridadeMap = {
   baixa: 1,
   media: 2,
