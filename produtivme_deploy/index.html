@@ -1830,7 +1830,7 @@ _isSyncing: false,
 
     // ✅ horário formatado
     alarmTime: t.alarm_time
-      ? new Date(new Date(t.alarm_time).toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).toTimeString().slice(0,5)
+      ? String(t.alarm_time).slice(0,5)
       : '',
 
     created_at: t.created_at,
@@ -1856,7 +1856,7 @@ _isSyncing: false,
     if(!this.state.user||this.state.user.local) return;
     const now=new Date().toISOString();
     let alarmIso=null;
-    if(task.alarmTime){ const [h,m]=task.alarmTime.split(':'); const base=dateKey||new Date().toISOString().split('T')[0]; const ad=new Date(base+'T'+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':00'); alarmIso=ad.toISOString(); }
+    if(task.alarmTime){ alarmIso=task.alarmTime.slice(0,5); } // salva só HH:MM
 const prioridadeMap = {
   baixa: 1,
   media: 2,
@@ -3025,11 +3025,7 @@ function atualizarStatusNotif(){
     const btn=q('btn-ativar-notif');
     if(btn){btn.innerHTML='<i class="fas fa-bell"></i> Notificações Ativas';btn.style.opacity='.6';btn.disabled=true;}
   }else if(Notification.permission==='denied'){
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const instrucao = isAndroid
-      ? '❌ Bloqueadas — Vá em Configurações do Chrome → Configurações do site → Notificações → encontre este site e permita.'
-      : '❌ Bloqueadas — Clique no cadeado na barra de endereço e permita as notificações.';
-    el.innerHTML=`<span style="color:var(--danger)">${instrucao}</span>`;
+    el.innerHTML='<span style="color:var(--danger)">❌ Bloqueadas — permita nas configurações do navegador.</span>';
   }else{
     el.innerHTML='<span style="color:var(--text-3)">Clique em "Ativar Notificações".</span>';
   }
@@ -3201,8 +3197,6 @@ const RealtimeManager = (() => {
   function onTableChange(table, payload) {
     console.log(`[Realtime] ${table}:${payload.eventType}`);
     // Ignora Realtime para questione/diario enquanto usuário está digitando
-    // e para tarefas quando modal está aberto (evita mudar horário do alarme)
-    if(table==='tarefas' && q('task-modal')?.classList.contains('active')) return;
     if(['questione_respostas','diario_reflexao'].includes(table)){
       const active = document.activeElement;
       if(active && (active.tagName==='TEXTAREA'||active.tagName==='INPUT')) return;
