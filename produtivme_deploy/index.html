@@ -1740,13 +1740,27 @@ _isSyncing: false,
     const {data,error}=await window.supabaseClient
       .from('habitos').select('*').eq('user_id',this.state.user.id);
     if(error||!data) return;
-    // Mantém os dias marcados locais que são mais recentes
+    // Merge real: combina dias do banco + dias locais (sem perder nenhum)
     const local=loadHabits();
-    const merged=data.map(h=>({
-      id:h.id, name:h.title, icon:h.icon||'⭐',
-      days: local.find(l=>l.id===h.id)?.days || (h.days||[])
-    }));
+    const merged=data.map(h=>{
+      const localH=local.find(l=>l.id===h.id);
+      const remoteDays=h.days||[];
+      const localDays=localH?.days||[];
+      // União dos dois arrays sem duplicatas
+      const allDays=[...new Set([...remoteDays,...localDays])];
+      return { id:h.id, name:h.title, icon:h.icon||'⭐', days:allDays };
+    });
     saveHabits(merged);
+    // Sincroniza dias mesclados de volta pro banco
+    for(const h of merged){
+      const remote=data.find(d=>d.id===h.id);
+      const remoteDays=remote?.days||[];
+      const hasNew=h.days.some(d=>!remoteDays.includes(d));
+      if(hasNew){
+        window.supabaseClient.from('habitos').update({days:h.days})
+          .eq('id',h.id).eq('user_id',this.state.user.id).then(()=>{});
+      }
+    }
   },
 
   // Carrega humor do Supabase
@@ -2218,7 +2232,7 @@ const payload = {
     const grid=q('medals-grid'); if(!grid) return;
     const g=getGamifyState();
     grid.innerHTML=MEDALS.map(m=>`
-      <div class="medal-item ${g.medals.includes(m.id)?'unlocked':''}" title="${esc(m.name)}">
+      <div class="medal-item ${g.medals.includes(m.id)?'unlocked':''}" title="${m.name}">
         <div class="medal-icon">${m.icon}</div>
         <div class="medal-name">${m.name}</div>
       </div>`).join('');
@@ -2293,17 +2307,17 @@ const payload = {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.65rem">
           <div style="flex:1;min-width:0">
             <div class="goal-title">${esc(g.title)}</div>
-            <div class="goal-type">${esc(g.type)} · ${fmtDate(g.start)} → ${fmtDate(g.end)}</div>
+            <div class="goal-type">${g.type} · ${fmtDate(g.start)} → ${fmtDate(g.end)}</div>
             ${g.desc?`<div style="font-size:.82rem;color:var(--text-2);margin-top:.25rem">${esc(g.desc)}</div>`:''}
-            <span class="badge ${priB[g.priority||'media']}" style="margin-top:.4rem">${esc(g.priority||'média')}</span>
+            <span class="badge ${priB[g.priority||'media']}" style="margin-top:.4rem">${g.priority||'média'}</span>
           </div>
           <div style="display:flex;gap:.28rem;flex-shrink:0">
             <button class="btn btn-icon btn-sm" onclick="app.openEditGoal('${g.id}')"><i class="fas fa-pen"></i></button>
             <button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteGoal('${g.id}')"><i class="fas fa-trash"></i></button>
           </div>
         </div>
-        <div class="goal-progress-label"><span>Progresso</span><span style="color:var(--primary)">${Number(g.progress)||0}%</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${Number(g.progress)||0}%"></div></div>
+        <div class="goal-progress-label"><span>Progresso</span><span style="color:var(--primary)">${g.progress}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${g.progress}%"></div></div>
       </div>`).join('');
   },
 
@@ -2353,7 +2367,7 @@ const payload = {
     list.innerHTML=habits.map(h=>{
       const streak=this.habitStreak(h);
       return `<div class="habit-item">
-        <div class="habit-icon">${esc(h.icon||'⭐')}</div>
+        <div class="habit-icon">${h.icon||'⭐'}</div>
         <div style="flex:1">
           <div class="habit-name">${esc(h.name)}</div>
           <div class="habit-streak">🔥 ${streak} dias</div>
@@ -2676,7 +2690,7 @@ const payload = {
         <div class="trans-icon ${t.type}">${catIcons[t.cat]||'💰'}</div>
         <div class="trans-info">
           <div class="trans-title">${esc(t.desc)}</div>
-          <div class="trans-meta">${esc(t.cat||'outros')} · ${t.date?new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR'):''}</div>
+          <div class="trans-meta">${t.cat||'outros'} · ${t.date?new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR'):''}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem">
           <div class="trans-value ${t.type}">${t.type==='income'?'+':'-'}${fmtMoney(t.value)}</div>
@@ -2861,7 +2875,7 @@ const payload = {
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:.78rem;font-weight:700;color:${col}">— ${esc(f.author||'Desconhecido')}</div>
           <div style="display:flex;align-items:center;gap:.4rem">
-            <span style="font-size:.65rem;font-weight:700;color:var(--text-3);padding:.1rem .4rem;background:var(--surface4);border-radius:20px">${esc(f.cat||'')}</span>
+            <span style="font-size:.65rem;font-weight:700;color:var(--text-3);padding:.1rem .4rem;background:var(--surface4);border-radius:20px">${f.cat||''}</span>
             ${isCustom?`<button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteFrase('${f.id}')"><i class="fas fa-trash"></i></button>`:''}
           </div>
         </div>
