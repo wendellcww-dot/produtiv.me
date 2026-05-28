@@ -995,20 +995,11 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <hr style="margin:.75rem 0;border-color:var(--border)">
     <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">🔔 Notificações</div>
     <div id="notif-status" style="font-size:.8rem;color:var(--text-3);margin-bottom:.65rem"></div>
-    <button id="btn-ativar-notif" class="btn btn-primary btn-block" style="margin-bottom:.5rem"><i class="fas fa-bell"></i> Ativar Notificações</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
-      <div class="form-group" style="margin-bottom:0"><label>☀️ Manhã</label><input type="time" id="notif-manha" value="08:00"></div>
-      <div class="form-group" style="margin-bottom:0"><label>🌅 Tarde</label><input type="time" id="notif-tarde" value="14:00"></div>
-    </div>
-    <button id="btn-salvar-notif" class="btn btn-ghost btn-block" style="margin-bottom:.75rem"><i class="fas fa-save"></i> Salvar Horários</button>
+    <button id="btn-ativar-notif" class="btn btn-primary btn-block" style="margin-bottom:.75rem"><i class="fas fa-bell"></i> Ativar Notificações</button>
     <hr style="margin:.75rem 0;border-color:var(--border)">
-    <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.65rem">Gerenciar Dados</div>
-    <div class="form-group"><button id="export-data" class="btn btn-ghost btn-block"><i class="fas fa-download"></i> Exportar Dados (JSON)</button></div>
-    <div class="form-group" style="display:flex;gap:.5rem;align-items:center">
-      <input type="file" id="import-file" accept=".json" style="flex:1;font-size:.78rem">
-      <button id="import-data" class="btn btn-ghost"><i class="fas fa-upload"></i></button>
-    </div>
-    <div class="form-group"><button id="clear-data" class="btn btn-danger btn-block"><i class="fas fa-trash"></i> Limpar Todos os Dados</button></div>
+    <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">📱 Instalar App</div>
+    <button id="btn-instalar-app" class="btn btn-ghost btn-block" style="margin-bottom:.25rem"><i class="fas fa-download"></i> Adicionar à tela inicial</button>
+    <div style="font-size:.75rem;color:var(--text-3);margin-bottom:.75rem">Instale o app para acesso rápido sem abrir o navegador.</div>
   </div>
 </div>
 
@@ -1059,12 +1050,14 @@ function todayKey(){
 }
 
 let _toastTimer;
-function showToast(msg, type='default', ms=2600){
+function showToast(msg, type='default', ms=2600, onClick=null){
   const el=q('toast');
   el.textContent=msg;
   el.className='toast show'+(type!=='default'?' '+type:'');
+  el.style.cursor=onClick?'pointer':'default';
+  el.onclick=onClick||null;
   clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>el.classList.remove('show'),ms);
+  _toastTimer=setTimeout(()=>{ el.classList.remove('show'); el.onclick=null; },ms);
 }
 function toggleSenha(id, btn){
   const input = document.getElementById(id);
@@ -3179,7 +3172,32 @@ setInterval(checarNotificacoes, 60000);
 (async()=>{ if('Notification' in window && Notification.permission==='default') setTimeout(async()=>{ await Notification.requestPermission(); atualizarStatusNotif(); },3000); })();
 
 /* ── PWA ── */
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); setTimeout(()=>showToast('📱 Instale o app na tela inicial!','',5000),3500); });
+let _installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installPrompt = e;
+  setTimeout(() => {
+    showToast('📱 Toque aqui para instalar o app!', '', 8000, async () => {
+      if(!_installPrompt) return;
+      _installPrompt.prompt();
+      const { outcome } = await _installPrompt.userChoice;
+      if(outcome === 'accepted'){ showToast('✅ App instalado!', 'success', 3000); _installPrompt = null; }
+    });
+  }, 3500);
+});
+window.addEventListener('appinstalled', () => {
+  showToast('✅ App instalado!', 'success', 3000);
+  _installPrompt = null;
+  const btn = document.getElementById('btn-instalar-app');
+  if(btn){ btn.innerHTML='<i class="fas fa-check"></i> App já instalado'; btn.disabled=true; }
+});
+document.addEventListener('click', async e => {
+  if(!e.target.closest('#btn-instalar-app')) return;
+  if(!_installPrompt){ showToast('📱 Use o menu do navegador → "Adicionar à tela inicial"', '', 4000); return; }
+  _installPrompt.prompt();
+  const { outcome } = await _installPrompt.userChoice;
+  if(outcome === 'accepted'){ showToast('✅ App instalado!', 'success', 3000); _installPrompt = null; }
+});
 
 /* ══════════════════════════════════════
    REALTIME MANAGER
