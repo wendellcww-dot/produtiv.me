@@ -3052,40 +3052,7 @@ q('btn-logout').addEventListener('click',async()=>{
   hideLoading(); app.showAuth(); closeModal('settings-modal');
 });
 
-q('export-data').addEventListener('click',()=>{
-  const data={main:app.state.data,finance:loadFinance(),habits:loadHabits(),mood:loadMood(),questions:app.loadQuestionAnswers(),customQ:loadCustomQuestions(),gamify:loadGamify(),frases:loadCustomFrases()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='produtivme-backup-'+new Date().toISOString().split('T')[0]+'.json'; a.click();
-  showToast('Dados exportados!','success');
-});
 
-q('import-data').addEventListener('click',()=>{
-  const file=q('import-file').files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      if(data.main){ app.state.data=data.main; app.saveLocal(); }
-      if(data.finance) saveFinance(data.finance);
-      if(data.habits) saveHabits(data.habits);
-      if(data.mood) saveMood(data.mood);
-      if(data.questions) localStorage.setItem(QUESTIONS_KEY,JSON.stringify(data.questions));
-      if(data.customQ) saveCustomQuestions(data.customQ);
-      if(data.gamify) saveGamify(data.gamify);
-      if(data.frases) saveCustomFrases(data.frases);
-      app.renderAll(); showToast('Dados importados!','success');
-    }catch(err){ showToast('Arquivo inválido','error'); }
-  };
-  reader.readAsText(file);
-});
-
-q('clear-data').addEventListener('click',()=>{
-  if(!confirm('⚠️ APAGAR TODOS OS DADOS? Ação irreversível.')) return;
-  [STORAGE_KEY,QUESTIONS_KEY,CUSTOM_Q_KEY,HABITS_KEY,MOOD_KEY,QUEUE_KEY,GAMIFY_KEY,FINANCE_KEY,FRASES_KEY].forEach(k=>localStorage.removeItem(k));
-  app.state.data=app.getDefaultData(); app.saveLocal(); app.renderAll();
-  closeModal('settings-modal'); showToast('Dados apagados','default');
-});
 
 /* ══════════════════════════════════════
    NOTIFICAÇÕES
@@ -3159,13 +3126,8 @@ q('btn-ativar-notif').addEventListener('click',async()=>{
   if(!('Notification' in window)){showToast('Navegador não suporta notificações','error');return;}
   const perm=await Notification.requestPermission();
   if(perm==='granted'){
-    const c=loadNotifConfig(); c.manha=q('notif-manha').value||'08:00'; c.tarde=q('notif-tarde').value||'14:00';
-    saveNotifConfig(c); atualizarStatusNotif(); showToast('Notificações ativadas! 🔔','success');
-  }else{ showToast('Bloqueado! Permita nas configurações','error',5000); atualizarStatusNotif(); }
-});
-q('btn-salvar-notif').addEventListener('click',()=>{
-  const c=loadNotifConfig(); c.manha=q('notif-manha').value||'08:00'; c.tarde=q('notif-tarde').value||'14:00';
-  saveNotifConfig(c); atualizarStatusNotif(); showToast('Horários salvos! ⏰','success');
+    saveNotifConfig(loadNotifConfig()); atualizarStatusNotif(); showToast('Notificações ativadas! 🔔','success');
+  }else{ showToast('Bloqueado! Permita nas configurações do navegador','error',5000); atualizarStatusNotif(); }
 });
 
 setInterval(checarNotificacoes, 60000);
