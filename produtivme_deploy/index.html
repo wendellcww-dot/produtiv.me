@@ -3014,7 +3014,7 @@ function atualizarStatusNotif(){
   const el=q('notif-status'); if(!el) return;
   const cfg=loadNotifConfig();
   if(Notification.permission==='granted'){
-    el.innerHTML='<span style="color:var(--green)">✅ Ativas — Manhã: '+(cfg.manha||'08:00')+' · Tarde: '+(cfg.tarde||'14:00')+'</span>';
+    el.innerHTML='<span style="color:var(--green)">✅ Notificações ativas</span>';
     const btn=q('btn-ativar-notif');
     if(btn){btn.innerHTML='<i class="fas fa-bell"></i> Notificações Ativas';btn.style.opacity='.6';btn.disabled=true;}
   }else if(Notification.permission==='denied'){
