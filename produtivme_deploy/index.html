@@ -1740,27 +1740,12 @@ _isSyncing: false,
     const {data,error}=await window.supabaseClient
       .from('habitos').select('*').eq('user_id',this.state.user.id);
     if(error||!data) return;
-    // Merge real: combina dias do banco + dias locais (sem perder nenhum)
-    const local=loadHabits();
-    const merged=data.map(h=>{
-      const localH=local.find(l=>l.id===h.id);
-      const remoteDays=h.days||[];
-      const localDays=localH?.days||[];
-      // União dos dois arrays sem duplicatas
-      const allDays=[...new Set([...remoteDays,...localDays])];
-      return { id:h.id, name:h.title, icon:h.icon||'⭐', days:allDays };
-    });
+    // Banco é fonte de verdade — usa sempre os dados remotos
+    const merged=data.map(h=>({
+      id:h.id, name:h.title, icon:h.icon||'⭐',
+      days: h.days||[]
+    }));
     saveHabits(merged);
-    // Sincroniza dias mesclados de volta pro banco
-    for(const h of merged){
-      const remote=data.find(d=>d.id===h.id);
-      const remoteDays=remote?.days||[];
-      const hasNew=h.days.some(d=>!remoteDays.includes(d));
-      if(hasNew){
-        window.supabaseClient.from('habitos').update({days:h.days})
-          .eq('id',h.id).eq('user_id',this.state.user.id).then(()=>{});
-      }
-    }
   },
 
   // Carrega humor do Supabase
@@ -2387,17 +2372,25 @@ const payload = {
 
   habitStreak(h){ let s=0, d=new Date(), days=h.days||[]; for(let i=0;i<365;i++){ const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); if(days.includes(k)) s++; else if(i>0) break; d.setDate(d.getDate()-1); } return s; },
 
-  toggleHabitDay(habitId, day){
+  async toggleHabitDay(habitId, day){
     const habits=loadHabits(), h=habits.find(x=>x.id===habitId); if(!h) return;
     if(!h.days) h.days=[];
     const idx=h.days.indexOf(day);
-    if(idx===-1) h.days.push(day); else h.days.splice(idx,1);
+    const marcando = idx===-1;
+    if(marcando) h.days.push(day); else h.days.splice(idx,1);
+    // Salva local e renderiza imediatamente (feedback rápido)
     saveHabits(habits); this.renderHabits();
-    if(idx===-1){ addXp(5); showToast('Hábito marcado! +5 XP','success'); }
+    if(marcando){ addXp(5); showToast('Hábito marcado! +5 XP','success'); }
+    // Salva no banco — banco é fonte de verdade
     if(this.state.user&&!this.state.user.local){
-      window.supabaseClient.from('habitos').update({days:h.days})
-        .eq('id',habitId).eq('user_id',this.state.user.id)
-        .then(({error})=>{ if(error) console.error('[Habitos] Erro ao atualizar dias:',error); });
+      const {error}=await window.supabaseClient.from('habitos').update({days:h.days})
+        .eq('id',habitId).eq('user_id',this.state.user.id);
+      if(error){
+        // Reverte se falhou
+        if(marcando) h.days.splice(h.days.indexOf(day),1); else h.days.push(day);
+        saveHabits(habits); this.renderHabits();
+        showToast('Erro ao salvar hábito','error');
+      }
     }
   },
 
