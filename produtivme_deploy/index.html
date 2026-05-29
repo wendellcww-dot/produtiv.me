@@ -3162,7 +3162,41 @@ window.addEventListener('appinstalled', () => {
 });
 document.addEventListener('click', async e => {
   if(!e.target.closest('#btn-instalar-app')) return;
-  if(!_installPrompt){ showToast('📱 Use o menu do navegador → "Adicionar à tela inicial"', '', 4000); return; }
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+  if(isInStandaloneMode){
+    showToast('✅ App já está instalado!', 'success', 3000);
+    return;
+  }
+
+  if(isIOS){
+    // Mostra modal com instrução para iPhone
+    const modal = document.createElement('div');
+    modal.id = 'ios-install-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:1rem';
+    modal.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:400px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">📱</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-bottom:1rem">Instalar no iPhone</div>
+        <div style="font-size:.9rem;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6">
+          <div style="margin-bottom:.75rem">1. Toque no botão <strong>compartilhar</strong> <span style="font-size:1.1rem">⬆️</span> na barra inferior do Safari</div>
+          <div style="margin-bottom:.75rem">2. Role a lista e toque em <strong>"Adicionar à Tela de Início"</strong></div>
+          <div>3. Toque em <strong>"Adicionar"</strong> no canto superior direito</div>
+        </div>
+        <div style="font-size:.78rem;color:var(--text-3);margin-bottom:1rem">⚠️ Use o Safari — o Chrome no iPhone não suporta instalação de PWA</div>
+        <button onclick="document.getElementById('ios-install-modal').remove()" class="btn btn-primary btn-block">Entendi!</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+    return;
+  }
+
+  if(!_installPrompt){
+    showToast('📱 Use o menu do navegador → "Adicionar à tela inicial"', '', 4000);
+    return;
+  }
   _installPrompt.prompt();
   const { outcome } = await _installPrompt.userChoice;
   if(outcome === 'accepted'){ showToast('✅ App instalado!', 'success', 3000); _installPrompt = null; }
