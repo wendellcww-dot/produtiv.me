@@ -8,8 +8,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d0d1a' rx='24'/%3E%3Cpath d='M96 40C65 40 40 65 40 96s25 56 56 56 56-25 56-56-25-56-56-56zm20 76h-12V96h12v20zm-6-28c-4 0-7-3-7-7s3-7 7-7 7 3 7 7-3 7-7 7z' fill='%23a78bfa'/%3E%3C/svg%3E" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d0d1a' rx='4'/%3E%3Cpath d='M16 8c-4 0-8 4-8 8s4 8 8 8 8-4 8-8-4-8-8-8zm3 11h-2v-3h2v3zm-1-4c-1 0-1-1-1-1s0-1 1-1 1 0 1 1 0 1-1 1z' fill='%23a78bfa'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="/icon_192x192.png" />
+  <link rel="icon" type="image/png" href="/icon_32x32.png" />
   <title>produtiv.me — Rotina, Mente & Vida</title>
 
   <!-- OneSignal SDK — carregado aqui, init feito APÓS o SW estar registrado -->
@@ -402,6 +402,41 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 }
 
 </script>
+
+/* ══ TUTORIAL GUIADO ══ */
+#tutorial-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9001;transition:opacity .3s}
+#tutorial-spotlight{position:fixed;z-index:9002;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.8),0 0 0 3px var(--primary),0 0 30px rgba(139,92,246,.4);transition:all .4s cubic-bezier(.4,0,.2,1);pointer-events:none}
+#tutorial-box{position:fixed;z-index:9003;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;width:min(320px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.5);transition:all .35s cubic-bezier(.4,0,.2,1)}
+#tutorial-box .t-icon{font-size:2rem;margin-bottom:.4rem}
+#tutorial-box .t-title{font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin-bottom:.4rem;color:var(--text)}
+#tutorial-box .t-desc{font-size:.85rem;color:var(--text-2);line-height:1.6;margin-bottom:.875rem}
+#tutorial-box .t-btns{display:flex;gap:.5rem;flex-wrap:wrap}
+#tutorial-box .t-btns button{flex:1;min-width:70px}
+#tut-progress{display:flex;gap:4px;justify-content:center;margin-bottom:.65rem}
+#tut-progress span{width:7px;height:7px;border-radius:50%;background:var(--surface4);transition:all .3s}
+#tut-progress span.active{background:var(--primary);transform:scale(1.3)}
+#tut-progress span.done{background:var(--primary);opacity:.5}
+.t-checklist{list-style:none;padding:0;margin:0 0 .875rem}
+.t-checklist li{display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--text-2);padding:.3rem 0;border-bottom:1px solid var(--border)}
+.t-checklist li:last-child{border-bottom:0}
+.t-checklist li.ck-done{color:var(--green)}
+.t-checklist li .ck-box{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.7rem}
+.t-checklist li.ck-done .ck-box{background:var(--green);border-color:var(--green);color:#fff}
+/* ══ SHARE ══ */
+#share-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:1rem;display:none}
+#share-modal.active{display:flex}
+#share-modal .share-inner{background:var(--surface);border-radius:var(--radius);padding:1.25rem;width:min(360px,95vw);max-height:90vh;overflow-y:auto}
+#share-canvas-wrap{display:flex;justify-content:center;margin-bottom:1rem}
+#share-canvas-wrap canvas{border-radius:10px;max-width:180px;height:auto;border:1px solid var(--border)}
+
+/* ══════════════════════════════════
+   AUTO SHARE POPUP CSS
+══════════════════════════════════ */
+#auto-share-popup{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;z-index:8000;background:var(--surface);border:1px solid var(--primary);border-radius:var(--radius);padding:1rem 1.25rem;width:min(340px,92vw);box-shadow:0 8px 40px rgba(139,92,246,.3);transition:all .4s cubic-bezier(.4,0,.2,1);pointer-events:none}
+#auto-share-popup.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:all}
+#auto-share-popup .asp-title{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin-bottom:.25rem}
+#auto-share-popup .asp-sub{font-size:.8rem;color:var(--text-2);margin-bottom:.75rem}
+#auto-share-popup .asp-btns{display:flex;gap:.5rem}
 </style>
 </head>
 <body>
@@ -412,7 +447,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   <div id="auth-screen">
     <div class="auth-container">
       <div class="auth-box">
-        <div class="auth-logo"><span style="color:var(--primary)">✦</span> produtiv<span style="color:var(--text-3)">.</span>me</div>
+        <div class="auth-logo"><img src="/icon_32x32.png" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:2px"> produtiv<span style="color:var(--text-3)">.</span>me</div>
         <div class="auth-sub">Rotina, mente e vida financeira em um só lugar</div>
         <div style="display:flex;gap:.4rem;margin-bottom:1.25rem">
           <button id="tab-login" class="btn btn-primary auth-tab">Entrar</button>
@@ -441,7 +476,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   <div id="reset-screen" class="hidden">
     <div class="auth-container">
       <div class="auth-box">
-        <div class="auth-logo"><span style="color:var(--primary)">✦</span> produtiv<span style="color:var(--text-3)">.</span>me</div>
+        <div class="auth-logo"><img src="/icon_32x32.png" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:2px"> produtiv<span style="color:var(--text-3)">.</span>me</div>
         <div class="auth-sub" style="margin-bottom:1.5rem">Digite sua nova senha</div>
         <div id="reset-alert"></div>
         <div class="form-group">
@@ -467,7 +502,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   <div id="main-app" class="hidden">
     <header>
       <div class="header-content">
-        <div class="logo"><span class="logo-spark">✦</span> produtiv<span class="logo-dot">.</span>me</div>
+        <div class="logo"><img src="/icon_32x32.png" style="width:22px;height:22px;border-radius:5px;vertical-align:middle"> produtiv<span class="logo-dot">.</span>me</div>
         <div class="header-right">
           <span id="user-name-display"></span>
           <div class="sync-indicator">
@@ -505,9 +540,14 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             <div class="xp-level">
               <span class="lvl-badge" id="xp-level-badge">Nv.1</span>
               <span id="xp-level-name" style="font-size:.88rem;color:var(--text)">Iniciante</span>
-              <span style="font-size:.85rem">🔥 <span id="streak-count">0</span> dias</span>
+              <span style="font-size:.85rem;display:flex;align-items:center;gap:.4rem">🔥 <span id="streak-count">0</span> dias
+                <button onclick="openShareModal('streak')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
+              </span>
             </div>
-            <div class="xp-amount"><span id="xp-current">0</span> / <span id="xp-next">100</span> XP</div>
+            <div class="xp-amount" style="display:flex;align-items:center;gap:.4rem">
+            <span id="xp-current">0</span> / <span id="xp-next">100</span> XP
+            <button onclick="openShareModal('nivel')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
+          </div>
           </div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
         </div>
@@ -555,7 +595,10 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="card">
-          <div class="card-title"><i class="fas fa-trophy"></i>Medalhas</div>
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;width:100%">
+            <span><i class="fas fa-trophy"></i>Medalhas</span>
+            <button onclick="openShareModal('nivel')" class="btn btn-sm btn-ghost" style="font-size:.75rem"><i class="fas fa-share-alt"></i></button>
+          </div>
           <div class="medals-grid" id="medals-grid"></div>
         </div>
       </div>
@@ -1000,6 +1043,9 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">📱 Instalar App</div>
     <button id="btn-instalar-app" class="btn btn-ghost btn-block" style="margin-bottom:.25rem"><i class="fas fa-download"></i> Adicionar à tela inicial</button>
     <div style="font-size:.75rem;color:var(--text-3);margin-bottom:.75rem">Instale o app para acesso rápido sem abrir o navegador.</div>
+    <hr style="margin:.75rem 0;border-color:var(--border)">
+    <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-2);margin-bottom:.75rem">🎓 Tutorial</div>
+    <button id="btn-reiniciar-tutorial" class="btn btn-ghost btn-block" style="margin-bottom:.25rem"><i class="fas fa-redo"></i> Reiniciar Tutorial</button>
   </div>
 </div>
 
@@ -1306,12 +1352,15 @@ function showXpFloat(amount, el){
 
 function addXp(amount, sourceEl){
   const g=loadGamify();
-  g.totalXp=(g.totalXp||0)+amount;
+  const oldXp = g.totalXp||0;
+  g.totalXp=oldXp+amount;
   if(amount>=10) g.totalDone=(g.totalDone||0)+1;
   saveGamify(g);
   syncGamifyRemote(g);
   if(sourceEl) showXpFloat(amount, sourceEl);
   app.renderXP();
+  // Verifica level up
+  setTimeout(()=>checkAutoShare_LevelUp(oldXp, g.totalXp), 500);
 }
 
 function checkMedals(streak){
@@ -1325,7 +1374,12 @@ function checkMedals(streak){
       setTimeout(()=>showToast('🏅 Nova medalha: '+m.name,'gold',4000),1000);
     }
   });
-  if(newMs.length){ g.medals=[...current,...newMs]; saveGamify(g); }
+  if(newMs.length){
+    g.medals=[...current,...newMs]; saveGamify(g);
+    // Mostra popup de compartilhamento para a primeira medalha nova
+    const medal = MEDALS.find(m=>m.id===newMs[0]);
+    if(medal) setTimeout(()=>checkAutoShare_Medal(medal.name), 2000);
+  }
   app.renderMedals();
 }
 
@@ -1525,6 +1579,7 @@ _isSyncing: false,
     q('main-app').classList.remove('hidden');
     this.renderAll();
     this.initRealtimeSync();
+    if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
   },
 
   async confirmarResetSenha(){
@@ -2072,6 +2127,9 @@ const payload = {
         <div style="text-align:center;font-size:.88rem;color:rgba(255,255,255,.7)">Dia perfeito! Você é incrível 🎉</div>`;
     }
     checkMedals(streak);
+    // Verifica compartilhamento automático
+    if(total>0 && done===total) setTimeout(()=>checkAutoShare_TasksComplete(done,total,streak), 1500);
+    setTimeout(()=>checkAutoShare_Streak(streak), 1000);
   },
 
   taskHTML(task){
@@ -2521,10 +2579,10 @@ const payload = {
   ══════════════════════════════════════ */
   renderFinance(){
     const now=new Date();
-    const monthLabel=now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-    const monthTrans=getCurrentMonthTrans();
-    const income=monthTrans.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.value),0);
-    const expense=monthTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.value),0);
+    const allTrans=loadFinance().transactions||[];
+    // KPIs usam TODAS as transações (acumulado total)
+    const income=allTrans.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.value),0);
+    const expense=allTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.value),0);
     const balance=income-expense;
 
     // Hero saldo
@@ -2532,7 +2590,7 @@ const payload = {
       q('fin-balance').textContent=fmtMoney(balance);
       q('fin-balance').className='finance-balance-main'+(balance<0?' negative':'');
     }
-    if(q('fin-balance-month')) q('fin-balance-month').textContent=monthLabel;
+    if(q('fin-balance-month')) q('fin-balance-month').textContent='Saldo total acumulado';
 
     // KPIs
     if(q('fin-income')) q('fin-income').textContent=fmtMoney(income);
@@ -2663,33 +2721,38 @@ const payload = {
     }
   },
 
-  renderTransactionsList(){
+  renderTransactionsList(showAll=false){
     const finance=loadFinance();
-    const allTrans=[...(finance.transactions||[])].reverse();
-    // Filtro mês atual + filtro categoria
-    const now=new Date(), ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-    const monthTrans=allTrans.filter(t=>(t.date||'').startsWith(ym));
-    const filtered=_finCatFilter==='all'?monthTrans:monthTrans.filter(t=>t.cat===_finCatFilter);
+    // Ordena por data mais recente primeiro — sem filtrar por mês
+    const allTrans=[...(finance.transactions||[])].sort((a,b)=>{
+      const da=new Date((a.date||'1970-01-01')+'T00:00:00');
+      const db=new Date((b.date||'1970-01-01')+'T00:00:00');
+      return db-da;
+    });
+    const filtered=_finCatFilter==='all'?allTrans:allTrans.filter(t=>t.cat===_finCatFilter);
     const el=q('transactions-list'); if(!el) return;
     if(q('trans-count-label')) q('trans-count-label').textContent=`${filtered.length} registro${filtered.length!==1?'s':''}`;
     const catIcons={alimentacao:'🍽',transporte:'🚗',trabalho:'💼',investimento:'📈',lazer:'🎮',contas:'📄',saude:'💊',educacao:'📚',outros:'📦'};
     if(!filtered.length){
-      const monthName=ym?new Date(ym+'-01T00:00:00').toLocaleDateString('pt-BR',{month:'long'}):'';
-      el.innerHTML='<div class="empty-state" style="padding:1.5rem 1rem"><i class="fas fa-receipt"></i><p>Nenhuma transação'+(monthName?' em '+monthName:'')+'</p><small>Lance suas entradas e saídas</small></div>';
+      el.innerHTML='<div class="empty-state" style="padding:1.5rem 1rem"><i class="fas fa-receipt"></i><p>Nenhuma transação registrada</p><small>Lance suas entradas e saídas</small></div>';
       return;
     }
-    el.innerHTML=filtered.slice(0,30).map(t=>`
+    const limite = showAll ? filtered.length : 5;
+    const visíveis = filtered.slice(0, limite);
+    const temMais = !showAll && filtered.length > 5;
+    el.innerHTML = visíveis.map(t=>`
       <div class="trans-item">
         <div class="trans-icon ${t.type}">${catIcons[t.cat]||'💰'}</div>
         <div class="trans-info">
           <div class="trans-title">${esc(t.desc)}</div>
-          <div class="trans-meta">${t.cat||'outros'} · ${t.date?new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR'):''}</div>
+          <div class="trans-meta">${esc(t.cat||'outros')} · ${t.date?new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR'):''}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem">
           <div class="trans-value ${t.type}">${t.type==='income'?'+':'-'}${fmtMoney(t.value)}</div>
           <button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteTransaction('${t.id}')"><i class="fas fa-trash"></i></button>
         </div>
-      </div>`).join('');
+      </div>`).join('') +
+      (temMais ? `<div style="text-align:center;padding:.75rem 0"><button class="btn btn-ghost btn-sm" onclick="app.renderTransactionsList(true)"><i class="fas fa-chevron-down"></i> Ver mais (${filtered.length - 5} restantes)</button></div>` : '');
   },
 
   deleteTransaction(id){
@@ -3448,5 +3511,552 @@ const RealtimeManager = (() => {
 })();
 
 </script> 
- </body> 
+ 
+
+<!-- AUTO SHARE POPUP -->
+<div id="auto-share-popup">
+  <div class="asp-title" id="asp-title">🎉 Incrível!</div>
+  <div class="asp-sub" id="asp-sub">Quer compartilhar essa conquista?</div>
+  <div class="asp-btns">
+    <button class="btn btn-primary" style="flex:1" id="asp-yes-btn" onclick="doAutoShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
+    <button class="btn btn-ghost" onclick="closeAutoShare()">Agora não</button>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div id="share-modal">
+  <div class="share-inner">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1rem">📤 Compartilhar</div>
+      <button class="btn btn-icon btn-sm" onclick="closeShareModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="share-canvas-wrap"><canvas id="share-canvas" width="1080" height="1920"></canvas></div>
+    <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+      <button class="btn btn-primary" style="flex:1" onclick="doShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
+      <button class="btn btn-ghost" onclick="downloadShareImage()"><i class="fas fa-download"></i></button>
+    </div>
+    <div id="share-type-btns" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem"></div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   TUTORIAL GUIADO
+══════════════════════════════════════════════════ */
+const TUTORIAL_STEPS = [
+  {
+    icon:'⚡', title:'Bem-vindo ao Produtiv.me!',
+    desc:'Vou mostrar rapidamente como usar o sistema para organizar sua vida, desenvolver disciplina e alcançar seus objetivos.',
+    target: null, nav: 'dashboard',
+    btns: [{label:'Começar', action:'next', cls:'btn-primary'}, {label:'Pular', action:'skip', cls:'btn-ghost'}]
+  },
+  {
+    icon:'📋', title:'Rotina — Tarefas do Dia',
+    desc:'Organize tudo o que precisa fazer durante o dia. Adicione, priorize e marque como concluído.',
+    target: '#routine-tasks-list', nav: 'dashboard',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'🏆', title:'XP e Evolução',
+    desc:'Ganhe XP completando tarefas e hábitos, suba de nível e desbloqueie conquistas especiais.',
+    target: '.xp-bar-wrapper', nav: 'dashboard',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'🎯', title:'Metas e Hábitos',
+    desc:'Defina objetivos claros, acompanhe sua evolução e construa hábitos diários consistentes.',
+    target: '[data-screen="metas"]', nav: 'metas',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'💰', title:'Finanças',
+    desc:'Controle receitas e despesas. Saiba exatamente para onde vai seu dinheiro e economize mais.',
+    target: '[data-screen="financeiro"]', nav: 'financeiro',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'🧠', title:'Mental — Como você está hoje?',
+    desc:'Registre seu humor e responda perguntas diárias para cuidar da sua saúde mental.',
+    target: '[data-screen="mental"]', nav: 'mental',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'💬', title:'Frases Motivacionais',
+    desc:'Encontre e salve frases que te inspiram. Adicione suas próprias frases favoritas.',
+    target: '[data-screen="frases"]', nav: 'frases',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'🔍', title:'Refletir — Questione-se',
+    desc:'Responda perguntas do dia sobre você mesmo. O autoconhecimento é o primeiro passo para evoluir.',
+    target: '[data-screen="questione"]', nav: 'questione',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'📊', title:'Análise — Relatórios',
+    desc:'Veja gráficos e relatórios da sua evolução. Entenda seus padrões e melhore sempre.',
+    target: '[data-screen="analytics"]', nav: 'analytics',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'🎉', title:'Tudo pronto!',
+    desc:'Comece completando esses primeiros passos para ganhar XP bônus:',
+    target: null, nav: 'dashboard', checklist: true,
+    btns: [{label:'Finalizar 🚀', action:'finish', cls:'btn-primary'}]
+  }
+];
+
+let _tutStep = 0;
+let _tutActive = false;
+let _tutBackdrop, _tutSpotlight, _tutBox;
+
+function initTutorial(){
+  if(localStorage.getItem('tutorialCompleted') === 'true') return;
+  setTimeout(startTutorial, 1200);
+}
+
+function startTutorial(){
+  if(_tutActive) return;
+  _tutActive = true;
+  _tutStep = 0;
+  // Cria elementos
+  _tutBackdrop = document.createElement('div');
+  _tutBackdrop.id = 'tutorial-backdrop';
+  _tutSpotlight = document.createElement('div');
+  _tutSpotlight.id = 'tutorial-spotlight';
+  _tutBox = document.createElement('div');
+  _tutBox.id = 'tutorial-box';
+  document.body.append(_tutBackdrop, _tutSpotlight, _tutBox);
+  renderTutStep();
+}
+
+function renderTutStep(){
+  const step = TUTORIAL_STEPS[_tutStep];
+  const total = TUTORIAL_STEPS.length;
+
+  // Progress dots
+  let dots = '';
+  for(let i=0; i<total; i++){
+    const cls = i<_tutStep?'done':i===_tutStep?'active':'';
+    dots += `<span class="${cls}"></span>`;
+  }
+
+  // Checklist
+  let ckHtml = '';
+  if(step.checklist){
+    const g = window.app?.state?.data?.goals||[];
+    const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+    const habs = loadHabits?.()?.length||0;
+    const fin = typeof loadFinance==='function'?(loadFinance()?.transactions?.length||0):0;
+    const doneTasks = tasks.filter(t=>t.done).length;
+    const checks = [
+      {label:'Criar primeira tarefa (+20 XP)', done: tasks.length>0},
+      {label:'Criar primeiro hábito (+20 XP)', done: habs>0},
+      {label:'Criar primeira meta (+20 XP)', done: g.length>0},
+      {label:'Registrar movimentação financeira (+20 XP)', done: fin>0},
+      {label:'Concluir primeira tarefa (+20 XP)', done: doneTasks>0},
+    ];
+    const allDone = checks.every(c=>c.done);
+    ckHtml = `<ul class="t-checklist">${checks.map(c=>`<li class="${c.done?'ck-done':''}"><div class="ck-box">${c.done?'✓':''}</div>${c.label}</li>`).join('')}</ul>`;
+    if(allDone) ckHtml += `<div style="text-align:center;color:var(--primary);font-weight:700;font-size:.85rem;margin-bottom:.5rem">🏅 +100 XP Desbloqueado!</div>`;
+  }
+
+  _tutBox.innerHTML = `
+    <div id="tut-progress">${dots}</div>
+    <div class="t-icon">${step.icon}</div>
+    <div class="t-title">${step.title}</div>
+    <div class="t-desc">${step.desc}</div>
+    ${ckHtml}
+    <div style="font-size:.72rem;color:var(--text-3);text-align:center;margin-bottom:.65rem">${_tutStep+1} de ${total}</div>
+    <div class="t-btns">${step.btns.map(b=>`<button class="btn ${b.cls}" onclick="tutAction('${b.action}')">${b.label}</button>`).join('')}</div>
+  `;
+
+  // Esconde spotlight e box durante reposicionamento
+  _tutSpotlight.style.opacity = '0';
+  _tutBox.style.opacity = '0';
+
+  if(step.target){
+    const el = document.querySelector(step.target);
+    if(el){
+      // Navega para a tela correta
+      if(step.nav && typeof navTo === 'function'){
+        navTo(step.nav);
+      }
+      // Scroll e aguarda antes de calcular posição
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(() => positionTutorial(el), 500);
+    } else {
+      centerTutBox();
+      _tutSpotlight.style.display='none';
+      _tutSpotlight.style.opacity='1';
+      _tutBox.style.opacity='1';
+    }
+  } else {
+    // Navega para a tela da etapa
+    const step2 = TUTORIAL_STEPS[_tutStep];
+    if(step2.nav && typeof navTo === 'function') navTo(step2.nav);
+    _tutSpotlight.style.display='none';
+    centerTutBox();
+    setTimeout(()=>{ _tutBox.style.opacity='1'; }, 100);
+  }
+}
+
+function positionTutorial(el){
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  const boxW = Math.min(320, window.innerWidth - 16);
+  const boxH = _tutBox.offsetHeight || 280;
+
+  // Spotlight
+  Object.assign(_tutSpotlight.style, {
+    display: 'block',
+    opacity: '1',
+    top: (r.top - pad) + 'px',
+    left: (r.left - pad) + 'px',
+    width: (r.width + pad*2) + 'px',
+    height: (r.height + pad*2) + 'px'
+  });
+
+  // Box — tenta abaixo, depois acima, depois centralizado
+  let top = r.bottom + 16;
+  if(top + boxH > window.innerHeight - 8) top = r.top - boxH - 16;
+  if(top < 8) top = window.innerHeight/2 - boxH/2;
+
+  let left = r.left + r.width/2 - boxW/2;
+  left = Math.max(8, Math.min(left, window.innerWidth - boxW - 8));
+
+  Object.assign(_tutBox.style, {
+    top: top + 'px',
+    left: left + 'px',
+    width: boxW + 'px',
+    transform: 'none',
+    opacity: '1'
+  });
+}
+
+function centerTutBox(){
+  Object.assign(_tutBox.style, {
+    top: '50%',
+    left: '50%',
+    width: Math.min(320, window.innerWidth - 16) + 'px',
+    transform: 'translate(-50%,-50%)',
+    opacity: '1'
+  });
+}
+
+function tutAction(action){
+  if(action==='next') _tutStep = Math.min(_tutStep+1, TUTORIAL_STEPS.length-1);
+  else if(action==='prev') _tutStep = Math.max(_tutStep-1, 0);
+  else if(action==='skip' || action==='finish'){
+    finishTutorial(action==='finish');
+    return;
+  }
+  renderTutStep();
+}
+
+function finishTutorial(giveBonus){
+  localStorage.setItem('tutorialCompleted','true');
+  _tutActive = false;
+  _tutBackdrop?.remove(); _tutSpotlight?.remove(); _tutBox?.remove();
+  if(giveBonus){
+    const g = window.app?.state?.data?.goals||[];
+    const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+    const habs = loadHabits?.()?.length||0;
+    const fin = typeof loadFinance==='function'?(loadFinance()?.transactions?.length||0):0;
+    const doneTasks = tasks.filter(t=>t.done).length;
+    const allDone = tasks.length>0 && habs>0 && g.length>0 && fin>0 && doneTasks>0;
+    if(allDone){ addXp(100); showToast('🏅 +100 XP! Medalha Primeiro Passo desbloqueada!','success',4000); }
+    else { showToast('🚀 Tutorial concluído! Complete o checklist para ganhar +100 XP','success',4000); }
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   COMPARTILHAMENTO - SHARE CARDS
+══════════════════════════════════════════════════ */
+let _shareType = 'streak';
+
+function openShareModal(type='streak'){
+  _shareType = type;
+  document.getElementById('share-modal').classList.add('active');
+  renderShareTypeButtons();
+  generateShareCard(type);
+}
+
+function closeShareModal(){
+  document.getElementById('share-modal').classList.remove('active');
+}
+
+function renderShareTypeButtons(){
+  const types = [
+    {id:'streak', label:'🔥 Streak'},
+    {id:'evolucao', label:'📈 Evolução'},
+    {id:'nivel', label:'🏆 Nível'},
+    {id:'semanal', label:'📊 Semanal'},
+  ];
+  const el = document.getElementById('share-type-btns');
+  el.innerHTML = types.map(t=>`<button class="btn btn-sm ${_shareType===t.id?'btn-primary':'btn-ghost'}" onclick="generateShareCard('${t.id}')">${t.label}</button>`).join('');
+}
+
+function generateShareCard(type){
+  _shareType = type;
+  renderShareTypeButtons();
+  const canvas = document.getElementById('share-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 1080; canvas.height = 1920;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0,0,1080,1920);
+  grad.addColorStop(0,'#0f0a1e');
+  grad.addColorStop(0.5,'#1a0f3a');
+  grad.addColorStop(1,'#0d0d1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,1080,1920);
+
+  // Decorative circles
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = '#8b5cf6';
+  ctx.beginPath(); ctx.arc(900,200,400,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#6d28d9';
+  ctx.beginPath(); ctx.arc(150,1700,350,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle = 'rgba(139,92,246,0.4)';
+  ctx.lineWidth = 4;
+  roundRect(ctx, 30, 30, 1020, 1860, 40);
+  ctx.stroke();
+
+  const g = getGamifyState();
+  const streak = parseInt(document.getElementById('streak-count')?.textContent||'0');
+  const lvl = parseInt(document.getElementById('xp-level-badge')?.textContent?.replace('Nv.','') || '1');
+  const lvlName = document.getElementById('xp-level-name')?.textContent || '';
+
+  if(type==='streak') drawStreakCard(ctx, g, streak, lvl);
+  else if(type==='evolucao') drawEvolucaoCard(ctx, g);
+  else if(type==='nivel') drawNivelCard(ctx, lvl, lvlName);
+  else if(type==='semanal') drawSemanalCard(ctx, g, streak);
+
+  // Logo watermark
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = 'bold 36px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚡ produtiv.me', 540, 1860);
+}
+
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+function drawText(ctx, text, x, y, size, color, align='center', font='sans-serif', weight='normal'){
+  ctx.fillStyle = color;
+  ctx.font = `${weight} ${size}px ${font}`;
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+}
+
+function drawStreakCard(ctx, g, streak, lvl){
+  drawText(ctx,'🔥',540,420,180,'white');
+  drawText(ctx,`${streak} Dias`,540,600,120,'#ffffff','center','sans-serif','bold');
+  drawText(ctx,'Consecutivos',540,680,48,'rgba(255,255,255,0.6)');
+  // Divider
+  ctx.strokeStyle='rgba(139,92,246,0.5)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(200,740); ctx.lineTo(880,740); ctx.stroke();
+  drawText(ctx,`Nível ${lvl}`,540,830,56,'#8b5cf6','center','sans-serif','bold');
+  drawText(ctx,`${g.totalXp.toLocaleString()} XP`,540,910,44,'rgba(255,255,255,0.7)');
+  ctx.strokeStyle='rgba(139,92,246,0.5)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(200,970); ctx.lineTo(880,970); ctx.stroke();
+  const frase = typeof getNextShareFrase==='function' ? getNextShareFrase() : 'Disciplina é fazer mesmo quando não está motivado.';
+  drawWrappedText(ctx, `"${frase}"`, 540, 1060, 800, 40, 'rgba(255,255,255,0.55)', 'center');
+  drawText(ctx,'Minha evolução no',540,1750,38,'rgba(255,255,255,0.4)');
+}
+
+function drawEvolucaoCard(ctx, g){
+  const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+  const doneTasks = tasks.filter(t=>t.done).length;
+  drawText(ctx,'📈 Minha Evolução',540,300,64,'#ffffff','center','sans-serif','bold');
+  const items = [
+    {label:'Tarefas concluídas', val: doneTasks},
+    {label:'XP Total', val: g.totalXp.toLocaleString()},
+    {label:'Medalhas', val: g.medals?.length||0},
+  ];
+  items.forEach((item,i)=>{
+    const y = 500 + i*250;
+    ctx.save();
+    ctx.globalAlpha=0.15; ctx.fillStyle='#8b5cf6';
+    roundRect(ctx,140,y-70,800,180,20); ctx.fill();
+    ctx.restore();
+    drawText(ctx,String(item.val),540,y+20,96,'#8b5cf6','center','sans-serif','bold');
+    drawText(ctx,item.label,540,y+80,38,'rgba(255,255,255,0.6)');
+  });
+  drawText(ctx,'"1% melhor todos os dias."',540,1700,40,'rgba(255,255,255,0.5)','center','sans-serif','italic');
+}
+
+function drawNivelCard(ctx, lvl, lvlName){
+  drawText(ctx,'🏆',540,350,160,'white');
+  drawText(ctx,'Novo Nível Alcançado!',540,560,56,'rgba(255,255,255,0.7)');
+  drawText(ctx,`Nível ${lvl}`,540,700,140,'#8b5cf6','center','sans-serif','bold');
+  drawText(ctx,lvlName,540,800,52,'#ffffff','center','sans-serif','bold');
+  ctx.strokeStyle='rgba(139,92,246,0.5)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(200,870); ctx.lineTo(880,870); ctx.stroke();
+  drawText(ctx,'Parabéns pela evolução.',540,960,44,'rgba(255,255,255,0.6)');
+  drawText(ctx,'Disciplina desbloqueada.',540,1030,44,'rgba(255,255,255,0.6)');
+}
+
+function drawSemanalCard(ctx, g, streak){
+  const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+  const doneTasks = tasks.filter(t=>t.done).length;
+  drawText(ctx,'📊 Resumo da Semana',540,260,58,'#ffffff','center','sans-serif','bold');
+  const cols = [
+    {icon:'✅', val:doneTasks, label:'Tarefas'},
+    {icon:'🔥', val:streak, label:'Streak'},
+    {icon:'⚡', val:g.totalXp, label:'XP'},
+    {icon:'🏅', val:g.medals?.length||0, label:'Medalhas'},
+  ];
+  cols.forEach((c,i)=>{
+    const x = 180 + (i%2)*360, y = 450 + Math.floor(i/2)*320;
+    ctx.save(); ctx.globalAlpha=0.15; ctx.fillStyle='#8b5cf6';
+    roundRect(ctx,x-120,y-80,240,220,16); ctx.fill(); ctx.restore();
+    drawText(ctx,c.icon,x,y-10,56,'white');
+    drawText(ctx,String(c.val),x,y+80,72,'#8b5cf6','center','sans-serif','bold');
+    drawText(ctx,c.label,x,y+130,32,'rgba(255,255,255,0.6)');
+  });
+  const frases = ['Você está construindo uma rotina consistente.','Seu foco está acima da média.','Mais um passo em direção aos seus objetivos.'];
+  drawWrappedText(ctx,'"'+frases[doneTasks%frases.length]+'"',540,1200,800,38,'rgba(255,255,255,0.5)','center');
+}
+
+function drawWrappedText(ctx, text, x, y, maxW, size, color, align){
+  ctx.fillStyle=color; ctx.font=`italic ${size}px sans-serif`; ctx.textAlign=align;
+  const words=text.split(' '); let line=''; let cy=y;
+  words.forEach(w=>{
+    const test=line+w+' ';
+    if(ctx.measureText(test).width>maxW&&line!==''){
+      ctx.fillText(line,x,cy); line=w+' '; cy+=size*1.5;
+    } else line=test;
+  });
+  ctx.fillText(line,x,cy);
+}
+
+async function doShare(){
+  const canvas = document.getElementById('share-canvas');
+  const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
+  const file = new File([blob],'produtivme-share.png',{type:'image/png'});
+  if(navigator.share && navigator.canShare({files:[file]})){
+    await navigator.share({files:[file], title:'Minha evolução no Produtiv.me'});
+  } else { downloadShareImage(); }
+}
+
+function downloadShareImage(){
+  const canvas=document.getElementById('share-canvas');
+  const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
+  a.download='produtivme-'+_shareType+'.png'; a.click();
+  showToast('📥 Imagem baixada!','success');
+}
+
+
+/* ══════════════════════════════════════════════════
+   SISTEMA DE COMPARTILHAMENTO AUTOMÁTICO
+══════════════════════════════════════════════════ */
+let _sharePopupTimer = null;
+let _pendingShareType = 'streak';
+let _shareIndex = parseInt(localStorage.getItem('pm_share_idx')||'0');
+
+const SHARE_FRASES = [
+  'Disciplina é fazer mesmo quando não está motivado.',
+  'Cada dia é uma nova oportunidade de evoluir.',
+  'Consistência supera intensidade.',
+  'O sucesso é a soma de pequenos esforços diários.',
+  'Você está construindo uma rotina que transforma vidas.',
+  'Foco no processo, não apenas no resultado.',
+  'Grandes resultados vêm de pequenas ações consistentes.',
+  'Sua disciplina de hoje é sua liberdade de amanhã.',
+  'Um passo de cada vez, mas nunca pare.',
+  'A mente que persiste supera todos os obstáculos.',
+];
+
+function getNextShareFrase(){
+  const f = SHARE_FRASES[_shareIndex % SHARE_FRASES.length];
+  _shareIndex++;
+  localStorage.setItem('pm_share_idx', _shareIndex);
+  return f;
+}
+
+function showAutoSharePopup(type, title, sub){
+  _pendingShareType = type;
+  document.getElementById('asp-title').textContent = title;
+  document.getElementById('asp-sub').textContent = sub;
+  const popup = document.getElementById('auto-share-popup');
+  popup.classList.add('show');
+  clearTimeout(_sharePopupTimer);
+  _sharePopupTimer = setTimeout(closeAutoShare, 8000);
+}
+
+function closeAutoShare(){
+  document.getElementById('auto-share-popup')?.classList.remove('show');
+}
+
+async function doAutoShare(){
+  closeAutoShare();
+  openShareModal(_pendingShareType);
+}
+
+// Triggers automáticos
+function checkAutoShare_TasksComplete(done, total, streak){
+  if(done > 0 && done === total){
+    showAutoSharePopup('streak',
+      '🎯 Dia zerado!',
+      `Você concluiu ${total} tarefa${total>1?'s':''} hoje. Compartilhar no Instagram?`
+    );
+  }
+}
+
+function checkAutoShare_LevelUp(oldXp, newXp){
+  const levels = [0,100,250,500,800,1200,1700,2300,3000,4000,5500,7500,10000,13000,17000,22000];
+  const oldLv = levels.filter(x=>x<=oldXp).length;
+  const newLv = levels.filter(x=>x<=newXp).length;
+  if(newLv > oldLv){
+    showAutoSharePopup('nivel',
+      `🏆 Nível ${newLv} alcançado!`,
+      'Você subiu de nível! Compartilhar essa conquista?'
+    );
+  }
+}
+
+function checkAutoShare_Streak(streak){
+  const milestones = [3,7,14,21,30,60,90,180,365];
+  if(milestones.includes(streak)){
+    showAutoSharePopup('streak',
+      `🔥 ${streak} dias seguidos!`,
+      `Sequência de ${streak} dias! Compartilhar no Instagram?`
+    );
+  }
+}
+
+function checkAutoShare_Medal(medalName){
+  showAutoSharePopup('nivel',
+    `🏅 Medalha conquistada!`,
+    `"${medalName}" desbloqueada! Compartilhar no Instagram?`
+  );
+}
+
+// Sobrescreve generateShareCard para usar frase rotativa
+const _origGenerateShareCard = typeof generateShareCard !== 'undefined' ? generateShareCard : null;
+
+// Botão reiniciar tutorial
+document.addEventListener('DOMContentLoaded',()=>{
+  const btn=document.getElementById('btn-reiniciar-tutorial');
+  if(btn) btn.addEventListener('click',()=>{
+    localStorage.removeItem('tutorialCompleted');
+    closeModal('settings-modal');
+    startTutorial();
+  });
+});
+</script>
+</body> 
 </html>
