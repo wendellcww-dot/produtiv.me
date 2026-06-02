@@ -3790,6 +3790,8 @@ function renderShareTypeButtons(){
     {id:'evolucao', label:'📈 Evolução'},
     {id:'nivel', label:'🏆 Nível'},
     {id:'semanal', label:'📊 Semanal'},
+    {id:'comp_semanal', label:'📅 Comparação Semanal'},
+    {id:'comp_mensal', label:'📆 Comparação Mensal'},
   ];
   const el = document.getElementById('share-type-btns');
   el.innerHTML = types.map(t=>`<button class="btn btn-sm ${_shareType===t.id?'btn-primary':'btn-ghost'}" onclick="generateShareCard('${t.id}')">${t.label}</button>`).join('');
@@ -3834,6 +3836,8 @@ function generateShareCard(type){
   else if(type==='evolucao') drawEvolucaoCard(ctx, g);
   else if(type==='nivel') drawNivelCard(ctx, lvl, lvlName);
   else if(type==='semanal') drawSemanalCard(ctx, g, streak);
+  else if(type==='comp_semanal') drawCompSemanalCard(ctx, g);
+  else if(type==='comp_mensal') drawCompMensalCard(ctx, g);
 
   // Logo watermark — subido para não ser coberto pela mensagem do Story
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -3932,6 +3936,98 @@ function drawSemanalCard(ctx, g, streak){
   });
   const frases = ['Você está construindo uma rotina consistente.','Seu foco está acima da média.','Mais um passo em direção aos seus objetivos.'];
   drawWrappedText(ctx,'"'+frases[doneTasks%frases.length]+'"',540,1200,800,38,'rgba(255,255,255,0.5)','center');
+}
+
+
+function getWeekTasks(weeksAgo=0){
+  const routines = window.app?.state?.data?.routines||{};
+  const now = new Date();
+  const start = new Date(now); start.setDate(now.getDate() - now.getDay() - weeksAgo*7);
+  const end = new Date(start); end.setDate(start.getDate()+6);
+  const keys = Object.keys(routines).filter(dk=>{
+    const d = new Date(dk+'T00:00:00');
+    return d>=start && d<=end;
+  });
+  const tasks = keys.flatMap(k=>routines[k]||[]);
+  return { total: tasks.length, done: tasks.filter(t=>t.done).length };
+}
+
+function getMonthTasks(monthsAgo=0){
+  const routines = window.app?.state?.data?.routines||{};
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth()-monthsAgo, 1);
+  const ym = target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0');
+  const keys = Object.keys(routines).filter(dk=>dk.startsWith(ym));
+  const tasks = keys.flatMap(k=>routines[k]||[]);
+  return { total: tasks.length, done: tasks.filter(t=>t.done).length, ym };
+}
+
+function drawComparisionBase(ctx, title, icon){
+  drawText(ctx, icon, 540, 320, 120, 'white');
+  drawText(ctx, title, 540, 480, 58, '#ffffff', 'center', 'sans-serif', 'bold');
+  // Divider
+  ctx.strokeStyle='rgba(139,92,246,0.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(140,530); ctx.lineTo(940,530); ctx.stroke();
+}
+
+function drawPeriodBlock(ctx, label, done, total, xCenter, yStart, color){
+  const pct = total>0 ? Math.round(done/total*100) : 0;
+  // Card bg
+  ctx.save(); ctx.globalAlpha=0.12; ctx.fillStyle=color;
+  roundRect(ctx, xCenter-200, yStart-60, 400, 300, 20); ctx.fill(); ctx.restore();
+  // Border
+  ctx.strokeStyle=color+'99'; ctx.lineWidth=2;
+  roundRect(ctx, xCenter-200, yStart-60, 400, 300, 20); ctx.stroke();
+  drawText(ctx, label, xCenter, yStart+10, 36, 'rgba(255,255,255,0.6)', 'center', 'sans-serif', 'bold');
+  drawText(ctx, `${done}/${total}`, xCenter, yStart+100, 96, color, 'center', 'sans-serif', 'bold');
+  drawText(ctx, 'tarefas concluídas', xCenter, yStart+150, 30, 'rgba(255,255,255,0.5)');
+  // Pct badge
+  ctx.save(); ctx.globalAlpha=0.2; ctx.fillStyle=color;
+  roundRect(ctx, xCenter-60, yStart+170, 120, 50, 25); ctx.fill(); ctx.restore();
+  drawText(ctx, `${pct}%`, xCenter, yStart+205, 32, color, 'center', 'sans-serif', 'bold');
+}
+
+function drawArrow(ctx, prev, curr){
+  const up = curr >= prev;
+  const diff = Math.abs(curr-prev);
+  const pct = prev>0 ? Math.round(diff/prev*100) : (curr>0?100:0);
+  const color = up ? '#34d399' : '#f87171';
+  const icon = up ? '▲' : '▼';
+  const msg = up
+    ? `${icon} ${pct}% melhor que o período anterior`
+    : `${icon} ${pct}% abaixo do período anterior`;
+  drawText(ctx, msg, 540, 1350, 38, color, 'center', 'sans-serif', 'bold');
+}
+
+function drawCompSemanalCard(ctx, g){
+  drawComparisionBase(ctx, 'Comparação Semanal', '📅');
+  const curr = getWeekTasks(0);
+  const prev = getWeekTasks(1);
+  const nowLabel = 'Esta Semana';
+  const prevLabel = 'Semana Passada';
+  drawPeriodBlock(ctx, prevLabel, prev.done, prev.total, 270, 700, '#6d28d9');
+  drawPeriodBlock(ctx, nowLabel, curr.done, curr.total, 810, 700, '#8b5cf6');
+  // VS
+  drawText(ctx, 'VS', 540, 900, 64, 'rgba(255,255,255,0.3)', 'center', 'sans-serif', 'bold');
+  drawArrow(ctx, prev.done, curr.done);
+  const frase = typeof getNextShareFrase==='function' ? getNextShareFrase() : 'Consistência supera intensidade.';
+  drawWrappedText(ctx, `"${frase}"`, 540, 1450, 800, 36, 'rgba(255,255,255,0.45)', 'center');
+}
+
+function drawCompMensalCard(ctx, g){
+  drawComparisionBase(ctx, 'Comparação Mensal', '📆');
+  const curr = getMonthTasks(0);
+  const prev = getMonthTasks(1);
+  const now = new Date();
+  const currLabel = now.toLocaleDateString('pt-BR',{month:'long'});
+  const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevLabel = prevDate.toLocaleDateString('pt-BR',{month:'long'});
+  drawPeriodBlock(ctx, prevLabel, prev.done, prev.total, 270, 700, '#6d28d9');
+  drawPeriodBlock(ctx, currLabel, curr.done, curr.total, 810, 700, '#8b5cf6');
+  drawText(ctx, 'VS', 540, 900, 64, 'rgba(255,255,255,0.3)', 'center', 'sans-serif', 'bold');
+  drawArrow(ctx, prev.done, curr.done);
+  const frase = typeof getNextShareFrase==='function' ? getNextShareFrase() : 'Cada mês é uma nova oportunidade de evoluir.';
+  drawWrappedText(ctx, `"${frase}"`, 540, 1450, 800, 36, 'rgba(255,255,255,0.45)', 'center');
 }
 
 function drawWrappedText(ctx, text, x, y, maxW, size, color, align){
