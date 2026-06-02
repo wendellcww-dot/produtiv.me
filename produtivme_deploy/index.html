@@ -3837,11 +3837,16 @@ function generateShareCard(type){
   else if(type==='nivel') drawNivelCard(ctx, lvl, lvlName);
   else if(type==='semanal') drawSemanalCard(ctx, g, streak);
 
-  // Logo watermark
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.font = 'bold 36px sans-serif';
+  // Logo watermark — subido para não ser coberto pela mensagem do Story
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = 'bold 40px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('⚡ produtiv.me', 540, 1860);
+  ctx.fillText('⚡ produtiv.me', 540, 1780);
+
+  // URL do site — discreta abaixo do logo
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.font = '28px sans-serif';
+  ctx.fillText('produtiv-me.vercel.app', 540, 1830);
 }
 
 function roundRect(ctx, x, y, w, h, r){
