@@ -1578,6 +1578,7 @@ _isSyncing: false,
     this.renderAll();
     this.initRealtimeSync();
     if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
+    if(typeof checkPeriodShareTrigger === 'function') setTimeout(checkPeriodShareTrigger, 2000);
   },
 
   async confirmarResetSenha(){
@@ -3517,7 +3518,7 @@ const RealtimeManager = (() => {
   <div class="asp-sub" id="asp-sub">Quer compartilhar essa conquista?</div>
   <div class="asp-btns">
     <button class="btn btn-primary" style="flex:1" id="asp-yes-btn" onclick="doAutoShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
-    <button class="btn btn-ghost" onclick="closeAutoShare()">Agora não</button>
+    <button class="btn btn-ghost" style="flex:1" onclick="closeAutoShare()">Não quero compartilhar</button>
   </div>
 </div>
 
@@ -4005,6 +4006,17 @@ function drawCompSemanalCard(ctx, g){
   const prev = getWeekTasks(1);
   const nowLabel = 'Esta Semana';
   const prevLabel = 'Semana Passada';
+  // Datas das semanas
+  const now2 = new Date();
+  const startCurr = new Date(now2); startCurr.setDate(now2.getDate()-now2.getDay());
+  const startPrev = new Date(startCurr); startPrev.setDate(startCurr.getDate()-7);
+  const fmt = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const endCurr = new Date(startCurr); endCurr.setDate(startCurr.getDate()+6);
+  const endPrev = new Date(startPrev); endPrev.setDate(startPrev.getDate()+6);
+  const prevDateLabel = fmt(startPrev)+' - '+fmt(endPrev);
+  const currDateLabel = fmt(startCurr)+' - '+fmt(endCurr);
+  drawText(ctx, prevDateLabel, 270, 660, 26, 'rgba(255,255,255,0.4)');
+  drawText(ctx, currDateLabel, 810, 660, 26, 'rgba(255,255,255,0.4)');
   drawPeriodBlock(ctx, prevLabel, prev.done, prev.total, 270, 700, '#6d28d9');
   drawPeriodBlock(ctx, nowLabel, curr.done, curr.total, 810, 700, '#8b5cf6');
   // VS
@@ -4022,8 +4034,13 @@ function drawCompMensalCard(ctx, g){
   const currLabel = now.toLocaleDateString('pt-BR',{month:'long'});
   const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const prevLabel = prevDate.toLocaleDateString('pt-BR',{month:'long'});
-  drawPeriodBlock(ctx, prevLabel, prev.done, prev.total, 270, 700, '#6d28d9');
-  drawPeriodBlock(ctx, currLabel, curr.done, curr.total, 810, 700, '#8b5cf6');
+  // Ano nos labels mensais
+  const prevYear = prevDate.getFullYear();
+  const currYear = new Date().getFullYear();
+  const prevLabelFull = prevLabel + (prevYear !== currYear ? ' '+prevYear : '');
+  const currLabelFull = currLabel + ' ' + currYear;
+  drawPeriodBlock(ctx, prevLabelFull, prev.done, prev.total, 270, 700, '#6d28d9');
+  drawPeriodBlock(ctx, currLabelFull, curr.done, curr.total, 810, 700, '#8b5cf6');
   drawText(ctx, 'VS', 540, 900, 64, 'rgba(255,255,255,0.3)', 'center', 'sans-serif', 'bold');
   drawArrow(ctx, prev.done, curr.done);
   const frase = typeof getNextShareFrase==='function' ? getNextShareFrase() : 'Cada mês é uma nova oportunidade de evoluir.';
@@ -4092,8 +4109,7 @@ function showAutoSharePopup(type, title, sub){
   document.getElementById('asp-sub').textContent = sub;
   const popup = document.getElementById('auto-share-popup');
   popup.classList.add('show');
-  clearTimeout(_sharePopupTimer);
-  _sharePopupTimer = setTimeout(closeAutoShare, 8000);
+  // Sem timer — fica até o usuário clicar
 }
 
 function closeAutoShare(){
@@ -4146,6 +4162,52 @@ function checkAutoShare_Medal(medalName){
 
 // Sobrescreve generateShareCard para usar frase rotativa
 const _origGenerateShareCard = typeof generateShareCard !== 'undefined' ? generateShareCard : null;
+
+
+/* ══════════════════════════════════════════════════
+   COMPARTILHAMENTO AUTOMÁTICO — FIM DE SEMANA / MÊS
+══════════════════════════════════════════════════ */
+function checkPeriodShareTrigger(){
+  const now = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Sao_Paulo'}));
+  const dayOfWeek = now.getDay(); // 0=domingo
+  const dayOfMonth = now.getDate();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const todayKey2 = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(dayOfMonth).padStart(2,'0');
+
+  // Verifica se já mostrou hoje
+  const lastShown = localStorage.getItem('pm_period_share_shown');
+  if(lastShown === todayKey2) return;
+
+  let type = null;
+  let title = '';
+  let sub = '';
+
+  if(dayOfWeek === 0){
+    // Domingo — comparação semanal
+    type = 'comp_semanal';
+    const curr = getWeekTasks ? getWeekTasks(0) : {done:0,total:0};
+    const prev = getWeekTasks ? getWeekTasks(1) : {done:0,total:0};
+    const up = curr.done >= prev.done;
+    title = up ? '📅 Semana concluída! 🚀' : '📅 Semana finalizada!';
+    sub = up
+      ? `Você completou ${curr.done} tarefas essa semana${prev.done>0?', mais que na semana passada!':'. Quer compartilhar?'}`
+      : `${curr.done} tarefas essa semana. Compartilhe sua evolução!`;
+  } else if(dayOfMonth === lastDayOfMonth){
+    // Último dia do mês — comparação mensal
+    type = 'comp_mensal';
+    const curr = getMonthTasks ? getMonthTasks(0) : {done:0,total:0};
+    const monthName = now.toLocaleDateString('pt-BR',{month:'long'});
+    title = `📆 Mês de ${monthName} finalizado!`;
+    sub = `Você completou ${curr.done} tarefa${curr.done!==1?'s':''} esse mês. Ver comparação?`;
+  }
+
+  if(type){
+    localStorage.setItem('pm_period_share_shown', todayKey2);
+    setTimeout(()=>{
+      showAutoSharePopup(type, title, sub);
+    }, 3000);
+  }
+}
 
 // Botão reiniciar tutorial
 document.addEventListener('DOMContentLoaded',()=>{
