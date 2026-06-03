@@ -3481,9 +3481,29 @@ const RealtimeManager = (() => {
           const userId = window.app?.state?.user?.id;
           if (!userId) return;
           clearInterval(waitId);
-          // login() vincula TODOS os dispositivos do usuário ao mesmo external_id
-          await OneSignal.login(userId);
-          console.log('[OneSignal] External ID vinculado:', userId);
+
+          // Verifica se já está vinculado
+          const currentExtId = OneSignal.User?.externalId;
+          if (currentExtId === userId) {
+            console.log('[OneSignal] Já vinculado:', userId);
+          } else {
+            // login() vincula TODOS os dispositivos do usuário ao mesmo external_id
+            await OneSignal.login(userId);
+            console.log('[OneSignal] External ID vinculado:', userId);
+          }
+
+          // Verifica se o player_id está salvo no banco — se não, salva agora
+          const { data: profile } = await window.supabaseClient
+            .from('profiles').select('player_id').eq('id', userId).single();
+          if (!profile?.player_id) {
+            // Força re-registro no banco usando subscription ID como fallback
+            const subId = await OneSignal.User?.PushSubscription?.id;
+            if (subId) {
+              await window.supabaseClient.from('profiles')
+                .update({ player_id: subId }).eq('id', userId);
+              console.log('[OneSignal] player_id salvo no banco ✅');
+            }
+          }
         }, 500);
 
       } catch(e) { console.error('[OneSignal] Erro:', e); }
