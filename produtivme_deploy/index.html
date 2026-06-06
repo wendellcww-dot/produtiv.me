@@ -3392,6 +3392,13 @@ const RealtimeManager = (() => {
   window.app = app;
   window.closeModal = closeModal;
 
+  // Detecta ?share= na URL (vindo de notificação de resumo)
+  const shareParam = new URLSearchParams(window.location.search).get('share');
+  if(shareParam){
+    history.replaceState(null, '', window.location.pathname);
+    setTimeout(()=>{ if(typeof openShareModal==='function') openShareModal(shareParam); }, 2500);
+  }
+
   // Listener global PASSWORD_RECOVERY — roda antes de qualquer init
   window.supabaseClient.auth.onAuthStateChange((event, session) => {
     if(event === 'PASSWORD_RECOVERY'){
