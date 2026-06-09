@@ -3477,10 +3477,16 @@ const RealtimeManager = (() => {
       try{
         const user = JSON.parse(cachedSess);
         if(user?.id){
-          // Mostra app imediatamente com dados do cache
+          // Inicializa navegação ANTES de mostrar o app
           app.state.user = user;
           app.loadLocal();
-          app.showApp();
+          app.initAuthUI();
+          app.initNavUI(); // crítico — listeners de navegação
+          // Mostra app com navegação já funcional
+          q('auth-screen').classList.add('hidden');
+          q('main-app').classList.remove('hidden');
+          app.renderAll();
+          setTimeout(()=>{ if(typeof initTutorial==='function') setTimeout(initTutorial,800); if(typeof checkPeriodShareTrigger==='function') setTimeout(checkPeriodShareTrigger,2000); }, 100);
           // Remove splash
           const splash = document.getElementById('splash-screen');
           if(splash){ splash.classList.add('hide'); setTimeout(()=>splash.remove(), 400); }
@@ -3489,10 +3495,11 @@ const RealtimeManager = (() => {
           // Confirma sessão com Supabase em background
           window.supabaseClient.auth.getSession().then(({data})=>{
             if(!data?.session){
-              // Sessão expirou — redireciona para login
               app.state.user = null;
               localStorage.removeItem('pm18_session_v1');
               app.showAuth();
+            } else {
+              RealtimeManager.init(user.id);
             }
           });
         } else { await app.init(); }
