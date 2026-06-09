@@ -437,6 +437,14 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 #auto-share-popup .asp-title{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin-bottom:.25rem}
 #auto-share-popup .asp-sub{font-size:.8rem;color:var(--text-2);margin-bottom:.75rem}
 #auto-share-popup .asp-btns{display:flex;gap:.5rem}
+
+/* ══ SPLASH SCREEN ══ */
+#splash-screen{position:fixed;inset:0;background:#0d0d1a;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease;gap:1rem}
+#splash-screen.hide{opacity:0;pointer-events:none}
+#splash-screen img{width:80px;height:80px;border-radius:20px;animation:splashPulse 1.2s ease-in-out infinite}
+#splash-screen .splash-name{font-family:var(--font-display);font-weight:800;font-size:1.6rem;color:#fff;letter-spacing:-.5px}
+#splash-screen .splash-sub{font-size:.8rem;color:rgba(255,255,255,.4)}
+@keyframes splashPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 </style>
 </head>
 <body>
@@ -470,6 +478,13 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 
       </div>
     </div>
+  </div>
+
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen">
+    <img src="/icon_192x192.png" alt="produtiv.me">
+    <div class="splash-name">produtiv<span style="color:rgba(255,255,255,.4)">.</span>me</div>
+    <div class="splash-sub">Carregando...</div>
   </div>
 
   <!-- ══════════ RESET PASSWORD SCREEN ══════════ -->
@@ -3446,6 +3461,7 @@ const RealtimeManager = (() => {
   } else if(isReset){
     // Supabase redirecionou com ?reset=1 mas sem code ainda — escuta o evento
     await app.init();
+    const splashR = document.getElementById('splash-screen'); if(splashR){ splashR.classList.add('hide'); setTimeout(()=>splashR.remove(),400); }
     window.supabaseClient.auth.onAuthStateChange((event, session) => {
       if(event === 'PASSWORD_RECOVERY'){
         q('auth-screen').classList.add('hidden');
@@ -3455,8 +3471,42 @@ const RealtimeManager = (() => {
     });
 
   } else {
-    await app.init();
+    // Verifica sessão em cache ANTES do init para mostrar app instantaneamente
+    const cachedSess = localStorage.getItem('pm18_session_v1');
+    if(cachedSess){
+      try{
+        const user = JSON.parse(cachedSess);
+        if(user?.id){
+          // Mostra app imediatamente com dados do cache
+          app.state.user = user;
+          app.loadLocal();
+          app.showApp();
+          // Remove splash
+          const splash = document.getElementById('splash-screen');
+          if(splash){ splash.classList.add('hide'); setTimeout(()=>splash.remove(), 400); }
+          // Sincroniza em background
+          app.syncRemote().then(()=>{ app.renderAll(); app.carryOverTasks(); });
+          // Confirma sessão com Supabase em background
+          window.supabaseClient.auth.getSession().then(({data})=>{
+            if(!data?.session){
+              // Sessão expirou — redireciona para login
+              app.state.user = null;
+              localStorage.removeItem('pm18_session_v1');
+              app.showAuth();
+            }
+          });
+        } else { await app.init(); }
+      } catch(e){ await app.init(); }
+    } else {
+      await app.init();
+    }
   }
+
+  // Remove splash após init normal
+  setTimeout(()=>{
+    const splash = document.getElementById('splash-screen');
+    if(splash){ splash.classList.add('hide'); setTimeout(()=>splash.remove(), 400); }
+  }, 100);
 
   // 3. Inicia Realtime se já logado
   if (window.app?.state?.user?.id) {
