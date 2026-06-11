@@ -1313,18 +1313,22 @@ const LEVELS = [
   {name:'Mestre',xp:2100},{name:'Elite',xp:3000},{name:'Lenda',xp:4200},{name:'Imortal',xp:6000}
 ];
 const MEDALS = [
-  {id:'first_task',icon:'⭐',name:'Primeira tarefa',check:g=>g.totalDone>=1},
-  {id:'streak3',icon:'🔥',name:'3 dias seguidos',check:(g,s)=>s>=3},
-  {id:'streak7',icon:'🏅',name:'7 dias seguidos',check:(g,s)=>s>=7},
-  {id:'streak30',icon:'🥇',name:'30 dias',check:(g,s)=>s>=30},
-  {id:'tasks10',icon:'💪',name:'10 tarefas',check:g=>g.totalDone>=10},
-  {id:'tasks50',icon:'🚀',name:'50 tarefas',check:g=>g.totalDone>=50},
-  {id:'tasks100',icon:'🏆',name:'100 tarefas',check:g=>g.totalDone>=100},
-  {id:'xp500',icon:'💎',name:'500 XP',check:g=>g.totalXp>=500},
-  {id:'xp2000',icon:'👑',name:'2000 XP',check:g=>g.totalXp>=2000},
-  {id:'finance1',icon:'💰',name:'1ª transação',check:g=>g.finTrans>=1},
-  {id:'finance10',icon:'💳',name:'10 transações',check:g=>g.finTrans>=10},
-  {id:'fingoal',icon:'🎯',name:'Meta financeira',check:g=>g.finGoals>=1},
+  {id:'first_task',icon:'⭐',name:'Primeira Tarefa',desc:'Completou sua primeira tarefa',check:g=>g.totalDone>=1},
+  {id:'streak3',icon:'🔥',name:'3 Dias Seguidos',desc:'Manteve presença por 3 dias',check:(g,s)=>s>=3},
+  {id:'streak7',icon:'🏅',name:'7 Dias Seguidos',desc:'Uma semana de consistência',check:(g,s)=>s>=7},
+  {id:'streak14',icon:'💫',name:'14 Dias Seguidos',desc:'Duas semanas imparável',check:(g,s)=>s>=14},
+  {id:'streak30',icon:'🥇',name:'30 Dias',desc:'Um mês de disciplina real',check:(g,s)=>s>=30},
+  {id:'tasks10',icon:'💪',name:'10 Tarefas',desc:'Concluiu 10 tarefas',check:g=>g.totalDone>=10},
+  {id:'tasks50',icon:'🚀',name:'50 Tarefas',desc:'50 tarefas concluídas',check:g=>g.totalDone>=50},
+  {id:'tasks100',icon:'🏆',name:'100 Tarefas',desc:'100 tarefas — disciplina real',check:g=>g.totalDone>=100},
+  {id:'tasks500',icon:'👑',name:'500 Tarefas',desc:'500 tarefas — você é lendário',check:g=>g.totalDone>=500},
+  {id:'xp500',icon:'💎',name:'500 XP',desc:'Acumulou 500 XP',check:g=>g.totalXp>=500},
+  {id:'xp2000',icon:'🌟',name:'2000 XP',desc:'2000 XP conquistados',check:g=>g.totalXp>=2000},
+  {id:'finance1',icon:'💰',name:'1ª Transação',desc:'Registrou primeira movimentação',check:g=>g.finTrans>=1},
+  {id:'finance10',icon:'💳',name:'10 Transações',desc:'10 movimentações registradas',check:g=>g.finTrans>=10},
+  {id:'fingoal',icon:'🎯',name:'Meta Financeira',desc:'Atingiu uma meta financeira',check:g=>g.finGoals>=1},
+  {id:'presence7',icon:'📅',name:'7 Acessos',desc:'Acessou o app 7 dias',check:g=>(g.presenceDays||0)>=7},
+  {id:'presence30',icon:'🗓️',name:'30 Acessos',desc:'30 dias acessando o app',check:g=>(g.presenceDays||0)>=30},
 ];
 
 function loadGamify(){ try{ return JSON.parse(localStorage.getItem(GAMIFY_KEY)||'{}'); }catch(e){ return {}; } }
@@ -1594,6 +1598,10 @@ _isSyncing: false,
     this.initRealtimeSync();
     if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
     if(typeof checkPeriodShareTrigger === 'function') setTimeout(checkPeriodShareTrigger, 2000);
+    if(typeof registerDailyPresence === 'function') registerDailyPresence();
+    if(typeof showCheckinModal === 'function') showCheckinModal();
+    if(typeof checkRecordes === 'function') setTimeout(checkRecordes, 4000);
+    if(typeof checkResumoDia === 'function') setTimeout(checkResumoDia, 5000);
   },
 
   async confirmarResetSenha(){
@@ -2874,13 +2882,25 @@ const payload = {
     if(q('analytics-xp')) q('analytics-xp').textContent=g.totalXp;
     if(q('analytics-best')) q('analytics-best').textContent=this.getBestDay();
     const insights=[], streak=this.computeStreak();
-    if(streak>0) insights.push({icon:'🔥',text:`Streak atual: ${streak} dias seguidos`});
+    const presStreak = typeof getPresenceStreak==='function' ? getPresenceStreak() : 0;
+    const gState = getGamifyState();
+    const records = loadGamify().records || {};
+    const today2 = todayKey();
+    const todayTasks2 = (this.state.data.routines?.[today2]||[]);
+    const todayDone2 = todayTasks2.filter(t=>t.done).length;
+    const habs2 = typeof loadHabits==='function' ? loadHabits() : [];
+    const habsDone2 = habs2.filter(h=>(h.days||[]).includes(today2)).length;
+
+    if(streak>0) insights.push({icon:'🔥',text:`${streak} dia${streak>1?'s':''} consecutivos de tarefas. Continue!`});
+    if(presStreak>0) insights.push({icon:'📅',text:`${presStreak} dia${presStreak>1?'s':''} acessando o app. Consistência real.`});
+    if(todayDone2>0) insights.push({icon:'✅',text:`Hoje: ${todayDone2} tarefa${todayDone2>1?'s':''} concluída${todayDone2>1?'s':''}${habsDone2>0?' e '+habsDone2+' hábito'+(habsDone2>1?'s':''):''}.`});
+    if(records.maxStreak>0 && streak===records.maxStreak) insights.push({icon:'🏆',text:`Recorde pessoal de streak: ${streak} dias!`});
+    if(records.maxStreak>0 && streak===records.maxStreak-1) insights.push({icon:'⚡',text:`Falta 1 dia para bater seu recorde de ${records.maxStreak} dias!`});
     const focoCounts={};
     allTasks.filter(t=>t.done).forEach(t=>{ focoCounts[t.focus||'trabalho']=(focoCounts[t.focus||'trabalho']||0)+1; });
     const topFoco=Object.entries(focoCounts).sort((a,b)=>b[1]-a[1])[0];
     if(topFoco) insights.push({icon:'🎯',text:`Área mais produtiva: "${topFoco[0]}" com ${topFoco[1]} tarefas`});
-    if(total>0) insights.push({icon:'📊',text:`Taxa de conclusão geral: ${avg}% (${completed}/${total})`});
-    // Insight financeiro no analytics
+    if(total>0) insights.push({icon:'📊',text:`Taxa de conclusão: ${avg}% (${completed}/${total} tarefas)`});
     const monthTrans=getCurrentMonthTrans();
     const finInc=monthTrans.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.value),0);
     const finExp=monthTrans.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.value),0);
@@ -3682,6 +3702,12 @@ const TUTORIAL_STEPS = [
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
+    icon:'📱', title:'Instale o app!',
+    desc:'Tenha o produtiv.me sempre à mão, com acesso rápido direto da tela inicial.',
+    target: null, nav: 'dashboard', install: true,
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
     icon:'🎉', title:'Tudo pronto!',
     desc:'Comece completando esses primeiros passos para ganhar XP bônus:',
     target: null, nav: 'dashboard', checklist: true,
@@ -3692,6 +3718,212 @@ const TUTORIAL_STEPS = [
 let _tutStep = 0;
 let _tutActive = false;
 let _tutBackdrop, _tutSpotlight, _tutBox;
+
+
+/* ══════════════════════════════════════════════════
+   SISTEMA DE CHECK-IN DIÁRIO E STREAK DE PRESENÇA
+══════════════════════════════════════════════════ */
+const CHECKIN_KEY = 'pm18_checkin_v1';
+const PRESENCE_KEY = 'pm18_presence_v1';
+
+function loadCheckin(){ try{ return JSON.parse(localStorage.getItem(CHECKIN_KEY)||'{}'); }catch(e){ return {}; } }
+function saveCheckin(d){ localStorage.setItem(CHECKIN_KEY, JSON.stringify(d)); }
+function loadPresence(){ try{ return JSON.parse(localStorage.getItem(PRESENCE_KEY)||'{}'); }catch(e){ return {}; } }
+function savePresence(d){ localStorage.setItem(PRESENCE_KEY, JSON.stringify(d)); }
+
+function registerDailyPresence(){
+  const today = new Date().toISOString().split('T')[0];
+  const p = loadPresence();
+  if(p.lastDay === today) return; // já registrou hoje
+  
+  const days = p.days || [];
+  if(!days.includes(today)) days.push(today);
+  
+  // Calcula streak de presença
+  let streak = 0;
+  let cur = new Date(today+'T00:00:00');
+  const sorted = [...days].sort().reverse();
+  for(const d of sorted){
+    const diff = Math.round((cur.getTime()-new Date(d+'T00:00:00').getTime())/86400000);
+    if(diff === streak) streak++;
+    else if(diff > streak) break;
+  }
+  
+  p.lastDay = today;
+  p.days = days;
+  p.streak = streak;
+  p.totalDays = days.length;
+  savePresence(p);
+  
+  // Atualiza presenceDays no gamify
+  const g = loadGamify();
+  g.presenceDays = days.length;
+  saveGamify(g);
+  
+  return streak;
+}
+
+function getPresenceStreak(){
+  return loadPresence().streak || 0;
+}
+
+const CHECKIN_MSGS = {
+  'pessimo': { emoji:'😞', title:'Dia difícil?', msg:'Tudo bem. Dias difíceis existem para nos ensinar. Você veio aqui, isso já é um passo.' },
+  'mal':     { emoji:'😕', title:'Não está fácil', msg:'Reconhecer como você está é sabedoria. O app está aqui para te ajudar a seguir em frente.' },
+  'ok':      { emoji:'😐', title:'Dia neutro', msg:'Neutro hoje pode virar ótimo amanhã. Vamos tornar esse dia um pouco melhor?' },
+  'bem':     { emoji:'😊', title:'Que bom!', msg:'Energia boa! Aproveite esse estado para concluir suas tarefas e hábitos do dia.' },
+  'otimo':   { emoji:'😄', title:'Incrível!', msg:'Você está em chamas hoje! Canaliza essa energia e vai ser um dia memorável.' },
+};
+
+function showCheckinModal(){
+  const today = new Date().toISOString().split('T')[0];
+  const ci = loadCheckin();
+  if(ci.lastDay === today) return; // já fez check-in hoje
+  
+  // Não mostra nas primeiras 2 vezes que abre o app (não quer assustar)
+  ci.opens = (ci.opens||0) + 1;
+  saveCheckin(ci);
+  if(ci.opens <= 2) return;
+  
+  setTimeout(()=>{
+    const modal = document.createElement('div');
+    modal.id = 'checkin-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9200;display:flex;align-items:center;justify-content:center;padding:1rem';
+    modal.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:min(360px,95vw);text-align:center">
+        <div style="font-size:2rem;margin-bottom:.5rem">👋</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-bottom:.25rem">Como você está hoje?</div>
+        <div style="font-size:.82rem;color:var(--text-3);margin-bottom:1.25rem">Seu humor importa para o seu progresso</div>
+        <div style="display:flex;gap:.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap">
+          ${Object.entries({pessimo:'😞 Péssimo',mal:'😕 Mal',ok:'😐 Ok',bem:'😊 Bem',otimo:'😄 Ótimo'}).map(([k,v])=>
+            `<button class="btn btn-ghost" style="flex:1;min-width:70px;font-size:.82rem" onclick="doCheckin('${k}')">${v}</button>`
+          ).join('')}
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('checkin-modal').remove()" style="color:var(--text-3);font-size:.75rem">Pular por hoje</button>
+      </div>`;
+    document.body.appendChild(modal);
+  }, 1500);
+}
+
+function doCheckin(humor){
+  const today = new Date().toISOString().split('T')[0];
+  const ci = loadCheckin();
+  ci.lastDay = today;
+  ci.history = ci.history || {};
+  ci.history[today] = humor;
+  saveCheckin(ci);
+  
+  // Salva no banco também
+  if(window.app?.state?.user?.id){
+    window.supabaseClient.from('humor_logs').upsert([{
+      user_id: window.app.state.user.id,
+      date: today,
+      mood: {pessimo:1,mal:2,ok:3,bem:4,otimo:5}[humor]||3,
+      note: ''
+    }],{onConflict:'user_id,date'}).then(()=>{});
+  }
+  
+  const m = CHECKIN_MSGS[humor];
+  document.getElementById('checkin-modal')?.remove();
+  
+  // Mostra resposta personalizada
+  const resp = document.createElement('div');
+  resp.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9200;display:flex;align-items:center;justify-content:center;padding:1rem';
+  resp.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:min(320px,95vw);text-align:center">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">${m.emoji}</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-bottom:.5rem">${m.title}</div>
+      <div style="font-size:.875rem;color:var(--text-2);line-height:1.6;margin-bottom:1rem">${m.msg}</div>
+      <button class="btn btn-primary btn-block" onclick="this.closest('div[style]').remove()">Vamos lá! 💪</button>
+    </div>`;
+  document.body.appendChild(resp);
+  addXp(5);
+  showToast('Check-in feito! +5 XP 😊','success',2500);
+}
+
+
+function checkResumoDia(){
+  const now = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
+  if(now.getHours() < 20) return; // só após 20h
+  const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const lastShown = localStorage.getItem('pm_resumo_dia');
+  if(lastShown === today) return;
+  localStorage.setItem('pm_resumo_dia', today);
+  
+  const allTasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+  const todayTasks = (window.app?.state?.data?.routines?.[today]||[]);
+  const doneTasks = todayTasks.filter(t=>t.done).length;
+  const totalTasks = todayTasks.length;
+  const habs = typeof loadHabits==='function' ? loadHabits() : [];
+  const habsDone = habs.filter(h=>(h.days||[]).includes(today)).length;
+  const g = getGamifyState();
+  const ci = loadCheckin();
+  const humorHoje = ci.history?.[today];
+  const humorEmoji = {pessimo:'😞',mal:'😕',ok:'😐',bem:'😊',otimo:'😄'}[humorHoje]||'';
+  
+  if(doneTasks === 0 && habsDone === 0) return; // nada feito, não mostra
+  
+  const popup = document.createElement('div');
+  popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9100;display:flex;align-items:center;justify-content:center;padding:1rem';
+  popup.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:min(360px,95vw)">
+      <div style="text-align:center;font-size:1.5rem;margin-bottom:.5rem">🌙</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;text-align:center;margin-bottom:1rem">Resumo do seu dia</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+        <div style="background:var(--surface2);border-radius:10px;padding:.875rem;text-align:center">
+          <div style="font-size:1.5rem;font-weight:800;color:var(--primary)">${doneTasks}</div>
+          <div style="font-size:.75rem;color:var(--text-3)">Tarefas ✅</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:.875rem;text-align:center">
+          <div style="font-size:1.5rem;font-weight:800;color:var(--primary)">${habsDone}</div>
+          <div style="font-size:.75rem;color:var(--text-3)">Hábitos 🔥</div>
+        </div>
+      </div>
+      ${humorEmoji ? `<div style="text-align:center;font-size:.85rem;color:var(--text-2);margin-bottom:1rem">Humor registrado: ${humorEmoji}</div>` : ''}
+      <div style="font-size:.82rem;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:1rem">
+        ${doneTasks>0&&doneTasks===totalTasks ? '🏆 Dia zerado! Você concluiu todas as tarefas.' : `Hoje você concluiu ${doneTasks} tarefa${doneTasks!==1?'s':''} e manteve ${habsDone} hábito${habsDone!==1?'s':''}.`}
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost" style="flex:1" onclick="openShareModal('semanal');this.closest('div[style]').remove()"><i class="fas fa-share-alt"></i> Compartilhar</button>
+        <button class="btn btn-primary" style="flex:1" onclick="this.closest('div[style]').remove()">Ótimo! 👊</button>
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+}
+
+function checkRecordes(){
+  const g = loadGamify();
+  const streak = app?.computeStreak?.() || 0;
+  const presStreak = getPresenceStreak();
+  const records = g.records || {};
+  const alerts = [];
+  
+  // Recorde de streak
+  if(streak > 0 && streak === (records.maxStreak||0) - 1){
+    alerts.push(`🔥 Falta 1 dia para bater seu recorde de streak (${records.maxStreak} dias)!`);
+  }
+  if(streak > (records.maxStreak||0)){
+    records.maxStreak = streak;
+    alerts.push(`🏆 Novo recorde de streak: ${streak} dias consecutivos!`);
+  }
+  
+  // Recorde de tarefas
+  const today = new Date().toISOString().split('T')[0];
+  const todayDone = (Object.values(app?.state?.data?.routines||{}).flat()||[]).filter((t)=>t.done && t.updated_at?.startsWith(today)).length;
+  if(todayDone > 0 && todayDone === (records.maxTasksDay||0)){
+    alerts.push(`⚡ Você está perto do seu recorde diário de tarefas (${records.maxTasksDay})!`);
+  }
+  if(todayDone > (records.maxTasksDay||0)){
+    records.maxTasksDay = todayDone;
+  }
+  
+  g.records = records;
+  saveGamify(g);
+  
+  if(alerts.length > 0){
+    setTimeout(()=>showToast(alerts[0],'success',5000), 3000);
+  }
+}
 
 function initTutorial(){
   if(localStorage.getItem('tutorialCompleted') === 'true') return;
@@ -3724,6 +3956,42 @@ function renderTutStep(){
     dots += `<span class="${cls}"></span>`;
   }
 
+  // Install block
+  let installHtml = '';
+  if(step.install){
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(isInstalled){
+      installHtml = `<div style="text-align:center;padding:.75rem;background:rgba(52,211,153,.1);border-radius:10px;margin-bottom:.875rem;color:var(--green);font-size:.85rem">✅ App já instalado! Perfeito.</div>`;
+    } else if(isAndroid){
+      installHtml = `
+        <div style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:.875rem;margin-bottom:.875rem">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:.5rem">🤖 Android</div>
+          <div style="font-size:.82rem;color:var(--text-2);margin-bottom:.75rem">Instale com 1 clique e acesse direto da tela inicial.</div>
+          <button class="btn btn-primary btn-block" onclick="tutInstallAndroid(this)"><i class="fas fa-download"></i> Instalar agora</button>
+        </div>`;
+    } else if(isIOS){
+      installHtml = `
+        <div style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:.875rem;margin-bottom:.875rem">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:.5rem">🍎 iPhone / iPad</div>
+          <div style="font-size:.82rem;color:var(--text-2);line-height:1.6">
+            <div style="margin-bottom:.4rem">1. Toque em <strong>Compartilhar</strong> ⬆️ no Safari</div>
+            <div style="margin-bottom:.4rem">2. Toque em <strong>"Adicionar à Tela de Início"</strong></div>
+            <div>3. Toque em <strong>"Adicionar"</strong></div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text-3);margin-top:.5rem">⚠️ Use o Safari — Chrome no iPhone não suporta instalação</div>
+        </div>`;
+    } else {
+      installHtml = `
+        <div style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:.875rem;margin-bottom:.875rem">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:.5rem">💻 Desktop</div>
+          <div style="font-size:.82rem;color:var(--text-2);margin-bottom:.75rem">Clique no ícone de instalação na barra de endereço do navegador.</div>
+          <button class="btn btn-primary btn-block" onclick="tutInstallAndroid(this)"><i class="fas fa-download"></i> Instalar</button>
+        </div>`;
+    }
+  }
+
   // Checklist
   let ckHtml = '';
   if(step.checklist){
@@ -3749,6 +4017,7 @@ function renderTutStep(){
     <div class="t-icon">${step.icon}</div>
     <div class="t-title">${step.title}</div>
     <div class="t-desc">${step.desc}</div>
+    ${installHtml}
     ${ckHtml}
     <div style="font-size:.72rem;color:var(--text-3);text-align:center;margin-bottom:.65rem">${_tutStep+1} de ${total}</div>
     <div class="t-btns">${step.btns.map(b=>`<button class="btn ${b.cls}" onclick="tutAction('${b.action}')">${b.label}</button>`).join('')}</div>
@@ -3825,6 +4094,21 @@ function centerTutBox(){
     transform: 'translate(-50%,-50%)',
     opacity: '1'
   });
+}
+
+async function tutInstallAndroid(btn){
+  if(_installPrompt){
+    _installPrompt.prompt();
+    const { outcome } = await _installPrompt.userChoice;
+    if(outcome === 'accepted'){
+      btn.textContent = '✅ Instalado!';
+      btn.disabled = true;
+      btn.className = 'btn btn-ghost btn-block';
+      showToast('✅ App instalado com sucesso!', 'success', 3000);
+    }
+  } else {
+    showToast('Use o menu do navegador → "Adicionar à tela inicial"', '', 4000);
+  }
 }
 
 function tutAction(action){
