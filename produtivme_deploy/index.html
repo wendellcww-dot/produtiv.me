@@ -1503,6 +1503,11 @@ _isSyncing: false,
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(GAMIFY_KEY);
         localStorage.removeItem('pm18_carry_done');
+        localStorage.removeItem('pm18_checkin_v1');
+        localStorage.removeItem('pm18_presence_v1');
+        localStorage.removeItem('pm_share_idx');
+        localStorage.removeItem('pm_resumo_dia');
+        localStorage.removeItem('pm_period_share_shown');
         this.state.data = this.getDefaultData();
         saveGamify({});
       }
@@ -1558,9 +1563,15 @@ _isSyncing: false,
       const oldSess = localStorage.getItem(SESSION_KEY);
       const oldUser = oldSess ? JSON.parse(oldSess) : null;
       if(oldUser && oldUser.id !== newUserId){
+        // Limpa TODOS os dados locais ao trocar de conta
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(GAMIFY_KEY);
         localStorage.removeItem('pm18_carry_done');
+        localStorage.removeItem('pm18_checkin_v1');
+        localStorage.removeItem('pm18_presence_v1');
+        localStorage.removeItem('pm_share_idx');
+        localStorage.removeItem('pm_resumo_dia');
+        localStorage.removeItem('pm_period_share_shown');
         this.state.data = this.getDefaultData();
         saveGamify({});
       }
@@ -1585,7 +1596,16 @@ _isSyncing: false,
         };
         showAlert('❌ '+(msgs[error.message]||error.message),true); return;
       }
-      showAlert('✅ Conta criada com sucesso! Verifique seu email.',false);
+      // Entra direto no sistema após criar conta
+      if(data?.user){
+        this.state.user={id:data.user.id,email:data.user.email,name:name||data.user.email.split('@')[0]};
+        localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
+        this.showApp();
+        showLoading('Sincronizando...'); await this.syncRemote(); hideLoading();
+        this.carryOverTasks();
+      } else {
+        showAlert('✅ Conta criada! Faça login para continuar.',false);
+      }
     });
 
 
@@ -2182,21 +2202,45 @@ const payload = {
     if(!task) return;
     const wasDone = task.done;
     task.done=!task.done; task.updated_at=new Date().toISOString();
-    this.saveLocal(); this.renderDashboard(); this.saveTaskRemote(task, today);
+    this.saveLocal();
+    this.saveTaskRemote(task, today);
+
+    // Atualiza só o elemento da tarefa — sem re-render completo (evita piscar)
     const el=q('task-'+id);
-    if(el){ el.classList.add('just-done'); setTimeout(()=>el.classList.remove('just-done'),350); }
+    if(el){
+      const cb = el.querySelector('input[type="checkbox"]');
+      if(cb) cb.checked = task.done;
+      if(task.done){
+        el.classList.add('done','just-done');
+        setTimeout(()=>el.classList.remove('just-done'),350);
+      } else {
+        el.classList.remove('done');
+      }
+    }
+
     if(task.done){
       addXp(10, el); showToast('✅ Tarefa concluída! +10 XP','success');
       if(tasks.every(t=>t.done)&&tasks.length>0) window._verificarParabens?.();
     } else if(wasDone) {
-      // Desmarcou — remove XP
       const g=loadGamify();
       g.totalXp=Math.max(0,(g.totalXp||0)-10);
       g.totalDone=Math.max(0,(g.totalDone||0)-1);
-      saveGamify(g);
-      syncGamifyRemote(g);
+      saveGamify(g); syncGamifyRemote(g);
       showToast('↩️ Tarefa desmarcada (-10 XP)','default');
     }
+
+    // Atualiza só os contadores do dashboard sem re-render completo
+    const done=tasks.filter(t=>t.done).length, total=tasks.length;
+    const pct=total>0?Math.round(done/total*100):0;
+    const elDone=q('tasks-done'), elTotal=q('tasks-total'), elPct=q('tasks-pct'), elProg=q('hero-progress');
+    if(elDone) elDone.textContent=done;
+    if(elTotal) elTotal.textContent=total;
+    if(elPct) elPct.textContent=pct+'%';
+    if(elProg) elProg.textContent=pct+'%';
+    const bar=q('hero-progress-bar');
+    if(bar) bar.style.width=pct+'%';
+    this.renderXP();
+    checkMedals(this.computeStreak());
   },
 
   openAddTask(){
@@ -4501,9 +4545,14 @@ function checkAutoShare_TasksComplete(done, total, streak){
 
 function checkAutoShare_LevelUp(oldXp, newXp){
   const levels = [0,100,250,500,800,1200,1700,2300,3000,4000,5500,7500,10000,13000,17000,22000];
-  const oldLv = levels.filter(x=>x<=oldXp).length;
-  const newLv = levels.filter(x=>x<=newXp).length;
-  if(newLv > oldLv){
+  // O nível atual é o índice do último threshold que o XP ultrapassou
+  const oldLv = levels.filter(x=>x<=oldXp).length - 1;
+  const newLv = levels.filter(x=>x<=newXp).length - 1;
+  if(newLv > oldLv && newLv > 0){
+    // Verifica nível atual real do app antes de mostrar popup
+    const actualLvBadge = document.getElementById('xp-level-badge')?.textContent?.replace('Nv.','');
+    const actualLv = actualLvBadge ? parseInt(actualLvBadge) : newLv;
+    if(actualLv !== newLv) return; // evita popup com nível errado
     showAutoSharePopup('nivel',
       `🏆 Nível ${newLv} alcançado!`,
       'Você subiu de nível! Compartilhar essa conquista?'
