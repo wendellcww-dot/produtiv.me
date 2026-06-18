@@ -445,6 +445,23 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 #splash-screen .splash-name{font-family:var(--font-display);font-weight:800;font-size:1.6rem;color:#fff;letter-spacing:-.5px}
 #splash-screen .splash-sub{font-size:.8rem;color:rgba(255,255,255,.4)}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
+
+/* ══ SISTEMA DE LIGAS E CONSISTÊNCIA ══ */
+.liga-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:20px;font-size:.78rem;font-weight:700;border:1px solid transparent}
+.liga-iniciante{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:#4ade80}
+.liga-evolucao{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3);color:#60a5fa}
+.liga-consistente{background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.3);color:#fb923c}
+.liga-disciplinado{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.3);color:#a78bfa}
+.liga-mestre{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);color:#34d399}
+.liga-lendario{background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(239,68,68,.2));border-color:rgba(251,191,36,.5);color:#fbbf24}
+.pc-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;font-weight:700;color:var(--primary)}
+.escudo-badge{display:inline-flex;align-items:center;gap:.2rem;font-size:.85rem}
+.desafio-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:.75rem}
+.desafio-progress{height:6px;background:var(--surface4);border-radius:3px;margin:.5rem 0;overflow:hidden}
+.desafio-progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),#a855f7);border-radius:3px;transition:width .4s ease}
+.dia-perfeito-banner{background:linear-gradient(135deg,rgba(139,92,246,.2),rgba(236,72,153,.2));border:1px solid rgba(139,92,246,.4);border-radius:var(--radius);padding:1rem;text-align:center;margin-bottom:.75rem}
+#pc-float{position:fixed;top:50%;right:1rem;transform:translateY(-50%);background:rgba(139,92,246,.95);color:#fff;padding:.4rem .75rem;border-radius:20px;font-weight:700;font-size:.85rem;opacity:0;transition:all .3s;z-index:8000;pointer-events:none}
+#pc-float.show{opacity:1;transform:translateY(calc(-50% - 10px))}
 </style>
 </head>
 <body>
@@ -551,6 +568,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="xp-bar-wrapper">
+          <div id="liga-badge" style="margin-bottom:.4rem"></div>
           <div class="xp-bar-top">
             <div class="xp-level">
               <span class="lvl-badge" id="xp-level-badge">Nv.1</span>
@@ -559,10 +577,15 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             </div>
             <div class="xp-amount" style="display:flex;align-items:center;gap:.4rem">
               <span id="xp-current">0</span> / <span id="xp-next">100</span> XP
-              <button onclick="openShareModal('streak')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
+              <button onclick="openShareModal('liga')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
             </div>
           </div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.35rem">
+            <span id="escudo-count" style="font-size:.8rem"></span>
+            <span id="pc-total" style="font-size:.72rem;color:var(--text-3)"></span>
+            <span id="liga-next" style="font-size:.68rem;color:var(--primary);text-align:right;max-width:160px;line-height:1.3"></span>
+          </div>
         </div>
 
         <div class="stats-grid">
@@ -593,6 +616,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div id="insight-container"></div>
+        <div id="desafio-widget"></div>
 
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
@@ -1371,6 +1395,8 @@ function addXp(amount, sourceEl){
   const g=loadGamify();
   const oldXp = g.totalXp||0;
   g.totalXp=oldXp+amount;
+  // PC por tarefa concluída
+  if(amount>=10 && typeof addPC==='function') addPC(5,'tarefa_concluida');
   if(amount>=10) g.totalDone=(g.totalDone||0)+1;
   saveGamify(g);
   syncGamifyRemote(g);
@@ -1622,6 +1648,9 @@ _isSyncing: false,
     if(typeof showCheckinModal === 'function') showCheckinModal();
     if(typeof checkRecordes === 'function') setTimeout(checkRecordes, 4000);
     if(typeof checkResumoDia === 'function') setTimeout(checkResumoDia, 5000);
+    if(typeof addPCAccess === 'function') addPCAccess();
+    if(typeof checkDailyPenalties === 'function') checkDailyPenalties();
+    if(typeof generateDailyChallenge === 'function') setTimeout(()=>{ generateDailyChallenge(); renderDesafioWidget(); renderPCWidget(); }, 1500);
   },
 
   async confirmarResetSenha(){
@@ -2241,6 +2270,7 @@ const payload = {
     if(bar) bar.style.width=pct+'%';
     this.renderXP();
     checkMedals(this.computeStreak());
+    if(typeof updateDailyChallenge==='function') setTimeout(updateDailyChallenge,500);
   },
 
   openAddTask(){
@@ -2327,6 +2357,7 @@ const payload = {
 
   /* ── XP ── */
   renderXP(){
+    if(typeof renderPCWidget==='function') setTimeout(renderPCWidget, 100);
     const g=getGamifyState(), lv=computeLevel(g.totalXp);
     if(q('xp-level-badge')) q('xp-level-badge').textContent='Nv.'+lv.level;
     if(q('xp-level-name')) q('xp-level-name').textContent=lv.name;
@@ -2504,7 +2535,7 @@ const payload = {
     if(marcando) h.days.push(day); else h.days.splice(idx,1);
     // Salva local e renderiza imediatamente (feedback rápido)
     saveHabits(habits); this.renderHabits();
-    if(marcando){ addXp(5); showToast('Hábito marcado! +5 XP','success'); }
+    if(marcando){ addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido'); showToast('Hábito marcado! +5 XP','success'); }
     // Salva no banco — banco é fonte de verdade
     if(this.state.user&&!this.state.user.local){
       const {error}=await window.supabaseClient.from('habitos').update({days:h.days})
@@ -3660,6 +3691,7 @@ const RealtimeManager = (() => {
 </script> 
  
 
+<div id="pc-float"></div>
 <!-- AUTO SHARE POPUP -->
 <div id="auto-share-popup">
   <div class="asp-title" id="asp-title">🎉 Incrível!</div>
@@ -3764,6 +3796,510 @@ let _tutActive = false;
 let _tutBackdrop, _tutSpotlight, _tutBox;
 
 
+
+/* ══════════════════════════════════════════════════
+   EXPERIÊNCIA DIÁRIA DE ABERTURA — PRODUTIV.ME
+══════════════════════════════════════════════════ */
+const DAILY_ENTRY_KEY = 'pm18_daily_entry_v1';
+const DAILY_MSGS = [
+  "Você não precisa mudar sua vida inteira hoje. Precisa apenas continuar avançando. Pequenas ações repetidas por muito tempo criam resultados extraordinários.",
+  "A maioria das pessoas desiste quando a motivação acaba. É justamente aí que a disciplina começa a fazer a diferença.",
+  "Cada tarefa concluída hoje é um voto para a pessoa que você deseja se tornar amanhã.",
+  "Seu futuro não será construído em um único grande dia. Ele será construído por centenas de dias comuns como este.",
+  "Você já chegou mais longe do que imagina. Continue.",
+  "Consistência não significa perfeição. Significa continuar mesmo quando não está tudo perfeito.",
+  "O que você faz repetidamente define quem você é. Cada dia é uma oportunidade de reforçar essa identidade.",
+  "Disciplina é a arte de fazer o que precisa ser feito, mesmo quando você não quer. Isso é o que separa os que chegam dos que ficam pelo caminho.",
+  "Progresso não é sempre visível no dia a dia. Mas ele está acontecendo. Continue plantando.",
+  "A pessoa que você quer ser no futuro está sendo construída pelas decisões que você toma agora.",
+  "Não existe atalho para a consistência. Existe apenas um caminho: aparecer todos os dias.",
+  "Seu esforço de hoje é o seu eu do futuro te agradecendo antecipadamente.",
+  "Os resultados aparecem depois da consistência. A consistência aparece depois da decisão. Você já decidiu.",
+  "Dias difíceis também contam. Talvez sejam os que mais contam.",
+  "Você não está apenas cumprindo tarefas. Você está construindo uma versão mais disciplinada de si mesmo.",
+  "A diferença entre onde você está e onde quer estar é feita de dias como este.",
+  "Ninguém constrói algo extraordinário da noite para o dia. Constroem um dia de cada vez, exatamente como você está fazendo.",
+  "Cada hábito que você mantém é uma prova de que você é capaz de se comprometer consigo mesmo.",
+  "O momento presente sempre parecerá pequeno. Olhando para trás, você verá o quanto cada dia importou.",
+  "Disciplina é uma forma de respeito por si mesmo. Você está provando isso todos os dias.",
+];
+
+const STREAK_MSGS = [
+  (s) => s === 1 ? "Você começa hoje. Tudo que é grande começou assim." : null,
+  (s) => s <= 3 ? `${s} dias. Um começo sólido. O mais difícil já passou.` : null,
+  (s) => s <= 6 ? `${s} dias consecutivos. Você está criando o hábito de aparecer.` : null,
+  (s) => s === 7 ? "Uma semana inteira. Você provou que consegue ser consistente." : null,
+  (s) => s <= 13 ? `${s} dias. Você está construindo algo que poucas pessoas conseguem manter.` : null,
+  (s) => s === 14 ? "Duas semanas. Sua disciplina está tomando forma." : null,
+  (s) => s <= 20 ? `${s} dias consecutivos. Você está bem à frente da maioria das pessoas.` : null,
+  (s) => s === 21 ? "21 dias. Cientistas dizem que é aqui que o hábito se consolida. Você chegou lá." : null,
+  (s) => s <= 29 ? `${s} dias. Quase um mês de consistência real.` : null,
+  (s) => s === 30 ? "30 dias. Um mês inteiro aparecendo para si mesmo. Isso é disciplina real." : null,
+  (s) => s <= 59 ? `${s} dias consecutivos. Você está no grupo seleto que realmente aparece.` : null,
+  (s) => s === 60 ? "Dois meses. Sua consistência já não é mais sorte. É quem você é." : null,
+  (s) => s <= 99 ? `${s} dias. Quase cem dias construindo a melhor versão de você.` : null,
+  (s) => s === 100 ? "100 dias. Três meses de presença diária. Seu progresso não aconteceu por acaso." : null,
+  (s) => s > 100 ? `${s} dias consecutivos. Mais de ${Math.floor(s/30)} meses de disciplina real. Você é excepcional.` : null,
+];
+
+function getStreakMsg(streak) {
+  for (const fn of STREAK_MSGS) {
+    const msg = fn(streak);
+    if (msg) return msg;
+  }
+  return `${streak} dias consecutivos. Sua consistência está gerando resultados reais.`;
+}
+
+function getDailyMsg() {
+  const d = loadCheckin();
+  const idx = ((d.msgIdx || 0) + 1) % DAILY_MSGS.length;
+  d.msgIdx = idx;
+  saveCheckin(d);
+  return DAILY_MSGS[idx];
+}
+
+function getProgressoRecente() {
+  const hoje = todayKey();
+  const ontem = (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+  const routines = window.app?.state?.data?.routines || {};
+
+  // Tarefas ontem
+  const tarefasOntem = (routines[ontem] || []);
+  const doneOntem = tarefasOntem.filter(t => t.done).length;
+
+  // Hábitos ontem
+  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
+  const habsOntem = habs.filter(h => (h.days || []).includes(ontem)).length;
+
+  // Últimos 7 dias
+  const dias7 = [];
+  for (let i = 1; i <= 7; i++) { const d = new Date(); d.setDate(d.getDate()-i); dias7.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); }
+  const tarefas7 = dias7.flatMap(dk => (routines[dk] || []).filter(t => t.done)).length;
+  const habs7 = habs.reduce((acc, h) => acc + (h.days || []).filter(d => dias7.includes(d)).length, 0);
+
+  // Humor médio últimos 7 dias
+  const ci = loadCheckin();
+  const humorMap = { pessimo: 1, mal: 2, ok: 3, bem: 4, otimo: 5 };
+  const humorLabel = ['', 'Péssimo', 'Mal', 'Ok', 'Bem', 'Ótimo'];
+  const humorVals = dias7.map(d => humorMap[ci.history?.[d]]).filter(Boolean);
+  const humorMedio = humorVals.length ? Math.round(humorVals.reduce((a,b)=>a+b,0)/humorVals.length) : null;
+
+  return { doneOntem, habsOntem, tarefas7, habs7, humorMedio: humorMedio ? humorLabel[humorMedio] : null };
+}
+
+function getProximoObjetivo() {
+  const streak = window.app?.computeStreak?.() || 0;
+  const g = loadGamify();
+  const records = g.records || {};
+  const hoje = todayKey();
+  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
+  const doneHoje = tarefasHoje.filter(t => t.done).length;
+  const totalHoje = tarefasHoje.length;
+  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
+  const habsDone = habs.filter(h => (h.days || []).includes(hoje)).length;
+  const levels = [0,100,250,500,800,1200,1700,2300,3000,4000,5500,7500,10000,13000,17000,22000];
+  const xp = g.totalXp || 0;
+  const nextLvlXp = levels.find(l => l > xp);
+  const items = [];
+
+  if (records.maxStreak > 0 && streak === records.maxStreak - 1)
+    items.push({ icon: '🔥', text: `Falta 1 dia para bater seu recorde de streak (${records.maxStreak} dias).` });
+  if (totalHoje > 0 && doneHoje === totalHoje - 1)
+    items.push({ icon: '✅', text: `Falta apenas 1 tarefa para zerar o dia.` });
+  if (habs.length > 0 && habsDone === habs.length - 1)
+    items.push({ icon: '🔄', text: `Falta 1 hábito para completar todos os hábitos de hoje.` });
+  if (nextLvlXp)
+    items.push({ icon: '⚡', text: `Falta ${nextLvlXp - xp} XP para o próximo nível.` });
+
+  return items.slice(0, 2);
+}
+
+function getDiaPerfeito() {
+  const hoje = todayKey();
+  const ci = loadCheckin();
+  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
+  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
+  const checkins = [
+    { label: 'Registrar humor', done: ci.lastDay === hoje },
+    { label: 'Concluir todas as tarefas', done: tarefasHoje.length > 0 && tarefasHoje.every(t => t.done) },
+    { label: 'Manter todos os hábitos', done: habs.length > 0 && habs.every(h => (h.days||[]).includes(hoje)) },
+  ];
+  return checkins;
+}
+
+let _deStep = 0;
+let _deTotal = 5;
+let _deHumorSelected = null;
+let _deTimer = null;
+
+function showDailyEntry() {
+  const hoje = todayKey();
+  const ci = loadCheckin();
+  if (ci.lastDay === hoje) return; // já viu hoje
+  ci.opens = (ci.opens || 0) + 1;
+  if (ci.opens <= 1) { saveCheckin(ci); return; } // pula na primeira abertura
+  saveCheckin(ci);
+
+  _deStep = 0;
+  _deHumorSelected = null;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'daily-entry';
+  document.body.appendChild(overlay);
+  renderDeStep();
+}
+
+function renderDeStep() {
+  const overlay = document.getElementById('daily-entry');
+  if (!overlay) return;
+  const streak = window.app?.computeStreak?.() || 0;
+  const presStreak = typeof getPresenceStreak === 'function' ? getPresenceStreak() : 0;
+  const prog = getProgressoRecente();
+  const proximo = getProximoObjetivo();
+  const diaPerfeito = getDiaPerfeito();
+  const steps = ['streak', 'msg', 'checkin', 'progress', 'perfect'];
+  _deTotal = steps.length;
+  const step = steps[_deStep];
+
+  // Dots
+  const dots = steps.map((_, i) => `<span class="${i === _deStep ? 'active' : i < _deStep ? 'done' : ''}"></span>`).join('');
+
+  let html = '';
+
+  if (step === 'streak') {
+    html = `
+      <div style="text-align:center;margin-bottom:1rem">
+        <div style="font-size:3rem;margin-bottom:.5rem">🔥</div>
+        <div class="de-streak-number">${streak || presStreak}</div>
+        <div class="de-streak-label">${streak > 0 ? 'DIAS CONSECUTIVOS' : 'DIAS DE PRESENÇA'}</div>
+        <div class="de-streak-msg">"${getStreakMsg(streak || presStreak)}"</div>
+      </div>
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
+    `;
+  } else if (step === 'msg') {
+    html = `
+      <div style="text-align:center;max-width:340px">
+        <div style="font-size:2rem;margin-bottom:1.5rem;opacity:.6">💭</div>
+        <div class="de-msg-text">"${getDailyMsg()}"</div>
+        <div class="de-msg-author" style="margin-top:1.5rem">produtiv.me</div>
+      </div>
+      <button class="btn btn-primary" style="width:200px;margin-top:2rem" onclick="deNext()">Continuar</button>
+    `;
+  } else if (step === 'checkin') {
+    html = `
+      <div class="de-title">Como você está hoje?</div>
+      <div class="de-sub">Registre seu humor diário</div>
+      <div class="de-checkin-opts">
+        ${[['pessimo','😞','Péssimo'],['mal','😕','Mal'],['ok','😐','Ok'],['bem','🙂','Bem'],['otimo','😄','Ótimo']].map(([k,e,l])=>`
+          <div class="de-checkin-btn ${_deHumorSelected===k?'selected':''}" onclick="deSelectHumor('${k}',this)">
+            <span class="de-emoji">${e}</span>
+            <span class="de-label">${l}</span>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-primary" id="de-humor-btn" style="width:200px;margin-top:1.5rem;opacity:${_deHumorSelected?1:.4}" onclick="deConfirmHumor()" ${_deHumorSelected?'':'disabled'}>Confirmar</button>
+    `;
+  } else if (step === 'progress') {
+    const items = [];
+    if (prog.doneOntem > 0) items.push({ icon: '✅', bg: 'rgba(52,211,153,.1)', val: prog.doneOntem, lbl: 'tarefas ontem' });
+    if (prog.habsOntem > 0) items.push({ icon: '🔥', bg: 'rgba(249,115,22,.1)', val: prog.habsOntem, lbl: 'hábitos mantidos' });
+    if (prog.tarefas7 > 0) items.push({ icon: '📊', bg: 'rgba(139,92,246,.1)', val: prog.tarefas7, lbl: 'tarefas nos últimos 7 dias' });
+    if (prog.humorMedio) items.push({ icon: '😊', bg: 'rgba(250,204,21,.1)', val: prog.humorMedio, lbl: 'humor médio recente' });
+    const hasData = items.length > 0;
+    html = `
+      <div class="de-title">${hasData ? 'Seu progresso recente' : 'Novo começo'}</div>
+      <div class="de-sub" style="margin-bottom:1.25rem">${hasData ? 'Veja o que você construiu' : 'Cada grande jornada começa com o primeiro passo'}</div>
+      <div style="width:100%;max-width:320px">
+        ${hasData ? items.slice(0,3).map(i=>`
+          <div class="de-progress-item">
+            <div class="de-progress-icon" style="background:${i.bg}">${i.icon}</div>
+            <div><div class="de-progress-val">${i.val}</div><div class="de-progress-lbl">${i.lbl}</div></div>
+          </div>`).join('') : '<div style="text-align:center;color:rgba(255,255,255,.4);font-size:.9rem;padding:1rem">Suas conquistas aparecerão aqui</div>'}
+      </div>
+      ${proximo.length ? `<div style="width:100%;max-width:320px;margin-top:1rem">${proximo.map(p=>`<div class="de-next-item"><span class="de-next-icon">${p.icon}</span><span class="de-next-text">${p.text}</span></div>`).join('')}</div>` : ''}
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
+    `;
+  } else if (step === 'perfect') {
+    const allDone = diaPerfeito.every(d => d.done);
+    html = `
+      <div class="de-title">🌟 Dia Perfeito</div>
+      <div class="de-sub" style="margin-bottom:1.25rem">${allDone ? 'Você completou tudo hoje!' : 'Seu objetivo de hoje'}</div>
+      <div style="width:100%;max-width:300px">
+        ${diaPerfeito.map(item=>`
+          <div class="de-perfect-item">
+            <div class="de-perfect-icon ${item.done?'done'}">${item.done?'✓':''}</div>
+            <div class="de-perfect-lbl" style="${item.done?'color:rgba(255,255,255,.4);text-decoration:line-through':''}">${item.label}</div>
+          </div>`).join('')}
+      </div>
+      ${allDone ? '<div style="text-align:center;color:#a855f7;font-weight:700;font-size:.9rem;margin-top:1rem">🏆 Dia Perfeito conquistado!</div>' : ''}
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deConcluir()">Começar o dia 🚀</button>
+    `;
+  }
+
+  overlay.innerHTML = `
+    <div class="de-progress-bar-wrap"><div class="de-progress-bar-fill" style="width:${((_deStep+1)/_deTotal)*100}%"></div></div>
+    <div class="de-slide active">${html}</div>
+    <div class="de-dot-nav">${dots}</div>
+    <button class="de-skip" onclick="deConcluir()">Pular</button>
+  `;
+}
+
+function deSelectHumor(humor, el) {
+  _deHumorSelected = humor;
+  document.querySelectorAll('.de-checkin-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  const btn = document.getElementById('de-humor-btn');
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+}
+
+function deConfirmHumor() {
+  if (!_deHumorSelected) return;
+  const today = todayKey();
+  const ci = loadCheckin();
+  ci.lastDay = today;
+  ci.history = ci.history || {};
+  ci.history[today] = _deHumorSelected;
+  saveCheckin(ci);
+  if (window.app?.state?.user?.id) {
+    window.supabaseClient.from('humor_logs').upsert([{
+      user_id: window.app.state.user.id, date: today,
+      mood: {pessimo:1,mal:2,ok:3,bem:4,otimo:5}[_deHumorSelected]||3, note: ''
+    }], { onConflict: 'user_id,date' }).then(() => {});
+  }
+  addXp(5);
+  if(typeof addPC==='function') addPC(3,'humor_registrado');
+  deNext();
+}
+
+function deNext() {
+  const overlay = document.getElementById('daily-entry');
+  if (!overlay) return;
+  const slide = overlay.querySelector('.de-slide');
+  if (slide) { slide.classList.add('exit'); slide.classList.remove('active'); }
+  setTimeout(() => {
+    _deStep++;
+    if (_deStep >= _deTotal) { deConcluir(); return; }
+    renderDeStep();
+  }, 300);
+}
+
+function deConcluir() {
+  const today = todayKey();
+  const ci = loadCheckin();
+  if (!ci.lastDay) { ci.lastDay = today; saveCheckin(ci); }
+  const overlay = document.getElementById('daily-entry');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity .4s';
+    setTimeout(() => overlay.remove(), 400);
+  }
+  if (typeof registerDailyPresence === 'function') registerDailyPresence();
+  if (typeof checkRecordes === 'function') setTimeout(checkRecordes, 1000);
+}
+
+
+
+/* ══════════════════════════════════════════════════
+   SISTEMA DE LIGAS E PONTOS DE CONSISTÊNCIA
+══════════════════════════════════════════════════ */
+const PC_KEY = 'pm18_pc_v1';
+const DAILY_CHALLENGE_KEY = 'pm18_challenge_v1';
+
+const LIGAS = [
+  {id:'iniciante1',  icon:'🌱', name:'Iniciante I',              cls:'liga-iniciante',   min:0},
+  {id:'iniciante2',  icon:'🌱', name:'Iniciante II',             cls:'liga-iniciante',   min:50},
+  {id:'iniciante3',  icon:'🌱', name:'Iniciante III',            cls:'liga-iniciante',   min:120},
+  {id:'evolucao1',   icon:'📈', name:'Em Evolução I',            cls:'liga-evolucao',    min:220},
+  {id:'evolucao2',   icon:'📈', name:'Em Evolução II',           cls:'liga-evolucao',    min:360},
+  {id:'evolucao3',   icon:'📈', name:'Em Evolução III',          cls:'liga-evolucao',    min:550},
+  {id:'consist1',    icon:'🔥', name:'Consistente I',            cls:'liga-consistente', min:800},
+  {id:'consist2',    icon:'🔥', name:'Consistente II',           cls:'liga-consistente', min:1100},
+  {id:'consist3',    icon:'🔥', name:'Consistente III',          cls:'liga-consistente', min:1500},
+  {id:'discip1',     icon:'🏆', name:'Disciplinado I',           cls:'liga-disciplinado',min:2000},
+  {id:'discip2',     icon:'🏆', name:'Disciplinado II',          cls:'liga-disciplinado',min:2700},
+  {id:'discip3',     icon:'🏆', name:'Disciplinado III',         cls:'liga-disciplinado',min:3600},
+  {id:'mestre1',     icon:'💎', name:'Mestre da Consistência I', cls:'liga-mestre',      min:4800},
+  {id:'mestre2',     icon:'💎', name:'Mestre da Consistência II',cls:'liga-mestre',      min:6200},
+  {id:'mestre3',     icon:'💎', name:'Mestre da Consistência III',cls:'liga-mestre',     min:8000},
+  {id:'lendario',    icon:'👑', name:'Lendário da Produtividade',cls:'liga-lendario',    min:10000},
+];
+
+function loadPC(){ try{ return JSON.parse(localStorage.getItem(PC_KEY)||'{}'); }catch(e){ return {}; } }
+function savePC(d){ localStorage.setItem(PC_KEY, JSON.stringify(d)); }
+
+function getPCState(){
+  const d = loadPC();
+  return {
+    total: d.total || 0,
+    escudos: d.escudos || 0,
+    lastPenaltyDay: d.lastPenaltyDay || null,
+    records: d.records || {},
+  };
+}
+
+function getLiga(pc){
+  let liga = LIGAS[0];
+  for(const l of LIGAS){ if(pc >= l.min) liga = l; else break; }
+  return liga;
+}
+
+function getNextLiga(pc){
+  return LIGAS.find(l => l.min > pc) || null;
+}
+
+function addPC(amount, reason=''){
+  const d = loadPC();
+  d.total = Math.max(0, (d.total || 0) + amount);
+  d.history = d.history || [];
+  d.history.push({ amount, reason, date: todayKey(), ts: Date.now() });
+  if(d.history.length > 100) d.history = d.history.slice(-100);
+  // Verifica escudo a cada 15 dias de streak
+  const streak = window.app?.computeStreak?.() || 0;
+  if(streak > 0 && streak % 15 === 0){
+    const lastEscudoStreak = d.lastEscudoStreak || 0;
+    if(streak !== lastEscudoStreak){
+      d.escudos = Math.min(3, (d.escudos || 0) + 1);
+      d.lastEscudoStreak = streak;
+      setTimeout(()=>showToast('🛡️ Escudo de Consistência ganho!','gold',4000), 1500);
+    }
+  }
+  savePC(d);
+  // Verifica mudança de liga
+  const ligaAntes = getLiga((d.total||0) - amount);
+  const ligaAgora = getLiga(d.total||0);
+  if(ligaAgora.id !== ligaAntes.id){
+    setTimeout(()=>{
+      showToast(`${ligaAgora.icon} Nova Liga: ${ligaAgora.name}!`,'gold',5000);
+      showAutoSharePopup('liga', `${ligaAgora.icon} ${ligaAgora.name}!`, 'Você subiu de liga! Compartilhar essa conquista?');
+    }, 1000);
+  }
+  // Float visual
+  if(amount > 0){
+    const el = document.getElementById('pc-float');
+    if(el){ el.textContent = `+${amount} PC`; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2000); }
+  }
+  renderPCWidget();
+}
+
+function renderPCWidget(){
+  const d = loadPC();
+  const pc = d.total || 0;
+  const liga = getLiga(pc);
+  const next = getNextLiga(pc);
+  const escudos = d.escudos || 0;
+  // Atualiza badge da liga no XP bar
+  const el = document.getElementById('liga-badge');
+  if(el) el.innerHTML = `<span class="liga-badge ${liga.cls}">${liga.icon} ${liga.name}</span>`;
+  const elPc = document.getElementById('pc-total');
+  if(elPc) elPc.textContent = pc.toLocaleString('pt-BR') + ' PC';
+  const elEscudo = document.getElementById('escudo-count');
+  if(elEscudo) elEscudo.innerHTML = escudos > 0 ? `${'🛡️'.repeat(escudos)}` : '';
+  const elNext = document.getElementById('liga-next');
+  if(elNext && next) elNext.textContent = `Faltam ${next.min - pc} PC para ${next.name}`;
+}
+
+/* ══ DESAFIOS DIÁRIOS ══ */
+function loadChallenge(){ try{ return JSON.parse(localStorage.getItem(DAILY_CHALLENGE_KEY)||'{}'); }catch(e){ return {}; } }
+function saveChallenge(d){ localStorage.setItem(DAILY_CHALLENGE_KEY, JSON.stringify(d)); }
+
+function generateDailyChallenge(){
+  const hoje = todayKey();
+  const ch = loadChallenge();
+  if(ch.date === hoje) return ch; // já gerado hoje
+  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
+  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
+  const types = [];
+  if(tarefasHoje.length >= 3) types.push({type:'tarefas', meta:3, label:'Concluir 3 tarefas hoje', icon:'✅'});
+  if(tarefasHoje.length > 0) types.push({type:'humor', meta:1, label:'Registrar humor do dia', icon:'😊'});
+  if(habs.length > 0) types.push({type:'habitos', meta:habs.length, label:`Completar todos os ${habs.length} hábitos`, icon:'🔄'});
+  types.push({type:'dia_perfeito', meta:1, label:'Conquistar um Dia Perfeito', icon:'🌟'});
+  const chosen = types[Math.floor(Math.random() * types.length)] || types[0];
+  const novo = { date: hoje, ...chosen, progress: 0, done: false };
+  saveChallenge(novo);
+  return novo;
+}
+
+function updateDailyChallenge(){
+  const hoje = todayKey();
+  const ch = loadChallenge();
+  if(ch.date !== hoje || ch.done) return;
+  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
+  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
+  const ci = loadCheckin();
+  let progress = 0;
+  if(ch.type === 'tarefas') progress = tarefasHoje.filter(t=>t.done).length;
+  else if(ch.type === 'humor') progress = ci.lastDay === hoje ? 1 : 0;
+  else if(ch.type === 'habitos') progress = habs.filter(h=>(h.days||[]).includes(hoje)).length;
+  else if(ch.type === 'dia_perfeito'){
+    const allTasks = tarefasHoje.length > 0 && tarefasHoje.every(t=>t.done);
+    const allHabs = habs.length > 0 && habs.every(h=>(h.days||[]).includes(hoje));
+    const humor = ci.lastDay === hoje;
+    progress = (allTasks && allHabs && humor) ? 1 : 0;
+  }
+  ch.progress = Math.min(progress, ch.meta);
+  if(ch.progress >= ch.meta && !ch.done){
+    ch.done = true;
+    saveChallenge(ch);
+    addPC(15, 'Desafio diário concluído');
+    setTimeout(()=>showToast('🎯 Desafio concluído! +15 PC','gold',4000), 500);
+  } else {
+    saveChallenge(ch);
+  }
+  renderDesafioWidget();
+}
+
+function renderDesafioWidget(){
+  const el = document.getElementById('desafio-widget');
+  if(!el) return;
+  const ch = loadChallenge();
+  const hoje = todayKey();
+  if(ch.date !== hoje){ el.innerHTML = ''; return; }
+  const pct = Math.round((ch.progress / ch.meta) * 100);
+  el.innerHTML = `
+    <div class="desafio-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <div style="font-size:.78rem;font-weight:700;color:var(--text-3)">🎯 DESAFIO DO DIA</div>
+        ${ch.done ? '<span style="color:var(--green);font-size:.78rem;font-weight:700">✅ Concluído</span>' : `<span style="font-size:.78rem;color:var(--text-3)">${ch.progress}/${ch.meta}</span>`}
+      </div>
+      <div style="font-size:.875rem;color:var(--text);margin-bottom:.5rem">${ch.icon} ${ch.label}</div>
+      <div class="desafio-progress"><div class="desafio-progress-fill" style="width:${pct}%"></div></div>
+      ${ch.done ? '<div style="font-size:.75rem;color:var(--primary);margin-top:.3rem">+15 Pontos de Consistência conquistados!</div>' : ''}
+    </div>`;
+}
+
+/* ══ PENALIDADES DIÁRIAS ══ */
+function checkDailyPenalties(){
+  const hoje = todayKey();
+  const d = loadPC();
+  if(d.lastPenaltyDay === hoje) return;
+  d.lastPenaltyDay = hoje;
+  // Verifica ontem
+  const ontem = new Date(); ontem.setDate(ontem.getDate()-1);
+  const ontemKey = ontem.getFullYear()+'-'+String(ontem.getMonth()+1).padStart(2,'0')+'-'+String(ontem.getDate()).padStart(2,'0');
+  const hist = d.history || [];
+  const acessouOntem = hist.some(h => h.date === ontemKey && h.reason === 'acesso_diario');
+  if(!acessouOntem && (d.total||0) > 0){
+    // Verifica escudo antes de penalizar
+    if((d.escudos||0) > 0){
+      d.escudos--;
+      showToast('🛡️ Escudo usado! Streak protegido.','default',4000);
+    } else {
+      d.total = Math.max(0, (d.total||0) - 10);
+      hist.push({amount:-10, reason:'ausencia', date:hoje, ts:Date.now()});
+    }
+  }
+  savePC(d);
+  renderPCWidget();
+}
+
+/* ══ ADICIONA PC AUTOMÁTICO ══ */
+function addPCAccess(){
+  const hoje = todayKey();
+  const d = loadPC();
+  const hist = d.history || [];
+  if(hist.some(h => h.date === hoje && h.reason === 'acesso_diario')) return;
+  addPC(2, 'acesso_diario');
+}
+
 /* ══════════════════════════════════════════════════
    SISTEMA DE CHECK-IN DIÁRIO E STREAK DE PRESENÇA
 ══════════════════════════════════════════════════ */
@@ -3820,33 +4356,8 @@ const CHECKIN_MSGS = {
 };
 
 function showCheckinModal(){
-  const today = new Date().toISOString().split('T')[0];
-  const ci = loadCheckin();
-  if(ci.lastDay === today) return; // já fez check-in hoje
-  
-  // Não mostra nas primeiras 2 vezes que abre o app (não quer assustar)
-  ci.opens = (ci.opens||0) + 1;
-  saveCheckin(ci);
-  if(ci.opens <= 2) return;
-  
-  setTimeout(()=>{
-    const modal = document.createElement('div');
-    modal.id = 'checkin-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9200;display:flex;align-items:center;justify-content:center;padding:1rem';
-    modal.innerHTML = `
-      <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:min(360px,95vw);text-align:center">
-        <div style="font-size:2rem;margin-bottom:.5rem">👋</div>
-        <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-bottom:.25rem">Como você está hoje?</div>
-        <div style="font-size:.82rem;color:var(--text-3);margin-bottom:1.25rem">Seu humor importa para o seu progresso</div>
-        <div style="display:flex;gap:.5rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap">
-          ${Object.entries({pessimo:'😞 Péssimo',mal:'😕 Mal',ok:'😐 Ok',bem:'😊 Bem',otimo:'😄 Ótimo'}).map(([k,v])=>
-            `<button class="btn btn-ghost" style="flex:1;min-width:70px;font-size:.82rem" onclick="doCheckin('${k}')">${v}</button>`
-          ).join('')}
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('checkin-modal').remove()" style="color:var(--text-3);font-size:.75rem">Pular por hoje</button>
-      </div>`;
-    document.body.appendChild(modal);
-  }, 1500);
+  // Substituído pela experiência diária
+  showDailyEntry();
 }
 
 function doCheckin(humor){
@@ -4202,6 +4713,7 @@ function renderShareTypeButtons(){
     {id:'streak', label:'🔥 Streak'},
     {id:'evolucao', label:'📈 Evolução'},
     {id:'nivel', label:'🏆 Nível'},
+    {id:'liga', label:'👑 Liga'},
     {id:'semanal', label:'📊 Semanal'},
     {id:'comp_semanal', label:'📅 Comparação Semanal'},
     {id:'comp_mensal', label:'📆 Comparação Mensal'},
@@ -4251,6 +4763,7 @@ function generateShareCard(type){
   else if(type==='semanal') drawSemanalCard(ctx, g, streak);
   else if(type==='comp_semanal') drawCompSemanalCard(ctx, g);
   else if(type==='comp_mensal') drawCompMensalCard(ctx, g);
+  else if(type==='liga') drawLigaCard(ctx, g, streak, lvl);
 
   // Logo watermark — subido para não ser coberto pela mensagem do Story
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -4410,6 +4923,22 @@ function drawArrow(ctx, prev, curr){
     ? `${icon} ${pct}% melhor que o período anterior`
     : `${icon} ${pct}% abaixo do período anterior`;
   drawText(ctx, msg, 540, 1350, 38, color, 'center', 'sans-serif', 'bold');
+}
+
+function drawLigaCard(ctx, g, streak, lvl){
+  const pc = (typeof loadPC==='function' ? loadPC().total : 0) || 0;
+  const liga = typeof getLiga==='function' ? getLiga(pc) : {icon:'🌱', name:'Iniciante I'};
+  const next = typeof getNextLiga==='function' ? getNextLiga(pc) : null;
+  drawText(ctx, liga.icon, 540, 380, 140, 'white');
+  drawText(ctx, liga.name, 540, 540, 70, '#ffffff', 'center', 'sans-serif', 'bold');
+  ctx.strokeStyle='rgba(139,92,246,0.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(160,590); ctx.lineTo(920,590); ctx.stroke();
+  drawText(ctx, `${pc.toLocaleString('pt-BR')} Pontos de Consistência`, 540, 670, 38, 'rgba(255,255,255,0.6)');
+  drawText(ctx, `🔥 ${streak} dias consecutivos`, 540, 760, 44, '#fb923c', 'center', 'sans-serif', 'bold');
+  drawText(ctx, `Nível ${lvl} · ${g.totalXp} XP`, 540, 840, 36, 'rgba(255,255,255,0.5)');
+  if(next) drawText(ctx, `Próxima liga: ${next.icon} ${next.name}`, 540, 940, 32, 'rgba(139,92,246,0.8)');
+  const frase = typeof getNextShareFrase==='function' ? getNextShareFrase() : 'Consistência é o caminho.';
+  drawWrappedText(ctx, `"${frase}"`, 540, 1080, 800, 36, 'rgba(255,255,255,0.45)', 'center');
 }
 
 function drawCompSemanalCard(ctx, g){
