@@ -577,7 +577,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             </div>
             <div class="xp-amount" style="display:flex;align-items:center;gap:.4rem">
               <span id="xp-current">0</span> / <span id="xp-next">100</span> XP
-              <button onclick="openShareModal('liga')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
+              <button onclick="if(typeof openShareModal==='function')openShareModal('liga')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
             </div>
           </div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
