@@ -4026,7 +4026,7 @@ function renderDeStep() {
       <div style="width:100%;max-width:300px">
         ${diaPerfeito.map(item=>`
           <div class="de-perfect-item">
-            <div class="de-perfect-icon ${item.done?'done'}">${item.done?'✓':''}</div>
+            <div class="de-perfect-icon ${item.done?'done':''}">${item.done?'✓':''}</div>
             <div class="de-perfect-lbl" style="${item.done?'color:rgba(255,255,255,.4);text-decoration:line-through':''}">${item.label}</div>
           </div>`).join('')}
       </div>
