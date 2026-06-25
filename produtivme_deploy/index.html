@@ -446,6 +446,22 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 #splash-screen .splash-sub{font-size:.8rem;color:rgba(255,255,255,.4)}
 @keyframes splashPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
+
+/* ══ PONTOS DE CONSISTÊNCIA - VISUAL PREMIUM ══ */
+#pc-panel{background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(168,85,247,.08));border:1px solid rgba(139,92,246,.25);border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:.75rem}
+#pc-panel .pc-title{font-size:.7rem;font-weight:700;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;margin-bottom:.5rem}
+#pc-panel .pc-row{display:flex;align-items:center;justify-content:space-between}
+#pc-panel .pc-value{font-family:var(--font-display);font-weight:800;font-size:1.4rem;color:var(--primary)}
+#pc-panel .pc-liga{font-size:.82rem;color:var(--text-2)}
+#pc-panel .pc-bar-wrap{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:.5rem;overflow:hidden}
+#pc-panel .pc-bar-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:2px;transition:width .6s ease}
+#pc-panel .pc-meta{display:flex;justify-content:space-between;margin-top:.3rem}
+#pc-panel .pc-escudos{font-size:.85rem}
+.pc-popup{position:fixed;left:50%;transform:translateX(-50%);z-index:9900;padding:.6rem 1.2rem;border-radius:30px;font-weight:800;font-size:1rem;pointer-events:none;animation:pcPopAnim .8s ease forwards}
+.pc-popup.gain{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;top:20%}
+.pc-popup.loss{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;top:20%}
+@keyframes pcPopAnim{0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.9)}30%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.05)}70%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-20px) scale(.95)}}
+
 /* ══ SISTEMA DE LIGAS E CONSISTÊNCIA ══ */
 .liga-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:20px;font-size:.78rem;font-weight:700;border:1px solid transparent}
 .liga-iniciante{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:#4ade80}
@@ -568,7 +584,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="xp-bar-wrapper">
-          <div id="liga-badge" style="margin-bottom:.4rem"></div>
           <div class="xp-bar-top">
             <div class="xp-level">
               <span class="lvl-badge" id="xp-level-badge">Nv.1</span>
@@ -581,10 +596,23 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             </div>
           </div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.35rem">
-            <span id="escudo-count" style="font-size:.8rem"></span>
-            <span id="pc-total" style="font-size:.72rem;color:var(--text-3)"></span>
-            <span id="liga-next" style="font-size:.68rem;color:var(--primary);text-align:right;max-width:160px;line-height:1.3"></span>
+          <div id="pc-panel" style="margin-top:.5rem">
+            <div class="pc-title">Pontos de Consistência</div>
+            <div class="pc-row">
+              <div>
+                <div class="pc-value" id="pc-total">0</div>
+                <div class="pc-liga" id="liga-badge-inline"></div>
+              </div>
+              <div style="text-align:right">
+                <div id="escudo-count" class="pc-escudos"></div>
+                <div id="liga-next" style="font-size:.68rem;color:var(--primary);margin-top:.2rem"></div>
+              </div>
+            </div>
+            <div class="pc-bar-wrap"><div class="pc-bar-fill" id="pc-bar-fill" style="width:0%"></div></div>
+            <div class="pc-meta">
+              <span style="font-size:.65rem;color:var(--text-3)" id="pc-liga-atual"></span>
+              <span style="font-size:.65rem;color:var(--text-3)" id="pc-liga-prox"></span>
+            </div>
           </div>
         </div>
 
@@ -1645,7 +1673,7 @@ _isSyncing: false,
     if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
     if(typeof checkPeriodShareTrigger === 'function') setTimeout(checkPeriodShareTrigger, 2000);
     if(typeof registerDailyPresence === 'function') registerDailyPresence();
-    if(typeof showCheckinModal === 'function') showCheckinModal();
+    if(typeof showCheckinModal === 'function') setTimeout(showCheckinModal, 2000);
     if(typeof checkRecordes === 'function') setTimeout(checkRecordes, 4000);
     if(typeof checkResumoDia === 'function') setTimeout(checkResumoDia, 5000);
     if(typeof addPCAccess === 'function') addPCAccess();
@@ -3691,7 +3719,6 @@ const RealtimeManager = (() => {
 </script> 
  
 
-<div id="pc-float"></div>
 <!-- AUTO SHARE POPUP -->
 <div id="auto-share-popup">
   <div class="asp-title" id="asp-title">🎉 Incrível!</div>
@@ -3936,8 +3963,6 @@ function showDailyEntry() {
   const hoje = todayKey();
   const ci = loadCheckin();
   if (ci.lastDay === hoje) return; // já viu hoje
-  ci.opens = (ci.opens || 0) + 1;
-  if (ci.opens <= 1) { saveCheckin(ci); return; } // pula na primeira abertura
   saveCheckin(ci);
 
   _deStep = 0;
@@ -4172,11 +4197,12 @@ function addPC(amount, reason=''){
       showAutoSharePopup('liga', `${ligaAgora.icon} ${ligaAgora.name}!`, 'Você subiu de liga! Compartilhar essa conquista?');
     }, 1000);
   }
-  // Float visual
-  if(amount > 0){
-    const el = document.getElementById('pc-float');
-    if(el){ el.textContent = `+${amount} PC`; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2000); }
-  }
+  // Popup visual premium
+  const popup = document.createElement('div');
+  popup.className = 'pc-popup ' + (amount > 0 ? 'gain' : 'loss');
+  popup.textContent = (amount > 0 ? '+' : '') + amount + ' Pontos de Consistência';
+  document.body.appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
   renderPCWidget();
 }
 
@@ -4186,15 +4212,32 @@ function renderPCWidget(){
   const liga = getLiga(pc);
   const next = getNextLiga(pc);
   const escudos = d.escudos || 0;
-  // Atualiza badge da liga no XP bar
-  const el = document.getElementById('liga-badge');
-  if(el) el.innerHTML = `<span class="liga-badge ${liga.cls}">${liga.icon} ${liga.name}</span>`;
+
+  // Painel principal
   const elPc = document.getElementById('pc-total');
-  if(elPc) elPc.textContent = pc.toLocaleString('pt-BR') + ' PC';
+  if(elPc) elPc.textContent = pc.toLocaleString('pt-BR') + ' pts';
+
+  const elLigaInline = document.getElementById('liga-badge-inline');
+  if(elLigaInline) elLigaInline.innerHTML = `<span class="liga-badge ${liga.cls}" style="padding:.2rem .5rem;font-size:.72rem">${liga.icon} ${liga.name}</span>`;
+
   const elEscudo = document.getElementById('escudo-count');
-  if(elEscudo) elEscudo.innerHTML = escudos > 0 ? `${'🛡️'.repeat(escudos)}` : '';
+  if(elEscudo) elEscudo.innerHTML = escudos > 0 ? '🛡️'.repeat(escudos) + ' <span style="font-size:.65rem;color:var(--text-3)">' + (escudos===1?'escudo':'escudos') + '</span>' : '';
+
   const elNext = document.getElementById('liga-next');
-  if(elNext && next) elNext.textContent = `Faltam ${next.min - pc} PC para ${next.name}`;
+  if(elNext && next) elNext.textContent = `↑ Faltam ${next.min - pc} pts`;
+
+  // Barra de progresso entre ligas
+  const prevLiga = LIGAS[LIGAS.indexOf(liga) - 1];
+  const prevMin = prevLiga ? prevLiga.min : 0;
+  const nextMin = next ? next.min : liga.min + 1000;
+  const pct = Math.round(((pc - prevMin) / (nextMin - prevMin)) * 100);
+  const bar = document.getElementById('pc-bar-fill');
+  if(bar) bar.style.width = Math.min(100, pct) + '%';
+
+  const elAtual = document.getElementById('pc-liga-atual');
+  if(elAtual) elAtual.textContent = liga.icon + ' ' + liga.name;
+  const elProx = document.getElementById('pc-liga-prox');
+  if(elProx && next) elProx.textContent = next.icon + ' ' + next.name;
 }
 
 /* ══ DESAFIOS DIÁRIOS ══ */
@@ -4278,13 +4321,20 @@ function checkDailyPenalties(){
   const hist = d.history || [];
   const acessouOntem = hist.some(h => h.date === ontemKey && h.reason === 'acesso_diario');
   if(!acessouOntem && (d.total||0) > 0){
-    // Verifica escudo antes de penalizar
     if((d.escudos||0) > 0){
       d.escudos--;
-      showToast('🛡️ Escudo usado! Streak protegido.','default',4000);
+      showToast('🛡️ Escudo usado! Sua sequência está protegida.','default',5000);
     } else {
       d.total = Math.max(0, (d.total||0) - 10);
       hist.push({amount:-10, reason:'ausencia', date:hoje, ts:Date.now()});
+      setTimeout(()=>{
+        const popup = document.createElement('div');
+        popup.className = 'pc-popup loss';
+        popup.textContent = '-10 Pontos de Consistência';
+        document.body.appendChild(popup);
+        setTimeout(()=>popup.remove(), 1100);
+      }, 3000);
+      setTimeout(()=>showToast('Você perdeu 10 pontos por ausência. Volte amanhã para recuperar o ritmo.','default',5000), 3500);
     }
   }
   savePC(d);
