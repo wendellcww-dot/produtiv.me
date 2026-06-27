@@ -1388,6 +1388,7 @@ function saveGamify(d){ try{ localStorage.setItem(GAMIFY_KEY, JSON.stringify(d))
 function syncGamifyRemote(g){
   if(!window.app?.state?.user?.id||window.app.state.user.local) return;
   const userId=window.app.state.user.id;
+  const pc = typeof loadPC === 'function' ? loadPC() : {};
   window.supabaseClient.from('gamificacao').upsert([{
     user_id:userId,
     total_xp:g.totalXp||0,
@@ -1395,6 +1396,8 @@ function syncGamifyRemote(g){
     medals:(g.medals||[]).length,
     fin_trans:g.finTrans||0,
     fin_goals:g.finGoals||0,
+    pc_total:pc.total||0,
+    pc_escudos:pc.escudos||0,
     updated_at:new Date().toISOString()
   }],{onConflict:'user_id'}).then(({error})=>{
     if(error) console.error('[Gamify] Erro ao sincronizar:',error);
@@ -1778,6 +1781,17 @@ _isSyncing: false,
       finGoals:Math.max(local.finGoals||0,data.fin_goals||0),
     };
     saveGamify(merged);
+    // Sync Pontos de Consistência: prevalece o maior valor
+    if(data.pc_total !== undefined && data.pc_total !== null){
+      const pc = typeof loadPC==='function' ? loadPC() : {};
+      const newTotal   = Math.max(pc.total||0, data.pc_total||0);
+      const newEscudos = Math.max(pc.escudos||0, data.pc_escudos||0);
+      if(newTotal !== (pc.total||0) || newEscudos !== (pc.escudos||0)){
+        pc.total = newTotal; pc.escudos = newEscudos;
+        if(typeof savePC==='function') savePC(pc);
+        if(typeof renderPCWidget==='function') setTimeout(renderPCWidget, 200);
+      }
+    }
     if((local.totalXp||0)>(data.total_xp||0)) syncGamifyRemote(merged);
   },
 
@@ -1835,40 +1849,8 @@ _isSyncing: false,
     }catch(e){ console.error('[Sync]',e); setSyncStatus('error'); }
   },
 
-  // Carrega gamificação/XP do Supabase
-  async loadGamifyRemote(){
-    if(!this.state.user||this.state.user.local) return;
-    const {data,error}=await window.supabaseClient
-      .from('gamificacao').select('*').eq('user_id',this.state.user.id).maybeSingle();
-    if(error||!data) return;
-    const local=loadGamify();
-    const merged={
-      totalXp:Math.max(local.totalXp||0,data.total_xp||0),
-      totalDone:Math.max(local.totalDone||0,data.total_done||0),
-      medals:local.medals||[],
-      finTrans:Math.max(local.finTrans||0,data.fin_trans||0),
-      finGoals:Math.max(local.finGoals||0,data.fin_goals||0),
-    };
-    saveGamify(merged);
-    if((local.totalXp||0)>(data.total_xp||0)) syncGamifyRemote(merged);
-  },
-
-  // Carrega diário de reflexão do Supabase
-  async loadDiarioRemote(){
-    if(!this.state.user||this.state.user.local) return;
-    const {data,error}=await window.supabaseClient
-      .from('diario_reflexao').select('*').eq('user_id',this.state.user.id)
-      .order('date_key',{ascending:false}).limit(30);
-    if(error||!data) return;
-    const byDay={};
-    data.forEach(r=>{
-      if(!byDay[r.date_key]) byDay[r.date_key]={};
-      byDay[r.date_key][r.question_index]=r.answer;
-    });
-    Object.entries(byDay).forEach(([date,answers])=>{
-      localStorage.setItem('pm18_diario_'+date, JSON.stringify(answers));
-    });
-  },
+  // Carrega diário de reflexão do Supabase — duplicata removida, mantida em loadGamifyRemote block acima
+  async loadDiarioRemote_UNUSED(){},
 
   // Carrega frases customizadas do Supabase
   async loadCustomQRemote(){
@@ -3959,11 +3941,13 @@ let _deTotal = 5;
 let _deHumorSelected = null;
 let _deTimer = null;
 
+const DE_SHOWN_KEY = 'pm18_de_shown_v1';
+
 function showDailyEntry() {
   const hoje = todayKey();
-  const ci = loadCheckin();
-  if (ci.lastDay === hoje) return; // já viu hoje
-  saveCheckin(ci);
+  // Usa chave separada para "entry já foi exibida hoje"
+  // (ci.lastDay é reservada para "humor registrado hoje")
+  if (localStorage.getItem(DE_SHOWN_KEY) === hoje) return;
 
   _deStep = 0;
   _deHumorSelected = null;
@@ -4109,8 +4093,14 @@ function deNext() {
 
 function deConcluir() {
   const today = todayKey();
+  // Marca que a entry foi exibida hoje — independente de humor registrado
+  localStorage.setItem(DE_SHOWN_KEY, today);
+  // Garante que ci.lastDay está salvo (caso o humor não tenha sido selecionado)
   const ci = loadCheckin();
-  if (!ci.lastDay) { ci.lastDay = today; saveCheckin(ci); }
+  if (!ci.lastDay || ci.lastDay !== today) {
+    // Não sobrescreve se o humor já foi registrado hoje por deConfirmHumor
+    if (ci.lastDay !== today) { ci.lastDay = today; saveCheckin(ci); }
+  }
   const overlay = document.getElementById('daily-entry');
   if (overlay) {
     overlay.style.opacity = '0';
@@ -4188,6 +4178,11 @@ function addPC(amount, reason=''){
     }
   }
   savePC(d);
+  // Sincroniza PC com remoto após cada mudança
+  if(window.app?.state?.user?.id && !window.app?.state?.user?.local){
+    const g = typeof loadGamify === 'function' ? loadGamify() : {};
+    syncGamifyRemote(g);
+  }
   // Verifica mudança de liga
   const ligaAntes = getLiga((d.total||0) - amount);
   const ligaAgora = getLiga(d.total||0);
