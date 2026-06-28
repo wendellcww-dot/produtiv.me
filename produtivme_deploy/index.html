@@ -478,53 +478,106 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .dia-perfeito-banner{background:linear-gradient(135deg,rgba(139,92,246,.2),rgba(236,72,153,.2));border:1px solid rgba(139,92,246,.4);border-radius:var(--radius);padding:1rem;text-align:center;margin-bottom:.75rem}
 #pc-float{position:fixed;top:50%;right:1rem;transform:translateY(-50%);background:rgba(139,92,246,.95);color:#fff;padding:.4rem .75rem;border-radius:20px;font-weight:700;font-size:.85rem;opacity:0;transition:all .3s;z-index:8000;pointer-events:none}
 #pc-float.show{opacity:1;transform:translateY(calc(-50% - 10px))}
-/* ══ EXPERIÊNCIA DIÁRIA DE ABERTURA ══ */
-#daily-entry{position:fixed;inset:0;z-index:9800;background:linear-gradient(160deg,#0d0d1a 0%,#12082b 60%,#0d0d1a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;overflow:hidden}
-#daily-entry::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(139,92,246,.18),transparent);pointer-events:none}
-.de-slide{width:100%;max-width:360px;animation:deSlideIn .35s cubic-bezier(.4,0,.2,1)}
-.de-slide.exit{animation:deSlideOut .28s cubic-bezier(.4,0,.2,1) forwards}
-@keyframes deSlideIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes deSlideOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-14px)}}
-.de-dot-nav{display:flex;gap:6px;justify-content:center;margin-top:1.5rem}
-.de-dot-nav span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.15);transition:all .3s}
-.de-dot-nav span.active{background:var(--primary);width:20px;border-radius:4px}
-.de-dot-nav span.done{background:rgba(167,139,250,.45)}
-.de-skip{position:absolute;bottom:1.4rem;right:1.4rem;background:transparent;border:none;color:rgba(255,255,255,.3);font-size:.78rem;cursor:pointer;padding:.3rem .6rem;border-radius:6px;transition:color .2s}
-.de-skip:hover{color:rgba(255,255,255,.6)}
-.de-progress-bar-wrap{position:absolute;top:0;left:0;right:0;height:3px;background:rgba(255,255,255,.06)}
-.de-progress-bar-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);transition:width .5s ease;border-radius:0 2px 2px 0}
-/* Conteúdo dos slides */
-.de-title{font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:#fff;text-align:center;line-height:1.3;margin-bottom:.6rem}
-.de-sub{font-size:.88rem;color:rgba(255,255,255,.55);text-align:center;line-height:1.6;margin-bottom:1.2rem;max-width:300px}
-.de-streak-num{font-family:var(--font-display);font-size:4rem;font-weight:900;color:var(--primary);line-height:1;text-align:center;text-shadow:0 0 40px rgba(167,139,250,.5)}
-.de-streak-fire{font-size:2.5rem;text-align:center;display:block;margin-bottom:.3rem;animation:deFire 1.5s ease infinite}
-@keyframes deFire{0%,100%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.1) rotate(3deg)}}
-.de-msg-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:1.4rem 1.2rem;text-align:center;font-size:.92rem;color:rgba(255,255,255,.75);line-height:1.7;font-style:italic}
-.de-msg-card::before{content:'"';font-size:2rem;color:var(--primary);opacity:.6;display:block;line-height:1;margin-bottom:.4rem}
-/* Checkin humor */
-.de-checkin-grid{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.2rem}
-.de-checkin-btn{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.7rem .9rem;border-radius:14px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:pointer;transition:all .2s;min-width:56px}
-.de-checkin-btn:hover{border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08)}
-.de-checkin-btn.selected{border-color:var(--primary);background:rgba(139,92,246,.18);transform:scale(1.08)}
-.de-checkin-emoji{font-size:1.8rem;line-height:1}
-.de-checkin-lbl{font-size:.6rem;color:rgba(255,255,255,.4);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
-.de-checkin-btn.selected .de-checkin-lbl{color:var(--primary)}
-/* Progresso */
-.de-progress-item{display:flex;align-items:center;gap:.75rem;padding:.7rem .8rem;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid rgba(255,255,255,.07);margin-bottom:.45rem}
-.de-progress-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
-.de-progress-val{font-family:var(--font-display);font-size:1.05rem;font-weight:800;color:#fff;line-height:1}
-.de-progress-lbl{font-size:.7rem;color:rgba(255,255,255,.4);margin-top:.1rem}
-/* Objetivo item */
-.de-obj-item{display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .8rem;background:rgba(139,92,246,.08);border-radius:10px;border:1px solid rgba(139,92,246,.2);margin-bottom:.4rem;font-size:.82rem;color:rgba(255,255,255,.7);line-height:1.4}
-/* Dia Perfeito */
-.de-perfect-item{display:flex;align-items:center;gap:.7rem;padding:.55rem .75rem;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.07);margin-bottom:.35rem;font-size:.85rem;color:rgba(255,255,255,.6)}
-.de-perfect-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.75rem;border:1px solid rgba(255,255,255,.1);flex-shrink:0}
-.de-perfect-icon.done{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.4);color:#34d399}
-.de-perfect-lbl{}
-/* Botão principal */
-.de-btn{width:100%;padding:.85rem;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;font-family:var(--font-display);font-weight:800;font-size:1rem;cursor:pointer;transition:all .2s;margin-top:1rem;letter-spacing:.02em}
-.de-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(139,92,246,.4)}
-.de-btn:disabled{opacity:.4;transform:none;cursor:not-allowed}
+/* ══════════════════════════════════════════
+   MINHA JORNADA
+══════════════════════════════════════════ */
+/* Hero */
+.jornada-hero{padding:1.1rem!important}
+.jornada-hero-top{display:flex;align-items:center;gap:1rem;margin-bottom:.9rem}
+#jornada-avatar-wrap{width:60px;height:60px;border-radius:50%;flex-shrink:0;position:relative;cursor:pointer;border:2.5px solid rgba(167,139,250,.4);overflow:hidden;background:linear-gradient(135deg,var(--primary-xdark),#312e81)}
+#jornada-avatar-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:rgba(255,255,255,.7)}
+#jornada-avatar-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.jornada-avatar-edit{position:absolute;bottom:0;right:0;width:20px;height:20px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.5rem;color:#fff;border:2px solid #0d0d1a}
+.jornada-hero-name{font-family:var(--font-display);font-size:1.05rem;font-weight:800;color:#fff;line-height:1.2}
+.jornada-hero-since{font-size:.73rem;color:rgba(255,255,255,.45);margin-top:.1rem}
+.jornada-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem}
+.jhs{background:rgba(255,255,255,.07);border-radius:9px;padding:.55rem .4rem;text-align:center;border:1px solid rgba(255,255,255,.06)}
+.jhs-val{font-family:var(--font-display);font-size:1.25rem;font-weight:900;color:#fff;line-height:1}
+.jhs-lbl{font-size:.58rem;color:rgba(255,255,255,.4);margin-top:.18rem;text-transform:uppercase;letter-spacing:.04em}
+
+/* Mural */
+.jornada-mural-grid{display:flex;flex-wrap:wrap;gap:.4rem}
+.jornada-marco{display:flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border-radius:20px;font-size:.76rem;font-weight:700;border:1px solid var(--border);background:var(--surface3);color:var(--text-3);transition:all var(--t);cursor:default}
+.jornada-marco.earned{background:linear-gradient(135deg,rgba(167,139,250,.15),rgba(244,114,182,.08));border-color:var(--border2);color:var(--text)}
+.jornada-marco.locked{opacity:.28;filter:grayscale(.7)}
+.jornada-marco-icon{font-size:1rem}
+
+/* Resumo */
+.jornada-resumo-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.jritem{background:var(--surface3);border-radius:var(--radius-sm);padding:.65rem .8rem;border:1px solid var(--border);display:flex;align-items:center;gap:.6rem}
+.jricon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.jrval{font-family:var(--font-display);font-size:1.1rem;font-weight:800;line-height:1}
+.jrlbl{font-size:.67rem;color:var(--text-3);margin-top:.1rem}
+
+/* Momentos Marcantes */
+.jornada-momento{display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;background:linear-gradient(135deg,rgba(167,139,250,.08),rgba(244,114,182,.05));border-radius:var(--radius-sm);border:1px solid var(--border2);margin-bottom:.4rem}
+.jornada-momento-icon{font-size:1.4rem;flex-shrink:0}
+.jornada-momento-txt{font-size:.85rem;font-weight:700;color:var(--text)}
+.jornada-momento-sub{font-size:.72rem;color:var(--text-3);margin-top:.1rem}
+
+/* Timeline */
+.jornada-tl{position:relative;padding-left:1.75rem}
+.jornada-tl::before{content:'';position:absolute;left:.55rem;top:.4rem;bottom:.4rem;width:2px;background:linear-gradient(180deg,var(--primary-glow2),transparent)}
+.jtl-item{position:relative;margin-bottom:1rem;padding:.8rem .9rem;background:var(--surface3);border-radius:var(--radius-sm);border:1px solid var(--border);transition:border-color var(--t)}
+.jtl-item:hover{border-color:var(--border2)}
+.jtl-dot{position:absolute;left:-1.4rem;top:.85rem;width:12px;height:12px;border-radius:50%;border:2px solid var(--surface2);flex-shrink:0}
+.jtl-date{font-size:.7rem;color:var(--text-3);margin-bottom:.3rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.jtl-type{padding:.1rem .45rem;border-radius:5px;font-weight:700;font-size:.68rem}
+.jtl-title{font-weight:700;font-size:.88rem;color:var(--text);line-height:1.3}
+.jtl-meta{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.4rem}
+.jtl-photo{width:100%;max-height:190px;object-fit:cover;border-radius:8px;margin-top:.5rem;display:block;cursor:pointer}
+.jtl-actions{display:flex;gap:.3rem;margin-top:.5rem}
+.btn-xs{padding:.22rem .55rem;font-size:.72rem;border-radius:6px}
+
+/* Shares */
+.jshare-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .75rem;background:var(--surface3);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:.4rem}
+.jshare-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surface4);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--text-3);overflow:hidden}
+.jshare-thumb img{width:100%;height:100%;object-fit:cover}
+
+/* ══════════════════════════════════════════
+   MINHA JORNADA
+══════════════════════════════════════════ */
+.jornada-hero{padding:1.1rem!important}
+.jornada-hero-top{display:flex;align-items:center;gap:1rem;margin-bottom:.9rem}
+#jornada-avatar-wrap{width:60px;height:60px;border-radius:50%;flex-shrink:0;position:relative;cursor:pointer;border:2.5px solid rgba(167,139,250,.4);overflow:hidden;background:linear-gradient(135deg,var(--primary-xdark),#312e81)}
+#jornada-avatar-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:rgba(255,255,255,.7)}
+#jornada-avatar-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.jornada-avatar-edit{position:absolute;bottom:0;right:0;width:20px;height:20px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.5rem;color:#fff;border:2px solid #0d0d1a}
+.jornada-hero-name{font-family:var(--font-display);font-size:1.05rem;font-weight:800;color:#fff;line-height:1.2}
+.jornada-hero-since{font-size:.73rem;color:rgba(255,255,255,.45);margin-top:.1rem}
+.jornada-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem}
+.jhs{background:rgba(255,255,255,.07);border-radius:9px;padding:.55rem .4rem;text-align:center;border:1px solid rgba(255,255,255,.06)}
+.jhs-val{font-family:var(--font-display);font-size:1.25rem;font-weight:900;color:#fff;line-height:1}
+.jhs-lbl{font-size:.58rem;color:rgba(255,255,255,.4);margin-top:.18rem;text-transform:uppercase;letter-spacing:.04em}
+.jornada-mural-grid{display:flex;flex-wrap:wrap;gap:.4rem}
+.jornada-marco{display:flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border-radius:20px;font-size:.76rem;font-weight:700;border:1px solid var(--border);background:var(--surface3);color:var(--text-3);transition:all var(--t)}
+.jornada-marco.earned{background:linear-gradient(135deg,rgba(167,139,250,.15),rgba(244,114,182,.08));border-color:var(--border2);color:var(--text)}
+.jornada-marco.locked{opacity:.25;filter:grayscale(.7)}
+.jornada-marco-icon{font-size:1rem}
+.jornada-resumo-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.jritem{background:var(--surface3);border-radius:var(--radius-sm);padding:.65rem .8rem;border:1px solid var(--border);display:flex;align-items:center;gap:.6rem}
+.jricon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.jrval{font-family:var(--font-display);font-size:1.1rem;font-weight:800;line-height:1}
+.jrlbl{font-size:.67rem;color:var(--text-3);margin-top:.1rem}
+.jornada-momento{display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;background:linear-gradient(135deg,rgba(167,139,250,.08),rgba(244,114,182,.05));border-radius:var(--radius-sm);border:1px solid var(--border2);margin-bottom:.4rem}
+.jornada-momento-icon{font-size:1.4rem;flex-shrink:0}
+.jornada-momento-txt{font-size:.85rem;font-weight:700;color:var(--text)}
+.jornada-momento-sub{font-size:.72rem;color:var(--text-3);margin-top:.1rem}
+.jornada-tl{position:relative;padding-left:1.75rem}
+.jornada-tl::before{content:'';position:absolute;left:.55rem;top:.4rem;bottom:.4rem;width:2px;background:linear-gradient(180deg,var(--primary-glow2),transparent)}
+.jtl-item{position:relative;margin-bottom:1rem;padding:.8rem .9rem;background:var(--surface3);border-radius:var(--radius-sm);border:1px solid var(--border);transition:border-color var(--t)}
+.jtl-item:hover{border-color:var(--border2)}
+.jtl-dot{position:absolute;left:-1.4rem;top:.85rem;width:12px;height:12px;border-radius:50%;border:2px solid var(--surface2)}
+.jtl-date{font-size:.7rem;color:var(--text-3);margin-bottom:.3rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.jtl-type{padding:.1rem .45rem;border-radius:5px;font-weight:700;font-size:.68rem}
+.jtl-title{font-weight:700;font-size:.88rem;color:var(--text);line-height:1.3}
+.jtl-meta{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.4rem}
+.jtl-photo{width:100%;max-height:190px;object-fit:cover;border-radius:8px;margin-top:.5rem;display:block;cursor:pointer}
+.jtl-actions{display:flex;gap:.3rem;margin-top:.5rem}
+.btn-xs{padding:.22rem .55rem;font-size:.72rem;border-radius:6px}
+.jshare-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .75rem;background:var(--surface3);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:.4rem}
+.jshare-thumb{width:42px;height:42px;border-radius:8px;flex-shrink:0;background:var(--surface4);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--text-3);overflow:hidden}
+.jshare-thumb img{width:100%;height:100%;object-fit:cover}
 </style>
 </head>
 <body>
@@ -937,6 +990,123 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
       </div>
 
+      <!-- ══════════════════ MINHA JORNADA ══════════════════ -->
+      <div id="jornada-screen" class="screen">
+
+        <!-- Hero: Perfil de Evolução -->
+        <div class="card hero-card jornada-hero" style="margin-bottom:.875rem">
+          <div class="jornada-hero-top">
+            <div id="jornada-avatar-wrap" onclick="jornadaTrocarAvatar()" title="Toque para trocar foto">
+              <div id="jornada-avatar-icon"><i class="fas fa-user"></i></div>
+              <img id="jornada-avatar-img" style="display:none">
+              <div class="jornada-avatar-edit"><i class="fas fa-camera"></i></div>
+            </div>
+            <div class="jornada-hero-info">
+              <div id="jornada-username" class="jornada-hero-name">Minha Jornada</div>
+              <div id="jornada-entrada" class="jornada-hero-since"></div>
+              <div id="jornada-liga-badge" style="margin-top:.35rem"></div>
+            </div>
+          </div>
+          <div id="jornada-hero-stats" class="jornada-hero-stats"></div>
+        </div>
+
+        <!-- Mural de Conquistas -->
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-trophy"></i>Mural de Conquistas
+            <span class="badge-pill" id="jornada-mural-count">0/0</span>
+          </div>
+          <div id="jornada-mural" class="jornada-mural-grid"></div>
+        </div>
+
+        <!-- Resumo da Jornada -->
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-chart-line"></i>Resumo da Jornada</div>
+          <div id="jornada-resumo" class="jornada-resumo-grid"></div>
+        </div>
+
+        <!-- Momentos Marcantes -->
+        <div class="card" style="margin-bottom:.875rem" id="jornada-momentos-card">
+          <div class="card-title"><i class="fas fa-star"></i>Momentos Marcantes</div>
+          <div id="jornada-momentos"></div>
+        </div>
+
+        <!-- Linha do Tempo -->
+        <div class="card" style="margin-bottom:.875rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:.5rem">
+            <div class="card-title" style="margin:0"><i class="fas fa-history"></i>Linha do Tempo</div>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <select id="jornada-mes-sel" style="padding:.3rem .55rem;font-size:.78rem;border-radius:8px;width:auto">
+                <option value="all">Todos os meses</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="jornadaAbrirModal()" title="Registrar momento">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div id="jornada-timeline"></div>
+        </div>
+
+        <!-- Histórico de Compartilhamentos -->
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos</div>
+          <div id="jornada-shares"></div>
+        </div>
+
+      </div>
+      <!-- ══════════════════ FIM JORNADA ══════════════════ -->
+
+      <!-- ══════════ MINHA JORNADA ══════════ -->
+      <div id="jornada-screen" class="screen">
+
+        <div class="card hero-card jornada-hero" style="margin-bottom:.875rem">
+          <div class="jornada-hero-top">
+            <div id="jornada-avatar-wrap" onclick="jornadaTrocarAvatar()" title="Trocar foto">
+              <div id="jornada-avatar-icon"><i class="fas fa-user"></i></div>
+              <img id="jornada-avatar-img" style="display:none" alt="avatar">
+              <div class="jornada-avatar-edit"><i class="fas fa-camera"></i></div>
+            </div>
+            <div>
+              <div id="jornada-username" class="jornada-hero-name">Minha Jornada</div>
+              <div id="jornada-entrada" class="jornada-hero-since"></div>
+              <div id="jornada-liga-badge" style="margin-top:.35rem"></div>
+            </div>
+          </div>
+          <div id="jornada-hero-stats" class="jornada-hero-stats"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-trophy"></i>Mural de Conquistas<span class="badge-pill" id="jornada-mural-count">0/0</span></div>
+          <div id="jornada-mural" class="jornada-mural-grid"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-chart-line"></i>Resumo da Jornada</div>
+          <div id="jornada-resumo" class="jornada-resumo-grid"></div>
+        </div>
+
+        <div class="card" id="jornada-momentos-card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-star"></i>Momentos Marcantes</div>
+          <div id="jornada-momentos"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:.5rem">
+            <div class="card-title" style="margin:0"><i class="fas fa-history"></i>Linha do Tempo</div>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <select id="jornada-mes-sel" style="padding:.3rem .55rem;font-size:.78rem;border-radius:8px;width:auto"></select>
+              <button class="btn btn-primary btn-sm" onclick="jornadaAbrirModal()"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
+          <div id="jornada-timeline"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos</div>
+          <div id="jornada-shares"></div>
+        </div>
+
+      </div>
+
     </main>
 
     <!-- ── NAV ── -->
@@ -945,8 +1115,8 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
       <button class="nav-item" data-screen="metas"><i class="fas fa-seedling"></i>Metas</button>
       <button class="nav-item" data-screen="financeiro"><i class="fas fa-wallet"></i>Finanças</button>
       <button class="nav-item" data-screen="mental"><i class="fas fa-brain"></i>Mental</button>
+      <button class="nav-item" data-screen="jornada"><i class="fas fa-user-astronaut"></i>Jornada</button>
       <button class="nav-item" data-screen="frases"><i class="fas fa-quote-left"></i>Frases</button>
-      <button class="nav-item" data-screen="questione"><i class="fas fa-search"></i>Refletir</button>
       <button class="nav-item" data-screen="analytics"><i class="fas fa-chart-pie"></i>Análise</button>
     </nav>
   </div>
@@ -955,6 +1125,98 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 <!-- ══════════════════════════════════
      MODAIS
 ══════════════════════════════════ -->
+
+<!-- ══ MODAL JORNADA — REGISTRAR MOMENTO ══ -->
+<div id="jornada-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-camera" style="color:var(--primary)"></i> Registrar Momento</h3>
+      <button class="btn btn-icon" onclick="closeModal('jornada-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <img id="jornada-ev-preview" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:.75rem;display:none">
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="jornada-ev-type">
+        <option value="conquista">🏆 Conquista</option>
+        <option value="meta">🎯 Meta Concluída</option>
+        <option value="habito">💪 Hábito</option>
+        <option value="tarefa">✅ Tarefa</option>
+        <option value="dia_perfeito">🌟 Dia Perfeito</option>
+        <option value="marco">🔥 Marco Pessoal</option>
+        <option value="reflexao">💭 Reflexão</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Descrição *</label>
+      <input id="jornada-ev-desc" placeholder="O que você conquistou?" maxlength="120">
+    </div>
+    <div class="form-group">
+      <label>Foto (opcional)</label>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="jornadaFoto('camera')"><i class="fas fa-camera"></i> Câmera</button>
+        <button class="btn btn-ghost btn-sm" onclick="jornadaFoto('gallery')"><i class="fas fa-image"></i> Galeria</button>
+        <button class="btn btn-ghost btn-sm" id="jornada-ev-remove" style="display:none;color:var(--danger)" onclick="jornadaRemoverFoto()"><i class="fas fa-trash"></i></button>
+      </div>
+      <input type="file" id="jornada-file-gallery" accept="image/*" style="display:none" onchange="jornadaOnFile(event)">
+      <input type="file" id="jornada-file-camera" accept="image/*" capture="environment" style="display:none" onchange="jornadaOnFile(event)">
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem">
+      <button class="btn btn-ghost" onclick="closeModal('jornada-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="jornadaSalvarEvento()"><i class="fas fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL FOTO EXPANDIDA ══ -->
+<div id="jornada-photo-modal" class="modal" onclick="closeModal('jornada-photo-modal')" style="align-items:center;justify-content:center;padding:1rem">
+  <img id="jornada-photo-full" style="max-width:100%;max-height:90vh;border-radius:var(--radius);object-fit:contain">
+</div>
+
+<!-- ══ MODAL JORNADA — REGISTRAR MOMENTO ══ -->
+<div id="jornada-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-camera" style="color:var(--primary)"></i> Registrar Momento</h3>
+      <button class="btn btn-icon" onclick="closeModal('jornada-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <img id="jornada-ev-preview" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:.75rem;display:none" alt="preview">
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="jornada-ev-type">
+        <option value="conquista">🏆 Conquista</option>
+        <option value="meta">🎯 Meta Concluída</option>
+        <option value="habito">💪 Hábito</option>
+        <option value="tarefa">✅ Tarefa</option>
+        <option value="dia_perfeito">🌟 Dia Perfeito</option>
+        <option value="marco">🔥 Marco Pessoal</option>
+        <option value="reflexao">💭 Reflexão</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Descrição *</label>
+      <input id="jornada-ev-desc" placeholder="O que você conquistou?" maxlength="120">
+    </div>
+    <div class="form-group">
+      <label>Foto (opcional)</label>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="jornadaFoto('camera')"><i class="fas fa-camera"></i> Câmera</button>
+        <button class="btn btn-ghost btn-sm" onclick="jornadaFoto('gallery')"><i class="fas fa-image"></i> Galeria</button>
+        <button class="btn btn-ghost btn-sm" id="jornada-ev-remove" style="display:none;color:var(--danger)" onclick="jornadaRemoverFoto()"><i class="fas fa-trash"></i></button>
+      </div>
+      <input type="file" id="jornada-file-gallery" accept="image/*" style="display:none" onchange="jornadaOnFile(event)">
+      <input type="file" id="jornada-file-camera" accept="image/*" capture="environment" style="display:none" onchange="jornadaOnFile(event)">
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem">
+      <button class="btn btn-ghost" onclick="closeModal('jornada-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="jornadaSalvarEvento()"><i class="fas fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL FOTO EXPANDIDA ══ -->
+<div id="jornada-photo-modal" class="modal" onclick="closeModal('jornada-photo-modal')" style="align-items:center;justify-content:center;padding:1rem">
+  <img id="jornada-photo-full" style="max-width:100%;max-height:90vh;border-radius:var(--radius);object-fit:contain" alt="">
+</div>
 
 <!-- TAREFA -->
 <div id="task-modal" class="modal">
@@ -1723,9 +1985,7 @@ _isSyncing: false,
     if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
     if(typeof checkPeriodShareTrigger === 'function') setTimeout(checkPeriodShareTrigger, 2000);
     if(typeof registerDailyPresence === 'function') registerDailyPresence();
-    // Daily entry: mostra imediatamente (100ms), ANTES do loading de sync
-    // z-index 9800 garante que fica acima do loading overlay (z-index 2100)
-    if(typeof showCheckinModal === 'function') setTimeout(showCheckinModal, 100);
+    if(typeof showCheckinModal === 'function') setTimeout(showCheckinModal, 2000);
     if(typeof checkRecordes === 'function') setTimeout(checkRecordes, 4000);
     if(typeof checkResumoDia === 'function') setTimeout(checkResumoDia, 5000);
     if(typeof addPCAccess === 'function') addPCAccess();
@@ -1784,6 +2044,8 @@ _isSyncing: false,
         else if(screen==='mental'){ this.renderMental(); this.renderMoodChart(); }
         else if(screen==='questione'){ this.renderQuestions(); }
         else if(screen==='frases'){ this.renderFrases(); }
+        else if(screen==='jornada'){ if(typeof renderJornada==='function') renderJornada(); }
+        else if(screen==='jornada'){ if(typeof renderJornada==='function') renderJornada(); }
       });
     });
     // History date
@@ -4032,7 +4294,7 @@ function renderDeStep() {
         <div class="de-streak-label">${streak > 0 ? 'DIAS CONSECUTIVOS' : 'DIAS DE PRESENÇA'}</div>
         <div class="de-streak-msg">"${getStreakMsg(streak || presStreak)}"</div>
       </div>
-      <button class="de-btn" onclick="deNext()">Continuar</button>
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
     `;
   } else if (step === 'msg') {
     html = `
@@ -4041,7 +4303,7 @@ function renderDeStep() {
         <div class="de-msg-text">"${getDailyMsg()}"</div>
         <div class="de-msg-author" style="margin-top:1.5rem">produtiv.me</div>
       </div>
-      <button class="de-btn" onclick="deNext()">Continuar</button>
+      <button class="btn btn-primary" style="width:200px;margin-top:2rem" onclick="deNext()">Continuar</button>
     `;
   } else if (step === 'checkin') {
     html = `
@@ -4054,7 +4316,7 @@ function renderDeStep() {
             <span class="de-label">${l}</span>
           </div>`).join('')}
       </div>
-      <button class="de-btn" id="de-humor-btn" style="opacity:${_deHumorSelected?1:.4}" onclick="deConfirmHumor()" ${_deHumorSelected?'':'disabled'}>Confirmar</button>
+      <button class="btn btn-primary" id="de-humor-btn" style="width:200px;margin-top:1.5rem;opacity:${_deHumorSelected?1:.4}" onclick="deConfirmHumor()" ${_deHumorSelected?'':'disabled'}>Confirmar</button>
     `;
   } else if (step === 'progress') {
     const items = [];
@@ -4074,7 +4336,7 @@ function renderDeStep() {
           </div>`).join('') : '<div style="text-align:center;color:rgba(255,255,255,.4);font-size:.9rem;padding:1rem">Suas conquistas aparecerão aqui</div>'}
       </div>
       ${proximo.length ? `<div style="width:100%;max-width:320px;margin-top:1rem">${proximo.map(p=>`<div class="de-next-item"><span class="de-next-icon">${p.icon}</span><span class="de-next-text">${p.text}</span></div>`).join('')}</div>` : ''}
-      <button class="de-btn" onclick="deNext()">Continuar</button>
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
     `;
   } else if (step === 'perfect') {
     const allDone = diaPerfeito.every(d => d.done);
@@ -4089,7 +4351,7 @@ function renderDeStep() {
           </div>`).join('')}
       </div>
       ${allDone ? '<div style="text-align:center;color:#a855f7;font-weight:700;font-size:.9rem;margin-top:1rem">🏆 Dia Perfeito conquistado!</div>' : ''}
-      <button class="de-btn" onclick="deConcluir()">Começar o dia 🚀</button>
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deConcluir()">Começar o dia 🚀</button>
     `;
   }
 
@@ -5249,6 +5511,7 @@ function checkPeriodShareTrigger(){
   }
 }
 
+
 // Botão reiniciar tutorial
 document.addEventListener('DOMContentLoaded',()=>{
   const btn=document.getElementById('btn-reiniciar-tutorial');
@@ -5258,6 +5521,391 @@ document.addEventListener('DOMContentLoaded',()=>{
     startTutorial();
   });
 });
+
+/* ══════════════════════════════════════════════════════════
+   MINHA JORNADA — Sistema de Evolução Pessoal
+══════════════════════════════════════════════════════════ */
+
+const JORNADA_KEY        = 'pm18_jornada_v1';
+const JORNADA_SHARES_KEY = 'pm18_jornada_shares_v1';
+
+function loadJornada(){ try{ return JSON.parse(localStorage.getItem(JORNADA_KEY)||'[]'); }catch(e){ return []; } }
+function saveJornada(d){ try{ localStorage.setItem(JORNADA_KEY,JSON.stringify(d)); }catch(e){ showToast('Armazenamento cheio','error'); } }
+function loadJShares(){ try{ return JSON.parse(localStorage.getItem(JORNADA_SHARES_KEY)||'[]'); }catch(e){ return []; } }
+function saveJShares(d){ try{ localStorage.setItem(JORNADA_SHARES_KEY,JSON.stringify(d)); }catch(e){} }
+
+/* ── IndexedDB para fotos ── */
+const JDB=(()=>{
+  let _db=null;
+  const open=()=>new Promise((res,rej)=>{
+    if(_db){res(_db);return;}
+    const r=indexedDB.open('pm18_jornada_db',1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore('photos');
+    r.onsuccess=e=>{_db=e.target.result;res(_db);};
+    r.onerror=()=>rej(r.error);
+  });
+  return {
+    set:async(k,v)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
+    get:async(k)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readonly'); const r=tx.objectStore('photos').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); }); },
+    del:async(k)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').delete(k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
+  };
+})();
+
+/* ── Tipos de evento ── */
+const JEV_TYPES={
+  conquista:   {icon:'🏆',color:'#fbbf24',bg:'rgba(251,191,36,.12)',  dot:'#fbbf24',label:'Conquista'},
+  meta:        {icon:'🎯',color:'#a78bfa',bg:'rgba(167,139,250,.12)', dot:'#a78bfa',label:'Meta'},
+  habito:      {icon:'💪',color:'#34d399',bg:'rgba(52,211,153,.12)',  dot:'#34d399',label:'Hábito'},
+  tarefa:      {icon:'✅',color:'#22d3ee',bg:'rgba(34,211,238,.12)',  dot:'#22d3ee',label:'Tarefa'},
+  dia_perfeito:{icon:'🌟',color:'#f472b6',bg:'rgba(244,114,182,.12)', dot:'#f472b6',label:'Dia Perfeito'},
+  marco:       {icon:'🔥',color:'#fb923c',bg:'rgba(251,146,60,.12)',  dot:'#fb923c',label:'Marco'},
+  reflexao:    {icon:'💭',color:'#b0a8d4',bg:'rgba(176,168,212,.12)', dot:'#b0a8d4',label:'Reflexão'},
+  patente:     {icon:'👑',color:'#fbbf24',bg:'rgba(251,191,36,.14)',  dot:'#fbbf24',label:'Patente'},
+  auto:        {icon:'⚡',color:'#a78bfa',bg:'rgba(167,139,250,.10)', dot:'#a78bfa',label:'Auto'},
+};
+
+/* ── Marcos do Mural ── */
+const JORNADA_MARCOS=[
+  {id:'primeira_tarefa', icon:'⭐',label:'1ª Tarefa',             check:(g)=>g.totalDone>=1},
+  {id:'streak7',         icon:'🔥',label:'7 Dias Seguidos',       check:(g,s)=>s>=7},
+  {id:'streak30',        icon:'🏆',label:'30 Dias Seguidos',      check:(g,s)=>s>=30},
+  {id:'streak100',       icon:'💎',label:'100 Dias Seguidos',     check:(g,s)=>s>=100},
+  {id:'streak365',       icon:'👑',label:'365 Dias Seguidos',     check:(g,s)=>s>=365},
+  {id:'primeiro_dp',     icon:'🌟',label:'1º Dia Perfeito',       check:(g,s,dp)=>dp>=1},
+  {id:'dez_dp',          icon:'🌠',label:'10 Dias Perfeitos',     check:(g,s,dp)=>dp>=10},
+  {id:'cem_dp',          icon:'💫',label:'100 Dias Perfeitos',    check:(g,s,dp)=>dp>=100},
+  {id:'primeira_meta',   icon:'🎯',label:'1ª Meta',               check:(g,s,dp,goals)=>goals>=1},
+  {id:'meta_fin',        icon:'💰',label:'Meta Financeira',       check:(g)=>(g.finGoals||0)>=1},
+  {id:'tasks50',         icon:'⚡',label:'50 Tarefas',            check:(g)=>g.totalDone>=50},
+  {id:'tasks100',        icon:'🚀',label:'100 Tarefas',           check:(g)=>g.totalDone>=100},
+  {id:'tasks500',        icon:'🛸',label:'500 Tarefas',           check:(g)=>g.totalDone>=500},
+  {id:'xp500',           icon:'💡',label:'500 XP',                check:(g)=>(g.totalXp||0)>=500},
+  {id:'xp2000',          icon:'✨',label:'2000 XP',               check:(g)=>(g.totalXp||0)>=2000},
+  {id:'liga_disc',       icon:'🏅',label:'Disciplinado',          check:(g,s,dp,goals,pc)=>pc>=2000},
+  {id:'liga_mestre',     icon:'💎',label:'Mestre Consistência',   check:(g,s,dp,goals,pc)=>pc>=4800},
+  {id:'liga_lendario',   icon:'👑',label:'Lendário',              check:(g,s,dp,goals,pc)=>pc>=10000},
+];
+
+/* ── Utils imagem ── */
+function _jFile2B64(file){ return new Promise(r=>{ const rd=new FileReader(); rd.onload=e=>r(e.target.result); rd.readAsDataURL(file); }); }
+function _jResize(src,maxW,maxH){ return new Promise(r=>{ const img=new Image(); img.onload=()=>{ const ratio=Math.min(maxW/img.width,maxH/img.height,1); const c=document.createElement('canvas'); c.width=img.width*ratio; c.height=img.height*ratio; c.getContext('2d').drawImage(img,0,0,c.width,c.height); r(c.toDataURL('image/jpeg',.82)); }; img.src=src; }); }
+function _jStreak(){ return window.app?.computeStreak?.() || 0; }
+function _jEsc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function _jDiasPerfeitos(){
+  const routines=window.app?.state?.data?.routines||{};
+  const habs=typeof loadHabits==='function'?loadHabits():[];
+  const ci=typeof loadCheckin==='function'?loadCheckin():{};
+  let count=0;
+  Object.entries(routines).forEach(([day,tasks])=>{
+    if(tasks.length>0&&tasks.every(t=>t.done)&&(habs.length===0||habs.every(h=>(h.days||[]).includes(day)))&&!!ci.history?.[day]) count++;
+  });
+  return count;
+}
+function _jMetas(){ return (window.app?.state?.data?.goals||[]).filter(g=>(g.progress||0)>=100).length; }
+function _jHabsDone(){ return (typeof loadHabits==='function'?loadHabits():[]).reduce((a,h)=>a+(h.days||[]).length,0); }
+function _jHumorMedio(){
+  const ci=typeof loadCheckin==='function'?loadCheckin():{};
+  const map={pessimo:1,mal:2,ok:3,bem:4,otimo:5};
+  const emojis=['','😞','😕','😐','🙂','😄'];
+  const vals=Object.values(ci.history||{}).map(h=>map[h]).filter(Boolean);
+  if(!vals.length) return null;
+  return emojis[Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)];
+}
+function _jPresenceDays(){
+  const p=typeof loadPresence==='function'?loadPresence():{};
+  return (p.days||[]).length||Object.keys(window.app?.state?.data?.routines||{}).length;
+}
+function _jDataEntrada(){
+  const p=typeof loadPresence==='function'?loadPresence():{};
+  const days=[...(p.days||[])].sort();
+  return days.length?days[0]:null;
+}
+function _jFmtDate(iso){ try{ return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}); }catch(e){ return iso; } }
+function _jFmtTime(iso){ try{ return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function _jFmtMes(ym){ const [y,m]=ym.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); }
+
+/* ── Avatar ── */
+async function jornadaCarregarAvatar(){
+  const p=await JDB.get('avatar').catch(()=>null);
+  const img=document.getElementById('jornada-avatar-img');
+  const icon=document.getElementById('jornada-avatar-icon');
+  if(p&&img){ img.src=p; img.style.display='block'; if(icon) icon.style.display='none'; }
+  else if(img){ img.style.display='none'; if(icon) icon.style.display='flex'; }
+}
+async function jornadaTrocarAvatar(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const b=await _jFile2B64(f); const r=await _jResize(b,240,240); await JDB.set('avatar',r); jornadaCarregarAvatar(); showToast('Foto de perfil atualizada 📸','success'); };
+  inp.click();
+}
+window.jornadaTrocarAvatar=jornadaTrocarAvatar;
+
+/* ── Auto-registrar ── */
+function jornadaAutoRegistrar(type,desc,opts={}){
+  const hoje=todayKey(), evs=loadJornada();
+  if(evs.some(e=>e.type===type&&e.desc===desc&&e.ts.startsWith(hoje))) return;
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  evs.unshift({id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,auto:true});
+  saveJornada(evs);
+  if(opts.share) jornadaRegistrarShare(type,desc,null);
+}
+window.jornadaAutoRegistrar=jornadaAutoRegistrar;
+
+/* ── Registrar compartilhamento ── */
+function jornadaRegistrarShare(type,desc,thumb){
+  const s=loadJShares(); s.unshift({type,desc,ts:new Date().toISOString(),thumb:thumb||null});
+  if(s.length>60) s.length=60; saveJShares(s);
+}
+window.jornadaRegistrarShare=jornadaRegistrarShare;
+
+/* ── Hook openShareModal ── */
+(function(){
+  const orig=window.openShareModal;
+  if(typeof orig!=='function') return;
+  window.openShareModal=function(type){
+    orig(type);
+    const g=typeof loadGamify==='function'?loadGamify():{};
+    const pc=typeof loadPC==='function'?loadPC():{};
+    const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+    const map={streak:`🔥 ${_jStreak()} dias`,evolucao:'📈 Evolução',nivel:`⚡ ${g.totalXp||0} XP`,liga:`${liga?.icon||''} ${liga?.name||''}`,semanal:'📊 Semana',comp_semanal:'📅 Semanas',comp_mensal:'📆 Meses'};
+    jornadaRegistrarShare(type,map[type]||type,null);
+  };
+})();
+
+/* ── Modal ── */
+let _jevPhoto=null;
+function jornadaAbrirModal(opts={}){
+  _jevPhoto=null;
+  const preview=document.getElementById('jornada-ev-preview');
+  const rm=document.getElementById('jornada-ev-remove');
+  if(preview){preview.src='';preview.style.display='none';}
+  if(rm) rm.style.display='none';
+  const desc=document.getElementById('jornada-ev-desc');
+  const type=document.getElementById('jornada-ev-type');
+  if(desc) desc.value=opts.desc||'';
+  if(type&&opts.type) type.value=opts.type;
+  const m=document.getElementById('jornada-modal');
+  if(m) m.classList.add('active');
+}
+window.jornadaAbrirModal=jornadaAbrirModal;
+
+function jornadaFoto(mode){
+  const inp=mode==='camera'?document.getElementById('jornada-file-camera'):document.getElementById('jornada-file-gallery');
+  if(inp) inp.click();
+}
+window.jornadaFoto=jornadaFoto;
+
+async function jornadaOnFile(e){
+  const f=e.target.files[0]; if(!f) return;
+  const b=await _jFile2B64(f); const r=await _jResize(b,960,960); _jevPhoto=r;
+  const preview=document.getElementById('jornada-ev-preview');
+  const rm=document.getElementById('jornada-ev-remove');
+  if(preview){preview.src=r;preview.style.display='block';} if(rm) rm.style.display='';
+  e.target.value='';
+}
+window.jornadaOnFile=jornadaOnFile;
+
+function jornadaRemoverFoto(){
+  _jevPhoto=null;
+  const preview=document.getElementById('jornada-ev-preview');
+  const rm=document.getElementById('jornada-ev-remove');
+  if(preview){preview.src='';preview.style.display='none';} if(rm) rm.style.display='none';
+}
+window.jornadaRemoverFoto=jornadaRemoverFoto;
+
+async function jornadaSalvarEvento(){
+  const desc=(document.getElementById('jornada-ev-desc')?.value||'').trim();
+  if(!desc){showToast('Descreva o momento 📝','error');return;}
+  const type=document.getElementById('jornada-ev-type')?.value||'conquista';
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:!!_jevPhoto,auto:false};
+  const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
+  if(_jevPhoto) await JDB.set(id,_jevPhoto).catch(()=>{});
+  closeModal('jornada-modal');
+  showToast('Momento registrado! 📸','success');
+  renderJornada();
+}
+window.jornadaSalvarEvento=jornadaSalvarEvento;
+
+async function jornadaDeletarEvento(id){
+  saveJornada(loadJornada().filter(e=>e.id!==id));
+  await JDB.del(id).catch(()=>{});
+  const el=document.getElementById('jtl-'+id);
+  if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);}
+}
+window.jornadaDeletarEvento=jornadaDeletarEvento;
+
+async function jornadaVerFoto(id){
+  const p=await JDB.get(id).catch(()=>null); if(!p) return;
+  const img=document.getElementById('jornada-photo-full'); if(img) img.src=p;
+  const m=document.getElementById('jornada-photo-modal'); if(m) m.classList.add('active');
+}
+window.jornadaVerFoto=jornadaVerFoto;
+
+function jornadaAddFotoEvento(id){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const b=await _jFile2B64(f); const r=await _jResize(b,960,960); await JDB.set(id,r).catch(()=>{}); const evs=loadJornada(); const ev=evs.find(e=>e.id===id); if(ev){ev.hasPhoto=true;saveJornada(evs);} showToast('Foto adicionada! 📸','success'); renderJornada(); };
+  inp.click();
+}
+window.jornadaAddFotoEvento=jornadaAddFotoEvento;
+
+/* ══ RENDER PRINCIPAL ══ */
+async function renderJornada(){
+  _renderJornadaHero();
+  _renderJornadaMural();
+  _renderJornadaResumo();
+  _renderJornadaMomentos();
+  await _renderJornadaTimeline();
+  _renderJornadaShares();
+  _renderJornadaMeses();
+  jornadaCarregarAvatar();
+}
+window.renderJornada=renderJornada;
+
+function _renderJornadaHero(){
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const streak=_jStreak(), maxStreak=g.records?.maxStreak||streak, dp=_jDiasPerfeitos();
+  const user=window.app?.state?.user;
+  const nome=user?.name||(user?.email?user.email.split('@')[0]:'Minha Jornada');
+  const nameEl=document.getElementById('jornada-username'); if(nameEl) nameEl.textContent=nome;
+  const entrada=_jDataEntrada();
+  const entradaEl=document.getElementById('jornada-entrada');
+  if(entradaEl) entradaEl.textContent=entrada?'Jornada iniciada em '+_jFmtDate(entrada):'';
+  const ligaEl=document.getElementById('jornada-liga-badge');
+  if(ligaEl&&liga) ligaEl.innerHTML=`<span class="liga-badge ${liga.cls}">${liga.icon} ${liga.name}</span>`;
+  const stats=[
+    {val:streak+'🔥',lbl:'Streak'},{val:maxStreak,lbl:'Recorde'},
+    {val:dp,lbl:'Dias Perfeitos'},{val:g.totalXp||0,lbl:'XP Total'},
+    {val:pc.total||0,lbl:'PC Total'},{val:_jPresenceDays(),lbl:'Dias Ativos'},
+  ];
+  const el=document.getElementById('jornada-hero-stats');
+  if(el) el.innerHTML=stats.map(s=>`<div class="jhs"><div class="jhs-val">${s.val}</div><div class="jhs-lbl">${s.lbl}</div></div>`).join('');
+}
+
+function _renderJornadaMural(){
+  const el=document.getElementById('jornada-mural'); if(!el) return;
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const streak=_jStreak(), dp=_jDiasPerfeitos(), goals=_jMetas(); let earned=0;
+  el.innerHTML=JORNADA_MARCOS.map(m=>{
+    const ok=m.check(g,streak,dp,goals,pc.total||0); if(ok) earned++;
+    return `<div class="jornada-marco ${ok?'earned':'locked'}" title="${ok?'✅ Conquistado':'🔒 Ainda não'}"><span class="jornada-marco-icon">${m.icon}</span><span>${m.label}</span></div>`;
+  }).join('');
+  const cnt=document.getElementById('jornada-mural-count'); if(cnt) cnt.textContent=`${earned}/${JORNADA_MARCOS.length}`;
+}
+
+function _renderJornadaResumo(){
+  const el=document.getElementById('jornada-resumo'); if(!el) return;
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const fin=typeof loadFinance==='function'?loadFinance():{};
+  const streak=_jStreak(), maxStreak=g.records?.maxStreak||streak;
+  const dp=_jDiasPerfeitos(), goals=_jMetas(), habsDone=_jHabsDone(), humor=_jHumorMedio();
+  const finGoals=(fin.goals||[]).filter(g=>g.reached||g.done).length;
+  const items=[
+    {icon:'🔥',val:streak,         lbl:'Streak Atual',       c:'var(--orange)', bg:'rgba(251,146,60,.12)'},
+    {icon:'🏆',val:maxStreak,       lbl:'Maior Streak',       c:'var(--gold)',   bg:'rgba(251,191,36,.12)'},
+    {icon:'🌟',val:dp,              lbl:'Dias Perfeitos',     c:'var(--accent)', bg:'rgba(244,114,182,.12)'},
+    {icon:'✅',val:g.totalDone||0,  lbl:'Tarefas Concluídas', c:'var(--cyan)',   bg:'rgba(34,211,238,.10)'},
+    {icon:'💪',val:habsDone,        lbl:'Hábitos Mantidos',   c:'var(--green)',  bg:'rgba(52,211,153,.12)'},
+    {icon:'🎯',val:goals,           lbl:'Metas Alcançadas',   c:'var(--primary)',bg:'rgba(167,139,250,.12)'},
+    {icon:'💰',val:finGoals||g.finGoals||0,lbl:'Metas Financeiras',c:'var(--green)',bg:'rgba(52,211,153,.10)'},
+    {icon:'😊',val:humor||'—',      lbl:'Humor Médio',        c:'var(--gold)',   bg:'rgba(251,191,36,.10)'},
+  ];
+  el.innerHTML=items.map(i=>`<div class="jritem"><div class="jricon" style="background:${i.bg}">${i.icon}</div><div><div class="jrval" style="color:${i.c}">${i.val}</div><div class="jrlbl">${i.lbl}</div></div></div>`).join('');
+}
+
+function _renderJornadaMomentos(){
+  const el=document.getElementById('jornada-momentos'); if(!el) return;
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const goals=window.app?.state?.data?.goals||[];
+  const fin=typeof loadFinance==='function'?loadFinance():{};
+  const streak=_jStreak(), dp=_jDiasPerfeitos();
+  const momentos=[];
+  if((g.totalDone||0)>=1) momentos.push({icon:'⭐',txt:'Primeira tarefa concluída',sub:'O começo de tudo'});
+  if((g.records?.maxStreak||streak)>=7) momentos.push({icon:'🔥',txt:'Primeira semana consecutiva',sub:'7 dias de disciplina'});
+  if((g.records?.maxStreak||streak)>=30) momentos.push({icon:'🏆',txt:'Primeiro mês consecutivo',sub:'30 dias sem parar'});
+  if(dp>=1) momentos.push({icon:'🌟',txt:'Primeiro Dia Perfeito',sub:'Tarefas + Hábitos + Humor'});
+  const pm=goals.find(g=>(g.progress||0)>=100);
+  if(pm) momentos.push({icon:'🎯',txt:'Primeira meta alcançada',sub:pm.title||'Meta concluída'});
+  const pf=(fin.goals||[]).find(g=>g.reached||g.done);
+  if(pf) momentos.push({icon:'💰',txt:'Primeira meta financeira',sub:pf.name||'Meta financeira'});
+  if((g.totalDone||0)>=100) momentos.push({icon:'🚀',txt:'100 tarefas concluídas',sub:'Marco de produtividade'});
+  if((pc.total||0)>=2000) momentos.push({icon:'🏅',txt:'Patente Disciplinado alcançada',sub:'2000+ Pontos de Consistência'});
+  if((pc.total||0)>=4800) momentos.push({icon:'💎',txt:'Mestre da Consistência',sub:'4800+ Pontos de Consistência'});
+  if((pc.total||0)>=10000) momentos.push({icon:'👑',txt:'Lendário da Produtividade',sub:'O topo da consistência'});
+  if(dp>=10) momentos.push({icon:'🌠',txt:'10 Dias Perfeitos',sub:'Consistência excepcional'});
+  const card=document.getElementById('jornada-momentos-card');
+  if(!momentos.length){ if(card) card.style.display='none'; return; }
+  if(card) card.style.display='';
+  el.innerHTML=momentos.map(m=>`<div class="jornada-momento"><div class="jornada-momento-icon">${m.icon}</div><div><div class="jornada-momento-txt">${_jEsc(m.txt)}</div><div class="jornada-momento-sub">${_jEsc(m.sub)}</div></div></div>`).join('');
+}
+
+async function _renderJornadaTimeline(filtroMes='all'){
+  const el=document.getElementById('jornada-timeline'); if(!el) return;
+  let evs=loadJornada();
+  if(filtroMes&&filtroMes!=='all') evs=evs.filter(e=>e.ts.startsWith(filtroMes));
+  if(!evs.length){
+    el.innerHTML=`<div style="text-align:center;color:var(--text-3);font-size:.85rem;padding:2rem 0">Nenhum momento ainda.<br><br><button class="btn btn-primary btn-sm" onclick="jornadaAbrirModal()"><i class="fas fa-plus"></i> Registrar primeiro momento</button></div>`;
+    return;
+  }
+  const html=[];
+  for(const ev of evs.slice(0,80)){
+    const t=JEV_TYPES[ev.type]||JEV_TYPES.auto;
+    let photoHtml='';
+    if(ev.hasPhoto){ const p=await JDB.get(ev.id).catch(()=>null); if(p) photoHtml=`<img src="${p}" class="jtl-photo" loading="lazy" onclick="jornadaVerFoto('${_jEsc(ev.id)}')" alt="foto">`; }
+    html.push(`<div class="jtl-item" id="jtl-${_jEsc(ev.id)}">
+      <div class="jtl-dot" style="background:${t.dot}"></div>
+      <div class="jtl-date">
+        <span class="jtl-type" style="background:${t.bg};color:${t.color}">${t.icon} ${t.label}</span>
+        ${_jFmtDate(ev.ts)} · ${_jFmtTime(ev.ts)}
+        ${ev.auto?'<span style="font-size:.62rem;color:var(--text-3);background:var(--surface4);padding:.05rem .35rem;border-radius:4px">auto</span>':''}
+      </div>
+      <div class="jtl-title">${_jEsc(ev.desc)}</div>
+      <div class="jtl-meta">
+        ${ev.streak?`<span class="badge" style="background:rgba(251,146,60,.1);color:var(--orange)">🔥 ${ev.streak} dias</span>`:''}
+        ${ev.liga?`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">${_jEsc(ev.liga)}</span>`:''}
+        ${ev.xp?`<span class="badge" style="background:rgba(251,191,36,.1);color:var(--gold)">⚡ ${ev.xp} XP</span>`:''}
+      </div>
+      ${photoHtml}
+      <div class="jtl-actions">
+        ${!ev.hasPhoto?`<button class="btn btn-ghost btn-xs" onclick="jornadaAddFotoEvento('${_jEsc(ev.id)}')" title="Adicionar foto"><i class="fas fa-camera"></i></button>`:''}
+        <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="jornadaDeletarEvento('${_jEsc(ev.id)}')" title="Excluir"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`);
+  }
+  el.innerHTML=`<div class="jornada-tl">${html.join('')}</div>`;
+}
+
+function _renderJornadaMeses(){
+  const sel=document.getElementById('jornada-mes-sel'); if(!sel) return;
+  const meses=[...new Set(loadJornada().map(e=>e.ts.slice(0,7)))].sort().reverse();
+  sel.innerHTML='<option value="all">Todos os meses</option>'+meses.map(m=>`<option value="${m}">${_jFmtMes(m)}</option>`).join('');
+  sel.onchange=()=>_renderJornadaTimeline(sel.value);
+}
+
+function _renderJornadaShares(){
+  const el=document.getElementById('jornada-shares'); if(!el) return;
+  const shares=loadJShares();
+  if(!shares.length){ el.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1.2rem">Seus compartilhamentos aparecerão aqui</div>'; return; }
+  el.innerHTML=shares.slice(0,20).map(s=>`<div class="jshare-item">
+    <div class="jshare-thumb">${s.thumb?`<img src="${s.thumb}">`:'📱'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:.84rem;font-weight:700;color:var(--text)">${_jEsc(s.desc||s.type)}</div>
+      <div style="font-size:.71rem;color:var(--text-3);margin-top:.1rem">${_jFmtDate(s.ts)}</div>
+    </div>
+    <span style="font-size:.7rem;color:var(--primary);background:var(--primary-glow);padding:.2rem .5rem;border-radius:6px;white-space:nowrap;flex-shrink:0">📱 Instagram</span>
+  </div>`).join('');
+}
 </script>
 </body> 
 </html>
