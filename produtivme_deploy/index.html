@@ -578,6 +578,10 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .jshare-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .75rem;background:var(--surface3);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:.4rem}
 .jshare-thumb{width:42px;height:42px;border-radius:8px;flex-shrink:0;background:var(--surface4);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--text-3);overflow:hidden}
 .jshare-thumb img{width:100%;height:100%;object-fit:cover}
+/* ══ SHARE STUDIO ══ */
+.share-tpl-btn{padding:.3rem .7rem;border-radius:20px;font-size:.76rem;font-weight:700;border:1px solid var(--border);background:var(--surface3);color:var(--text-2);cursor:pointer;white-space:nowrap;transition:all var(--t);flex-shrink:0}
+.share-tpl-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.share-tpl-btn:hover:not(.active){border-color:var(--border2);color:var(--text)}
 </style>
 </head>
 <body>
@@ -4025,11 +4029,35 @@ const RealtimeManager = (() => {
 <!-- SHARE MODAL -->
 <div id="share-modal">
   <div class="share-inner">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-      <div style="font-family:var(--font-display);font-weight:800;font-size:1rem">📤 Compartilhar</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1rem">📤 Studio de Compartilhamento</div>
       <button class="btn btn-icon btn-sm" onclick="closeShareModal()"><i class="fas fa-times"></i></button>
     </div>
+
+    <!-- Template selector -->
+    <div style="display:flex;gap:.3rem;overflow-x:auto;padding-bottom:.4rem;margin-bottom:.75rem;scrollbar-width:none" id="share-template-btns">
+      <button class="share-tpl-btn active" data-tpl="classico" onclick="selectShareTemplate('classico',this)">Clássico</button>
+      <button class="share-tpl-btn" data-tpl="premium" onclick="selectShareTemplate('premium',this)">Premium</button>
+      <button class="share-tpl-btn" data-tpl="glass" onclick="selectShareTemplate('glass',this)">Glass</button>
+      <button class="share-tpl-btn" data-tpl="polaroid" onclick="selectShareTemplate('polaroid',this)">Polaroid</button>
+      <button class="share-tpl-btn" data-tpl="timeline" onclick="selectShareTemplate('timeline',this)">Timeline</button>
+      <button class="share-tpl-btn" data-tpl="apple" onclick="selectShareTemplate('apple',this)">Apple</button>
+    </div>
+
+    <!-- Photo picker -->
+    <div style="display:flex;gap:.4rem;margin-bottom:.75rem;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="sharePickPhoto('camera')" style="font-size:.75rem"><i class="fas fa-camera"></i> Câmera</button>
+      <button class="btn btn-ghost btn-sm" onclick="sharePickPhoto('gallery')" style="font-size:.75rem"><i class="fas fa-image"></i> Galeria</button>
+      <button class="btn btn-ghost btn-sm" id="share-remove-photo" style="display:none;font-size:.75rem;color:var(--danger)" onclick="shareRemovePhoto()"><i class="fas fa-trash"></i></button>
+      <span id="share-photo-label" style="font-size:.72rem;color:var(--text-3)">Sem foto</span>
+    </div>
+    <input type="file" id="share-photo-gallery" accept="image/*" style="display:none" onchange="shareOnPhotoFile(event)">
+    <input type="file" id="share-photo-camera" accept="image/*" capture="environment" style="display:none" onchange="shareOnPhotoFile(event)">
+
+    <!-- Canvas preview -->
     <div id="share-canvas-wrap"><canvas id="share-canvas" width="1080" height="1920"></canvas></div>
+
+    <!-- Actions -->
     <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
       <button class="btn btn-primary" style="flex:1" onclick="doShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
       <button class="btn btn-ghost" onclick="downloadShareImage()"><i class="fas fa-download"></i></button>
@@ -4162,6 +4190,18 @@ const STREAK_MSGS = [
   (s) => s > 100 ? `${s} dias consecutivos. Mais de ${Math.floor(s/30)} meses de disciplina real. Você é excepcional.` : null,
 ];
 
+function _deGetOntem(){
+  const d=new Date(); d.setDate(d.getDate()-1);
+  const ontemKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const routines=window.app?.state?.data?.routines||{};
+  const tasks=(routines[ontemKey]||[]).filter(t=>t.done).length;
+  const habs=typeof loadHabits==='function'?loadHabits().filter(h=>(h.days||[]).includes(ontemKey)).length:0;
+  const ci=typeof loadCheckin==='function'?loadCheckin():{};
+  const humorMap={pessimo:'😞 Péssimo',mal:'😕 Mal',ok:'😐 Ok',bem:'🙂 Bem',otimo:'😄 Ótimo'};
+  const humor=ci.history?.[ontemKey]?humorMap[ci.history[ontemKey]]:null;
+  return {tasks,habs,humor};
+}
+
 function getStreakMsg(streak) {
   for (const fn of STREAK_MSGS) {
     const msg = fn(streak);
@@ -4287,25 +4327,42 @@ function renderDeStep() {
   let html = '';
 
   if (step === 'streak') {
+    const user = window.app?.state?.user;
+    const firstName = user?.name ? user.name.split(' ')[0] : (user?.email ? user.email.split('@')[0] : '');
+    const greet = firstName ? `Bom dia, ${firstName}.` : 'Bom dia.';
+    const streakMsg = getStreakMsg(streak || presStreak);
     html = `
-      <div style="text-align:center;margin-bottom:1rem">
-        <div style="font-size:3rem;margin-bottom:.5rem">🔥</div>
+      <div style="text-align:center;margin-bottom:.5rem">
+        <div class="de-streak-fire">🔥</div>
         <div class="de-streak-number">${streak || presStreak}</div>
         <div class="de-streak-label">${streak > 0 ? 'DIAS CONSECUTIVOS' : 'DIAS DE PRESENÇA'}</div>
-        <div class="de-streak-msg">"${getStreakMsg(streak || presStreak)}"</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:#fff;margin:.75rem 0 .25rem">${greet}</div>
+        <div class="de-streak-msg">${streakMsg}</div>
+        <div style="display:inline-flex;align-items:center;gap:.35rem;margin-top:1rem;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);border-radius:20px;padding:.35rem .85rem;font-size:.82rem;font-weight:700;color:var(--primary)">
+          <span>+2</span><span style="opacity:.7">Pontos de Consistência</span>
+        </div>
       </div>
-      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
+      <button class="de-btn" onclick="deNext()">Continuar →</button>
     `;
   } else if (step === 'msg') {
+    const msg = getDailyMsg();
     html = `
       <div style="text-align:center;max-width:340px">
-        <div style="font-size:2rem;margin-bottom:1.5rem;opacity:.6">💭</div>
-        <div class="de-msg-text">"${getDailyMsg()}"</div>
-        <div class="de-msg-author" style="margin-top:1.5rem">produtiv.me</div>
+        <div style="font-size:2rem;margin-bottom:1.2rem;opacity:.5">💭</div>
+        <div class="de-msg-text">"${msg}"</div>
+        <div class="de-msg-author" style="margin-top:1.2rem">produtiv.me</div>
       </div>
-      <button class="btn btn-primary" style="width:200px;margin-top:2rem" onclick="deNext()">Continuar</button>
+      <button class="de-btn" onclick="deNext()">Continuar →</button>
     `;
   } else if (step === 'checkin') {
+    const humorResp = {
+      otimo: 'Aproveite essa energia para fazer hoje valer a pena.',
+      bem: 'Você está bem. É o suficiente para um ótimo dia.',
+      ok: 'Nem todos os dias são incríveis. Mas todos podem gerar progresso.',
+      mal: 'Tudo bem não estar bem. Escolha uma tarefa e comece por ela.',
+      pessimo: 'Tudo bem. Escolha apenas uma tarefa importante. Já será suficiente.'
+    };
+    const resp = _deHumorSelected ? humorResp[_deHumorSelected] : '';
     html = `
       <div class="de-title">Como você está hoje?</div>
       <div class="de-sub">Registre seu humor diário</div>
@@ -4316,18 +4373,21 @@ function renderDeStep() {
             <span class="de-label">${l}</span>
           </div>`).join('')}
       </div>
-      <button class="btn btn-primary" id="de-humor-btn" style="width:200px;margin-top:1.5rem;opacity:${_deHumorSelected?1:.4}" onclick="deConfirmHumor()" ${_deHumorSelected?'':'disabled'}>Confirmar</button>
+      ${resp ? `<div style="margin:.9rem auto 0;max-width:300px;text-align:center;font-size:.84rem;color:rgba(255,255,255,.55);line-height:1.6;font-style:italic">"${resp}"</div>` : '<div style="height:1rem"></div>'}
+      <button class="de-btn" id="de-humor-btn" style="margin-top:1rem;opacity:${_deHumorSelected?1:.4}" onclick="deConfirmHumor()" ${_deHumorSelected?'':'disabled'}>Confirmar</button>
     `;
   } else if (step === 'progress') {
+    const ontem = _deGetOntem();
     const items = [];
-    if (prog.doneOntem > 0) items.push({ icon: '✅', bg: 'rgba(52,211,153,.1)', val: prog.doneOntem, lbl: 'tarefas ontem' });
-    if (prog.habsOntem > 0) items.push({ icon: '🔥', bg: 'rgba(249,115,22,.1)', val: prog.habsOntem, lbl: 'hábitos mantidos' });
+    if (ontem.tasks > 0) items.push({ icon: '✅', bg: 'rgba(52,211,153,.1)', val: ontem.tasks, lbl: 'tarefas concluídas ontem' });
+    if (ontem.habs > 0) items.push({ icon: '💪', bg: 'rgba(249,115,22,.1)', val: ontem.habs, lbl: 'hábitos mantidos ontem' });
+    if (ontem.humor) items.push({ icon: '😊', bg: 'rgba(250,204,21,.1)', val: ontem.humor, lbl: 'humor de ontem' });
     if (prog.tarefas7 > 0) items.push({ icon: '📊', bg: 'rgba(139,92,246,.1)', val: prog.tarefas7, lbl: 'tarefas nos últimos 7 dias' });
-    if (prog.humorMedio) items.push({ icon: '😊', bg: 'rgba(250,204,21,.1)', val: prog.humorMedio, lbl: 'humor médio recente' });
     const hasData = items.length > 0;
+    const maisQuaMedia = ontem.tasks > 0 && prog.tarefas7 > 0 && ontem.tasks > Math.round(prog.tarefas7/7);
     html = `
-      <div class="de-title">${hasData ? 'Seu progresso recente' : 'Novo começo'}</div>
-      <div class="de-sub" style="margin-bottom:1.25rem">${hasData ? 'Veja o que você construiu' : 'Cada grande jornada começa com o primeiro passo'}</div>
+      <div class="de-title">${hasData ? 'Ontem você concluiu:' : 'Novo começo'}</div>
+      <div class="de-sub" style="margin-bottom:1rem">${hasData ? '' : 'Cada grande jornada começa com o primeiro passo'}</div>
       <div style="width:100%;max-width:320px">
         ${hasData ? items.slice(0,3).map(i=>`
           <div class="de-progress-item">
@@ -4335,14 +4395,23 @@ function renderDeStep() {
             <div><div class="de-progress-val">${i.val}</div><div class="de-progress-lbl">${i.lbl}</div></div>
           </div>`).join('') : '<div style="text-align:center;color:rgba(255,255,255,.4);font-size:.9rem;padding:1rem">Suas conquistas aparecerão aqui</div>'}
       </div>
-      ${proximo.length ? `<div style="width:100%;max-width:320px;margin-top:1rem">${proximo.map(p=>`<div class="de-next-item"><span class="de-next-icon">${p.icon}</span><span class="de-next-text">${p.text}</span></div>`).join('')}</div>` : ''}
-      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
+      ${maisQuaMedia ? `<div style="margin-top:.75rem;text-align:center;font-size:.82rem;color:#34d399;font-weight:700">📈 Você evoluiu mais que na média da última semana.</div>` : ''}
+      ${proximo.length ? `<div style="width:100%;max-width:320px;margin-top:.75rem">${proximo.map(p=>`<div class="de-next-item"><span class="de-next-icon">${p.icon}</span><span class="de-next-text">${p.text}</span></div>`).join('')}</div>` : ''}
+      <button class="de-btn" style="margin-top:1.2rem" onclick="deNext()">Continuar →</button>
     `;
   } else if (step === 'perfect') {
     const allDone = diaPerfeito.every(d => d.done);
+    // Missão personalizada do dia
+    const hoje = todayKey();
+    const tarefasHoje = (window.app?.state?.data?.routines||{})[hoje]||[];
+    const habsHoje = typeof loadHabits==='function' ? loadHabits() : [];
+    let missao = 'Registre seu humor e complete ao menos uma tarefa.';
+    if (tarefasHoje.length >= 3 && habsHoje.length > 0) missao = 'Concluir 3 tarefas e todos os hábitos.';
+    else if (tarefasHoje.length >= 3) missao = 'Concluir 3 tarefas hoje.';
+    else if (habsHoje.length > 0) missao = 'Completar todos os hábitos.';
     html = `
       <div class="de-title">🌟 Dia Perfeito</div>
-      <div class="de-sub" style="margin-bottom:1.25rem">${allDone ? 'Você completou tudo hoje!' : 'Seu objetivo de hoje'}</div>
+      <div class="de-sub" style="margin-bottom:1rem">${allDone ? 'Você completou tudo hoje!' : 'Seu objetivo de hoje'}</div>
       <div style="width:100%;max-width:300px">
         ${diaPerfeito.map(item=>`
           <div class="de-perfect-item">
@@ -4350,8 +4419,8 @@ function renderDeStep() {
             <div class="de-perfect-lbl" style="${item.done?'color:rgba(255,255,255,.4);text-decoration:line-through':''}">${item.label}</div>
           </div>`).join('')}
       </div>
-      ${allDone ? '<div style="text-align:center;color:#a855f7;font-weight:700;font-size:.9rem;margin-top:1rem">🏆 Dia Perfeito conquistado!</div>' : ''}
-      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deConcluir()">Começar o dia 🚀</button>
+      ${allDone ? '<div style="text-align:center;color:#a855f7;font-weight:700;font-size:.9rem;margin:.75rem 0">🏆 Dia Perfeito conquistado!</div>' : `<div style="margin:.75rem auto 0;max-width:300px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:.75rem 1rem;font-size:.84rem;color:rgba(255,255,255,.7);text-align:center"><span style="color:var(--primary);font-weight:700">🎯 Missão de hoje</span><br>${missao}</div>`}
+      <button class="de-btn" onclick="deConcluir()">Começar o dia 🚀</button>
     `;
   }
 
@@ -5299,26 +5368,38 @@ function drawLigaCard(ctx, g, streak, lvl){
 
 function drawCompSemanalCard(ctx, g){
   drawComparisionBase(ctx, 'Comparação Semanal', '📅');
+
   const curr = getWeekTasks(0);
   const prev = getWeekTasks(1);
-  const nowLabel = 'Esta Semana';
-  const prevLabel = 'Semana Passada';
-  // Datas das semanas
+  const prev2 = getWeekTasks(2);
+
+  // Se a semana atual tem menos de 2 tarefas concluídas, compara as 2 semanas anteriores completas
+  const usarSemanaAtual = curr.done >= 2;
+  const blockA = usarSemanaAtual ? prev  : prev2;
+  const blockB = usarSemanaAtual ? curr  : prev;
+
   const now2 = new Date();
   const startCurr = new Date(now2); startCurr.setDate(now2.getDate()-now2.getDay());
   const startPrev = new Date(startCurr); startPrev.setDate(startCurr.getDate()-7);
+  const startPrev2 = new Date(startPrev); startPrev2.setDate(startPrev.getDate()-7);
   const fmt = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-  const endCurr = new Date(startCurr); endCurr.setDate(startCurr.getDate()+6);
-  const endPrev = new Date(startPrev); endPrev.setDate(startPrev.getDate()+6);
-  const prevDateLabel = fmt(startPrev)+' - '+fmt(endPrev);
-  const currDateLabel = fmt(startCurr)+' - '+fmt(endCurr);
-  drawText(ctx, prevDateLabel, 270, 660, 26, 'rgba(255,255,255,0.4)');
-  drawText(ctx, currDateLabel, 810, 660, 26, 'rgba(255,255,255,0.4)');
-  drawPeriodBlock(ctx, prevLabel, prev.done, prev.total, 270, 700, '#6d28d9');
-  drawPeriodBlock(ctx, nowLabel, curr.done, curr.total, 810, 700, '#8b5cf6');
-  // VS
+
+  const endA = new Date(usarSemanaAtual ? startPrev : startPrev2); endA.setDate(endA.getDate()+6);
+  const endB = new Date(usarSemanaAtual ? startCurr : startPrev); endB.setDate(endB.getDate()+6);
+  const startA = usarSemanaAtual ? startPrev : startPrev2;
+  const startB = usarSemanaAtual ? startCurr : startPrev;
+
+  const labelA = usarSemanaAtual ? 'Semana Passada' : (fmt(startA)+' – '+fmt(endA));
+  const labelB = usarSemanaAtual ? 'Esta Semana'    : (fmt(startB)+' – '+fmt(endB));
+  const dateA  = fmt(startA)+' – '+fmt(endA);
+  const dateB  = fmt(startB)+' – '+fmt(endB);
+
+  drawText(ctx, dateA, 270, 660, 26, 'rgba(255,255,255,0.4)');
+  drawText(ctx, dateB, 810, 660, 26, 'rgba(255,255,255,0.4)');
+  drawPeriodBlock(ctx, labelA, blockA.done, blockA.total, 270, 700, '#6d28d9');
+  drawPeriodBlock(ctx, labelB, blockB.done, blockB.total, 810, 700, '#8b5cf6');
   drawText(ctx, 'VS', 540, 900, 64, 'rgba(255,255,255,0.3)', 'center', 'sans-serif', 'bold');
-  drawArrow(ctx, prev.done, curr.done);
+  drawArrow(ctx, blockA.done, blockB.done);
   const frase = typeof getNextShareFrase==='function' ? getNextShareFrase() : 'Consistência supera intensidade.';
   drawWrappedText(ctx, `"${frase}"`, 540, 1450, 800, 36, 'rgba(255,255,255,0.45)', 'center');
 }
@@ -5905,6 +5986,367 @@ function _renderJornadaShares(){
     </div>
     <span style="font-size:.7rem;color:var(--primary);background:var(--primary-glow);padding:.2rem .5rem;border-radius:6px;white-space:nowrap;flex-shrink:0">📱 Instagram</span>
   </div>`).join('');
+}
+</script>
+<script>
+/* ══════════════════════════════════════════════════
+   SHARE STUDIO — 6 templates premium
+══════════════════════════════════════════════════ */
+
+let _shareTemplate = 'classico';
+let _shareUserPhoto = null; // base64
+
+/* ── Photo handling ── */
+function sharePickPhoto(mode){
+  const inp = mode === 'camera'
+    ? document.getElementById('share-photo-camera')
+    : document.getElementById('share-photo-gallery');
+  if(inp) inp.click();
+}
+window.sharePickPhoto = sharePickPhoto;
+
+async function shareOnPhotoFile(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const b64 = ev.target.result;
+    // Resize to max 1080 for canvas
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1080/img.width, 1920/img.height, 1);
+      const c = document.createElement('canvas');
+      c.width = img.width * ratio; c.height = img.height * ratio;
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      _shareUserPhoto = c.toDataURL('image/jpeg',.9);
+      document.getElementById('share-photo-label').textContent = '✅ Foto selecionada';
+      const rm = document.getElementById('share-remove-photo');
+      if(rm) rm.style.display = '';
+      generateShareCard(_shareType);
+    };
+    img.src = b64;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+window.shareOnPhotoFile = shareOnPhotoFile;
+
+function shareRemovePhoto(){
+  _shareUserPhoto = null;
+  document.getElementById('share-photo-label').textContent = 'Sem foto';
+  const rm = document.getElementById('share-remove-photo');
+  if(rm) rm.style.display = 'none';
+  generateShareCard(_shareType);
+}
+window.shareRemovePhoto = shareRemovePhoto;
+
+/* ── Template selection ── */
+function selectShareTemplate(tpl, btn){
+  _shareTemplate = tpl;
+  document.querySelectorAll('.share-tpl-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  generateShareCard(_shareType);
+}
+window.selectShareTemplate = selectShareTemplate;
+
+/* ── Context-aware phrase ── */
+function _getContextPhrase(type, streak){
+  const phrases = {
+    streak: streak >= 365 ? 'Um ano inteiro aparecendo para si mesmo. Isso é lendário.'
+           : streak >= 100 ? 'A consistência muda vidas silenciosamente.'
+           : streak >= 30  ? 'A motivação começou. A disciplina continuou.'
+           : streak >= 7   ? 'Sete dias que se tornaram um hábito.'
+           : 'Cada dia é uma escolha. Você escolheu aparecer.',
+    meta:    'Toda grande conquista começou com uma pequena decisão.',
+    nivel:   'Evolução não é acidente. É comprometimento diário.',
+    liga:    'Consistência é a única habilidade que nunca sai de moda.',
+    semanal: 'Seu futuro é construído por dias comuns como este.',
+    comp_semanal: 'Compare-se apenas com quem você era ontem.',
+    comp_mensal:  'Um mês de esforço. Uma vida de resultados.',
+    evolucao: '1% melhor a cada dia. 37x melhor no fim do ano.',
+    dia_perfeito: 'Um dia de cada vez. Hoje foi perfeito.',
+  };
+  return phrases[type] || phrases.semanal;
+}
+
+/* ── Draw photo with gradient overlay ── */
+function _drawPhoto(ctx, img, x, y, w, h, gradDir='bottom'){
+  ctx.save();
+  roundRect(ctx, x, y, w, h, 0); ctx.clip();
+  // Draw image centered/cropped
+  const iRatio = img.width/img.height, cRatio = w/h;
+  let sx=0,sy=0,sw=img.width,sh=img.height;
+  if(iRatio > cRatio){ sw=img.height*cRatio; sx=(img.width-sw)/2; }
+  else { sh=img.width/cRatio; sy=(img.height-sh)/2; }
+  ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);
+  // Gradient overlay
+  let grad;
+  if(gradDir==='bottom'){ grad=ctx.createLinearGradient(x,y,x,y+h); grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(0.5,'rgba(0,0,0,0.2)'); grad.addColorStop(1,'rgba(0,0,0,0.85)'); }
+  else if(gradDir==='top'){ grad=ctx.createLinearGradient(x,y,x,y+h); grad.addColorStop(0,'rgba(0,0,0,0.8)'); grad.addColorStop(0.5,'rgba(0,0,0,0.1)'); grad.addColorStop(1,'rgba(0,0,0,0)'); }
+  else { grad=ctx.createLinearGradient(x,y,x,y+h); grad.addColorStop(0,'rgba(13,13,26,0.3)'); grad.addColorStop(1,'rgba(13,13,26,0.9)'); }
+  ctx.fillStyle=grad; ctx.fillRect(x,y,w,h);
+  ctx.restore();
+}
+
+/* ── Base card background ── */
+function _drawBaseBg(ctx){
+  const grad=ctx.createLinearGradient(0,0,1080,1920);
+  grad.addColorStop(0,'#0f0a1e'); grad.addColorStop(0.5,'#1a0f3a'); grad.addColorStop(1,'#0d0d1a');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,1080,1920);
+  ctx.save(); ctx.globalAlpha=0.12; ctx.fillStyle='#8b5cf6';
+  ctx.beginPath(); ctx.arc(900,200,400,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#6d28d9'; ctx.beginPath(); ctx.arc(150,1700,350,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+/* ── Watermark ── */
+function _drawWatermark(ctx){
+  ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.font='bold 38px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('⚡ produtiv.me',540,1780);
+  ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='26px sans-serif';
+  ctx.fillText('produtiv-me.vercel.app',540,1828);
+}
+
+/* ══ TEMPLATE 1: CLÁSSICO (original mantido) ══ */
+function _tplClassico(ctx, g, streak, lvl, photo){
+  _drawBaseBg(ctx);
+  ctx.strokeStyle='rgba(139,92,246,0.4)'; ctx.lineWidth=4;
+  roundRect(ctx,30,30,1020,1860,40); ctx.stroke();
+  if(photo){ _drawPhoto(ctx,photo,80,80,920,500,'all'); }
+  const yOff = photo ? 620 : 0;
+  // Reuse original draw functions
+  generateShareCard_classico_inner(ctx,g,streak,lvl,yOff);
+  _drawWatermark(ctx);
+}
+
+/* ══ TEMPLATE 2: PREMIUM (foto cheia + info sobre) ══ */
+function _tplPremium(ctx, g, streak, lvl, photo, type){
+  ctx.fillStyle='#050510'; ctx.fillRect(0,0,1080,1920);
+  if(photo){
+    _drawPhoto(ctx,photo,0,0,1080,1920,'all');
+  } else {
+    _drawBaseBg(ctx);
+    // Soft glow
+    ctx.save(); ctx.globalAlpha=0.08; ctx.fillStyle='#8b5cf6';
+    ctx.beginPath(); ctx.arc(540,960,700,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+  // Info overlay at bottom safe area
+  const pc=typeof loadPC==='function'?loadPC().total||0:0;
+  const liga=typeof getLiga==='function'?getLiga(pc):null;
+  const phrase=_getContextPhrase(type,streak);
+
+  ctx.fillStyle='rgba(255,255,255,0.96)'; ctx.font='bold 96px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(`🔥 ${streak}`,540,1480);
+  ctx.font='bold 52px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.85)';
+  ctx.fillText('dias consecutivos',540,1560);
+  if(liga){ ctx.font='bold 44px sans-serif'; ctx.fillStyle='rgba(200,160,255,0.9)';
+    ctx.fillText(`${liga.icon} ${liga.name}`,540,1640); }
+  drawWrappedText(ctx,`"${phrase}"`,540,1720,900,34,'rgba(255,255,255,0.55)','center');
+  _drawWatermark(ctx);
+}
+
+/* ══ TEMPLATE 3: GLASS ══ */
+function _tplGlass(ctx, g, streak, lvl, photo, type){
+  ctx.fillStyle='#070712'; ctx.fillRect(0,0,1080,1920);
+  if(photo){ _drawPhoto(ctx,photo,0,0,1080,1920,'all'); }
+  else { _drawBaseBg(ctx); }
+  // Glass card center
+  const cx=140, cy=680, cw=800, ch=520, cr=32;
+  ctx.save();
+  ctx.globalAlpha=0.18; ctx.fillStyle='#ffffff';
+  roundRect(ctx,cx,cy,cw,ch,cr); ctx.fill(); ctx.restore();
+  ctx.save();
+  ctx.globalAlpha=0.4; ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
+  roundRect(ctx,cx,cy,cw,ch,cr); ctx.stroke(); ctx.restore();
+  // Backdrop blur simulation (tint)
+  ctx.save(); ctx.globalAlpha=0.1; ctx.fillStyle='#8b5cf6';
+  roundRect(ctx,cx,cy,cw,ch,cr); ctx.fill(); ctx.restore();
+
+  const pc=typeof loadPC==='function'?loadPC().total||0:0;
+  const liga=typeof getLiga==='function'?getLiga(pc):null;
+  const phrase=_getContextPhrase(type,streak);
+  const cx2=cx+cw/2;
+  drawText(ctx,`🔥 ${streak} dias`,cx2,cy+110,72,'rgba(255,255,255,0.95)','center','sans-serif','bold');
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx+60,cy+145); ctx.lineTo(cx+cw-60,cy+145); ctx.stroke();
+  if(liga) drawText(ctx,`${liga.icon} ${liga.name}`,cx2,cy+215,50,'rgba(200,160,255,0.9)','center','sans-serif','bold');
+  drawText(ctx,`Nível ${lvl} · ${g.totalXp} XP`,cx2,cy+290,36,'rgba(255,255,255,0.55)');
+  drawText(ctx,`${g.totalDone||0} tarefas concluídas`,cx2,cy+345,34,'rgba(255,255,255,0.55)');
+  drawWrappedText(ctx,`"${phrase}"`,cx2,cy+430,700,32,'rgba(255,255,255,0.5)','center');
+  _drawWatermark(ctx);
+}
+
+/* ══ TEMPLATE 4: POLAROID ══ */
+function _tplPolaroid(ctx, g, streak, lvl, photo, type){
+  // White background
+  ctx.fillStyle='#f8f8f0'; ctx.fillRect(0,0,1080,1920);
+  // Photo area
+  const px=100, py=180, pw=880, ph=900;
+  if(photo){
+    ctx.save(); roundRect(ctx,px,py,pw,ph,8); ctx.clip();
+    const iRatio=photo.width/photo.height, cRatio=pw/ph;
+    let sx=0,sy=0,sw=photo.width,sh=photo.height;
+    if(iRatio>cRatio){sw=photo.height*cRatio;sx=(photo.width-sw)/2;}
+    else{sh=photo.width/cRatio;sy=(photo.height-sh)/2;}
+    ctx.drawImage(photo,sx,sy,sw,sh,px,py,pw,ph); ctx.restore();
+  } else {
+    ctx.fillStyle='#e8e4f0'; roundRect(ctx,px,py,pw,ph,8); ctx.fill();
+    ctx.fillStyle='#b8a8d0'; ctx.font='120px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('📸',540,py+ph/2+40);
+  }
+  // Polaroid border
+  ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=3;
+  roundRect(ctx,px,py,pw,ph,8); ctx.stroke();
+  // Date
+  const today=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  ctx.fillStyle='#666'; ctx.font='32px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(today,540,py+ph+80);
+  // Title
+  ctx.fillStyle='#1a1a2e'; ctx.font='bold 68px sans-serif';
+  ctx.fillText(`🔥 ${streak} dias`,540,py+ph+170);
+  const pc=typeof loadPC==='function'?loadPC().total||0:0;
+  const liga=typeof getLiga==='function'?getLiga(pc):null;
+  ctx.fillStyle='#6d28d9'; ctx.font='bold 48px sans-serif';
+  ctx.fillText(liga?`${liga.icon} ${liga.name}`:'produtiv.me',540,py+ph+260);
+  const phrase=_getContextPhrase(type,streak);
+  ctx.fillStyle='#888'; ctx.font='italic 36px sans-serif';
+  drawWrappedText(ctx,`"${phrase}"`,540,py+ph+360,800,34,'#666','center');
+  // Logo
+  ctx.fillStyle='#9b72cf'; ctx.font='bold 32px sans-serif';
+  ctx.fillText('⚡ produtiv.me',540,1840);
+}
+
+/* ══ TEMPLATE 5: TIMELINE (diário) ══ */
+function _tplTimeline(ctx, g, streak, lvl, photo, type){
+  _drawBaseBg(ctx);
+  // Date header
+  const today=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='34px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(today,540,130);
+  ctx.strokeStyle='rgba(139,92,246,0.3)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(140,155); ctx.lineTo(940,155); ctx.stroke();
+  // Entry title
+  const titles={streak:`🔥 ${streak} Dias Consecutivos`,meta:'🎯 Meta Concluída',nivel:`🏆 Nível ${lvl}`,liga:'👑 Nova Patente',semanal:'📊 Semana Concluída',evolucao:'📈 Evolução'};
+  const title=titles[type]||`🔥 ${streak} dias`;
+  drawText(ctx,title,540,260,72,'#ffffff','center','sans-serif','bold');
+  // Photo
+  if(photo){
+    const py=310, ph=700;
+    _drawPhoto(ctx,photo,80,py,920,ph,'all');
+    // Timeline line left
+    ctx.strokeStyle='rgba(139,92,246,0.4)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(54,py); ctx.lineTo(54,py+ph); ctx.stroke();
+    ctx.fillStyle='#8b5cf6'; ctx.beginPath(); ctx.arc(54,py+ph/2,10,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.save(); ctx.globalAlpha=0.1; ctx.fillStyle='#8b5cf6';
+    roundRect(ctx,80,310,920,500,20); ctx.fill(); ctx.restore();
+    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='120px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('📖',540,610);
+  }
+  const yBase = photo ? 1080 : 880;
+  const pc=typeof loadPC==='function'?loadPC().total||0:0;
+  const liga=typeof getLiga==='function'?getLiga(pc):null;
+  drawText(ctx,liga?`${liga.icon} ${liga.name}`:'',540,yBase+60,44,'rgba(200,160,255,0.9)','center','sans-serif','bold');
+  drawText(ctx,`${g.totalXp} XP · ${g.totalDone||0} tarefas`,540,yBase+130,36,'rgba(255,255,255,0.5)');
+  const phrase=_getContextPhrase(type,streak);
+  drawWrappedText(ctx,`"${phrase}"`,540,yBase+240,820,36,'rgba(255,255,255,0.55)','center');
+  _drawWatermark(ctx);
+}
+
+/* ══ TEMPLATE 6: APPLE (minimalismo) ══ */
+function _tplApple(ctx, g, streak, lvl, photo, type){
+  ctx.fillStyle='#05050f'; ctx.fillRect(0,0,1080,1920);
+  // Subtle glow
+  ctx.save(); ctx.globalAlpha=0.06; const rg=ctx.createRadialGradient(540,960,0,540,960,800);
+  rg.addColorStop(0,'#8b5cf6'); rg.addColorStop(1,'transparent');
+  ctx.fillStyle=rg; ctx.fillRect(0,0,1080,1920); ctx.restore();
+
+  if(photo){
+    // Circular photo crop centered upper area
+    const cx2=540, cy2=520, r=340;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx2,cy2,r,0,Math.PI*2); ctx.clip();
+    const iRatio=photo.width/photo.height;
+    const dia=r*2;
+    let sw,sh,sx,sy;
+    if(iRatio>1){sh=dia;sw=sh*iRatio;sx=-(sw-dia)/2;sy=0;}
+    else{sw=dia;sh=sw/iRatio;sx=0;sy=-(sh-dia)/2;}
+    ctx.drawImage(photo,cx2-sw/2+sx,cy2-sh/2+sy,sw,sh);
+    ctx.restore();
+    // Ring
+    ctx.strokeStyle='rgba(139,92,246,0.5)'; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(cx2,cy2,r+6,0,Math.PI*2); ctx.stroke();
+  }
+
+  const yBase = photo ? 1000 : 600;
+  // Huge number
+  ctx.fillStyle='#ffffff'; ctx.font='bold 220px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(String(streak),540,yBase+180);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='52px sans-serif';
+  ctx.fillText('dias consecutivos',540,yBase+260);
+  // Thin divider
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(300,yBase+310); ctx.lineTo(780,yBase+310); ctx.stroke();
+  const pc=typeof loadPC==='function'?loadPC().total||0:0;
+  const liga=typeof getLiga==='function'?getLiga(pc):null;
+  ctx.fillStyle='rgba(200,160,255,0.7)'; ctx.font='bold 46px sans-serif';
+  ctx.fillText(liga?`${liga.icon} ${liga.name}`:`Nível ${lvl}`,540,yBase+390);
+  const phrase=_getContextPhrase(type,streak);
+  drawWrappedText(ctx,`"${phrase}"`,540,yBase+500,800,34,'rgba(255,255,255,0.35)','center');
+  // Minimal watermark
+  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='28px sans-serif';
+  ctx.fillText('produtiv.me',540,1860);
+}
+
+/* ── Helper: inner classico to reuse with photo ── */
+function generateShareCard_classico_inner(ctx,g,streak,lvl,yOff){
+  const yBase = yOff || 0;
+  const type = _shareType;
+  if(type==='streak') drawStreakCard(ctx,g,streak,lvl,yBase);
+  else if(type==='evolucao') drawEvolucaoCard(ctx,g,yBase);
+  else if(type==='nivel') drawNivelCard(ctx,lvl,document.getElementById('xp-level-name')?.textContent||'',yBase);
+  else if(type==='semanal') drawSemanalCard(ctx,g,streak,yBase);
+  else if(type==='comp_semanal') drawCompSemanalCard(ctx,g,yBase);
+  else if(type==='comp_mensal') drawCompMensalCard(ctx,g,yBase);
+  else if(type==='liga') drawLigaCard(ctx,g,streak,lvl,yBase);
+}
+
+/* ── Override generateShareCard to use templates ── */
+const _origGenerateShareCard2 = window.generateShareCard;
+window.generateShareCard = function(type){
+  _shareType = type;
+  if(typeof renderShareTypeButtons === 'function') renderShareTypeButtons();
+  const canvas = document.getElementById('share-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 1080; canvas.height = 1920;
+
+  const g = typeof getGamifyState==='function' ? getGamifyState() : (typeof loadGamify==='function'?loadGamify():{totalXp:0,totalDone:0,medals:[]});
+  const streak = parseInt(document.getElementById('streak-count')?.textContent||'0');
+  const lvl = parseInt(document.getElementById('xp-level-badge')?.textContent?.replace('Nv.','')||'1');
+
+  // Load user photo if set
+  const photo = _shareUserPhoto ? (() => { const i=new Image(); i.src=_shareUserPhoto; return i; })() : null;
+
+  if(photo && !photo.complete){
+    photo.onload = () => _dispatchTemplate(ctx,g,streak,lvl,photo,type);
+  } else {
+    _dispatchTemplate(ctx,g,streak,lvl,photo,type);
+  }
+};
+
+function _dispatchTemplate(ctx,g,streak,lvl,photo,type){
+  switch(_shareTemplate){
+    case 'premium':  _tplPremium(ctx,g,streak,lvl,photo,type);  break;
+    case 'glass':    _tplGlass(ctx,g,streak,lvl,photo,type);    break;
+    case 'polaroid': _tplPolaroid(ctx,g,streak,lvl,photo,type); break;
+    case 'timeline': _tplTimeline(ctx,g,streak,lvl,photo,type); break;
+    case 'apple':    _tplApple(ctx,g,streak,lvl,photo,type);    break;
+    default:         // classico
+      _drawBaseBg(ctx);
+      ctx.strokeStyle='rgba(139,92,246,0.4)'; ctx.lineWidth=4;
+      roundRect(ctx,30,30,1020,1860,40); ctx.stroke();
+      if(photo) _drawPhoto(ctx,photo,80,80,920,480,'all');
+      generateShareCard_classico_inner(ctx,g,streak,lvl,photo?500:0);
+      _drawWatermark(ctx);
+  }
 }
 </script>
 </body> 
