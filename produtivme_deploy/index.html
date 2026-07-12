@@ -375,6 +375,68 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .xp-float{position:fixed;font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:var(--gold);pointer-events:none;z-index:3000;animation:xpGain .9s ease forwards}
 
 /* ── ANIMAÇÕES ── */
+/* ── BOTÃO PREMIUM: INICIAR MEU DIA ── */
+#daily-entry-btn-wrap{position:relative}
+#btn-daily-entry{position:relative;overflow:hidden;animation:dailyBtnPulse 2.4s ease-in-out infinite}
+#btn-daily-entry:active{transform:scale(.97)}
+#btn-daily-entry .de-btn-icon{display:inline-block;animation:sunSpin 6s linear infinite}
+#btn-daily-entry::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,255,255,.28),transparent);transform:translateX(-120%);animation:dailyBtnSheen 3.2s ease-in-out infinite}
+#btn-daily-entry.daily-done{animation:none;cursor:default}
+#btn-daily-entry.daily-done::after{animation:none;content:none}
+#btn-daily-entry.daily-done .de-btn-icon{animation:none}
+@keyframes dailyBtnPulse{0%,100%{box-shadow:0 4px 18px rgba(139,92,246,.35),0 0 0 0 rgba(168,85,247,.35)}50%{box-shadow:0 6px 26px rgba(139,92,246,.55),0 0 0 8px rgba(168,85,247,0)}}
+@keyframes dailyBtnSheen{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
+@keyframes sunSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* ── MODAL DE ENTRADA DIÁRIA ── */
+.de-overlay{position:fixed;inset:0;z-index:1300;background:rgba(6,6,16,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.65rem;padding:1rem;animation:fadeIn .2s ease}
+.de-progress-bar-wrap{width:100%;max-width:420px;height:4px;background:rgba(255,255,255,.1);border-radius:20px;overflow:hidden;flex-shrink:0}
+.de-progress-bar-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);transition:width .35s ease}
+.de-slide{position:relative;width:100%;max-width:420px;max-height:72vh;overflow-y:auto;background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1.8rem 1.6rem;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center;text-align:center;animation:dePopIn .32s cubic-bezier(.4,0,.2,1)}
+.de-slide.exit{animation:deSlideExit .28s ease forwards}
+@keyframes dePopIn{0%{opacity:0;transform:scale(.92) translateY(12px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes deSlideExit{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.94) translateY(-8px)}}
+.de-title{font-family:var(--font-display);font-size:1.15rem;font-weight:800;color:var(--text)}
+.de-sub{font-size:.85rem;color:var(--text-3);margin-top:.15rem}
+.de-streak-number{font-family:var(--font-display);font-size:2.8rem;font-weight:800;background:linear-gradient(135deg,var(--gold),#f97316);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.de-streak-label{font-size:.72rem;letter-spacing:.08em;color:var(--text-3);font-weight:700;margin-top:.2rem}
+.de-streak-msg{margin-top:1rem;font-size:.9rem;color:var(--text-2);font-style:italic;max-width:300px}
+.de-msg-text{font-size:1.05rem;font-weight:600;color:var(--text);line-height:1.5}
+.de-msg-author{font-size:.78rem;color:var(--primary);font-weight:700}
+.de-checkin-opts{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;margin-top:1.1rem}
+.de-checkin-btn{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.65rem .55rem;border-radius:var(--radius-sm);background:var(--surface3);border:2px solid var(--border);cursor:pointer;transition:all var(--t);width:64px}
+.de-checkin-btn:hover{border-color:var(--border2)}
+.de-checkin-btn.selected{border-color:var(--primary);background:var(--primary-glow)}
+.de-emoji{font-size:1.4rem}
+.de-label{font-size:.65rem;font-weight:700;color:var(--text-2)}
+.de-progress-item{display:flex;align-items:center;gap:.75rem;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.65rem .8rem;margin-bottom:.5rem;text-align:left}
+.de-progress-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.de-progress-val{font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:var(--text)}
+.de-progress-lbl{font-size:.74rem;color:var(--text-3)}
+.de-next-item{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--text-2);background:var(--surface3);border:1px solid var(--border);border-radius:20px;padding:.35rem .7rem;margin-bottom:.35rem}
+.de-perfect-item{display:flex;align-items:center;gap:.65rem;padding:.5rem 0;border-bottom:1px solid var(--border);text-align:left}
+.de-perfect-item:last-child{border-bottom:0}
+.de-perfect-icon{width:24px;height:24px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--text-3);flex-shrink:0}
+.de-perfect-icon.done{background:var(--green);border-color:var(--green);color:#fff}
+.de-perfect-lbl{font-size:.86rem;color:var(--text)}
+.de-dot-nav{display:flex;gap:.4rem;flex-shrink:0}
+.de-dot-nav span{width:6px;height:6px;border-radius:50%;background:var(--surface4);transition:all var(--t)}
+.de-dot-nav span.active{background:var(--primary);width:16px;border-radius:4px}
+.de-dot-nav span.done{background:var(--primary-dark)}
+.de-skip{position:fixed;top:1.1rem;right:1.1rem;z-index:1310;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:20px;color:rgba(255,255,255,.75);font-size:.76rem;font-weight:600;cursor:pointer;padding:.4rem .85rem;backdrop-filter:blur(6px)}
+.de-skip:hover{color:#fff;background:rgba(255,255,255,.16)}
+
+/* ── RECORRÊNCIA DE TAREFAS ── */
+.wd-picker{display:flex;gap:.3rem;flex-wrap:wrap}
+.wd-pill{flex:1;min-width:38px;text-align:center;padding:.45rem .2rem;border-radius:var(--radius-sm);background:var(--surface3);border:1.5px solid var(--border);color:var(--text-3);font-size:.72rem;font-weight:700;cursor:pointer;transition:all var(--t);user-select:none}
+.wd-pill:hover{border-color:var(--border2)}
+.wd-pill.selected{background:var(--primary-glow);border-color:var(--primary);color:var(--primary)}
+.badge-recur{background:rgba(167,139,250,.12);color:var(--primary);border:1px solid rgba(167,139,250,.22)}
+.task-item.task-locked{opacity:.5;background:var(--surface);filter:grayscale(.3)}
+.task-item.task-locked .task-title{color:var(--text-3)}
+.task-item.task-locked input[type="checkbox"]{cursor:not-allowed;opacity:.5}
+.task-locked-hint{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--text-3);margin-top:.35rem}
+
 @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
@@ -692,6 +754,14 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           </div>
         </div>
 
+        <!-- ── Entrada Diária ── -->
+        <div id="daily-entry-btn-wrap" style="margin-bottom:.875rem">
+          <button id="btn-daily-entry" onclick="triggerDailyEntry()" class="btn btn-block" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:1.05rem 1.1rem;border-radius:var(--radius);font-family:var(--font-display);font-size:1.05rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:.6rem;letter-spacing:.01em;box-shadow:0 4px 18px rgba(139,92,246,.35);transition:all .2s">
+            <span id="btn-daily-entry-icon" class="de-btn-icon" style="font-size:1.3rem">☀️</span>
+            <span id="btn-daily-entry-label">Iniciar meu dia</span>
+          </button>
+        </div>
+
         <div class="xp-bar-wrapper">
           <div class="xp-bar-top">
             <div class="xp-level">
@@ -754,14 +824,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 
         <div id="insight-container"></div>
         <div id="desafio-widget"></div>
-
-        <!-- ── Entrada Diária ── -->
-        <div id="daily-entry-btn-wrap" style="margin-bottom:.875rem">
-          <button id="btn-daily-entry" onclick="triggerDailyEntry()" class="btn btn-block" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:.85rem 1rem;border-radius:var(--radius-sm);font-family:var(--font-display);font-size:.92rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:.55rem;letter-spacing:.01em;box-shadow:0 4px 18px rgba(139,92,246,.35);transition:all .2s">
-            <span id="btn-daily-entry-icon">☀️</span>
-            <span id="btn-daily-entry-label">Iniciar meu dia</span>
-          </button>
-        </div>
 
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
@@ -1191,6 +1253,24 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <div class="form-group"><label>Área de Foco</label><select id="task-focus"><option value="trabalho">💼 Trabalho</option><option value="estudos">📚 Estudos</option><option value="saude">💪 Saúde</option><option value="pessoal">🏠 Pessoal</option><option value="financas">💰 Finanças</option></select></div>
     <div class="form-group"><label>Meta Vinculada</label><select id="task-goal"><option value="">Nenhuma</option></select></div>
     <div class="form-group"><label>🔔 Alarme</label><input type="time" id="task-alarm" style="max-width:160px"><div style="font-size:.74rem;color:var(--text-3);margin-top:.2rem">Deixe vazio para não ter alarme</div></div>
+
+    <div class="form-group">
+      <label>📅 Dias da Semana <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(deixe em branco para uma tarefa única de hoje)</span></label>
+      <div class="wd-picker" id="task-weekdays">
+        <div class="wd-pill" data-day="1">Seg</div>
+        <div class="wd-pill" data-day="2">Ter</div>
+        <div class="wd-pill" data-day="3">Qua</div>
+        <div class="wd-pill" data-day="4">Qui</div>
+        <div class="wd-pill" data-day="5">Sex</div>
+        <div class="wd-pill" data-day="6">Sáb</div>
+        <div class="wd-pill" data-day="0">Dom</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+      <div class="form-group"><label>Data de início</label><input type="date" id="task-start-date"></div>
+      <div class="form-group"><label>Data final <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(opcional)</span></label><input type="date" id="task-end-date"></div>
+    </div>
+
     <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
       <button class="btn btn-ghost" id="task-modal-cancel">Cancelar</button>
       <button class="btn btn-primary" id="task-modal-save"><i class="fas fa-check"></i> Salvar</button>
@@ -1423,6 +1503,130 @@ function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout
 function todayKey(){
   const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+/* ══════════════════════════════════════════════════
+   RECORRÊNCIA DE TAREFAS (dias da semana / período)
+   Armazenado localmente — não altera o schema remoto
+   da tabela "tarefas" no Supabase, preservando 100%
+   de compatibilidade com a sincronização existente.
+══════════════════════════════════════════════════ */
+const TASK_RECUR_KEY='pm18_task_recurrence_v1';
+const TASK_RECUR_DONE_KEY='pm18_task_recurrence_done_v1';
+
+function getRecurrenceMap(){ try{ return JSON.parse(localStorage.getItem(TASK_RECUR_KEY)||'{}'); }catch(e){ return {}; } }
+function saveRecurrenceMap(m){ localStorage.setItem(TASK_RECUR_KEY, JSON.stringify(m)); }
+function setTaskRecurrence(id, cfg){ const m=getRecurrenceMap(); m[id]=cfg; saveRecurrenceMap(m); }
+function removeTaskRecurrence(id){ const m=getRecurrenceMap(); if(m[id]){ delete m[id]; saveRecurrenceMap(m); } }
+function getTaskRecurrence(id){ return getRecurrenceMap()[id]||null; }
+
+function getRecurringDoneMap(){ try{ return JSON.parse(localStorage.getItem(TASK_RECUR_DONE_KEY)||'{}'); }catch(e){ return {}; } }
+function saveRecurringDoneMap(m){ localStorage.setItem(TASK_RECUR_DONE_KEY, JSON.stringify(m)); }
+
+// Sync remoto (Supabase) das colunas de recorrência. Se a migração SQL
+// (dias_semana / data_inicio / data_fim / concluidas_recorrencia) ainda não
+// foi aplicada na tabela "tarefas", cai automaticamente para uso 100% local
+// sem quebrar o salvamento normal da tarefa.
+let _recurColumnsAvailable=null; // null=desconhecido, true/false após 1ª tentativa
+function isMissingColumnError(error){
+  if(!error) return false;
+  const msg=(error.message||'')+' '+(error.details||'')+' '+(error.hint||'');
+  return error.code==='42703' || /column .* does not exist/i.test(msg);
+}
+async function upsertTaskWithRecurrence(payload, rec){
+  if(_recurColumnsAvailable!==false){
+    const fullPayload={
+      ...payload,
+      dias_semana: rec?rec.weekDays:null,
+      data_inicio: rec?rec.startDate:null,
+      data_fim: (rec&&rec.endDate)?rec.endDate:null
+    };
+    const {error}=await window.supabaseClient.from('tarefas').upsert([fullPayload]);
+    if(!error){ _recurColumnsAvailable=true; return; }
+    if(!isMissingColumnError(error)){
+      offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload:fullPayload});
+      return;
+    }
+    _recurColumnsAvailable=false; // roda a migração SQL para sincronizar recorrência entre dispositivos
+  }
+  const {error}=await window.supabaseClient.from('tarefas').upsert([payload]);
+  if(error) offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload});
+}
+async function syncRecurringDoneRemote(taskId){
+  const user=window.app?.state?.user;
+  if(!user||user.local||_recurColumnsAvailable===false) return;
+  const doneMap=getRecurringDoneMap();
+  const value=doneMap[taskId]||{};
+  const {error}=await window.supabaseClient.from('tarefas').update({concluidas_recorrencia:value}).eq('id',taskId).eq('user_id',user.id);
+  if(error && isMissingColumnError(error)) _recurColumnsAvailable=false;
+}
+
+const WD_ABBR={0:'Dom',1:'Seg',2:'Ter',3:'Qua',4:'Qui',5:'Sex',6:'Sáb'};
+const WD_NAMES={0:'domingo',1:'segunda-feira',2:'terça-feira',3:'quarta-feira',4:'quinta-feira',5:'sexta-feira',6:'sábado'};
+const WD_ORDER=[1,2,3,4,5,6,0];
+
+function weekDaysChip(weekDays){
+  if(!weekDays || !weekDays.length) return '';
+  const set=new Set(weekDays);
+  if(weekDays.length===7) return '📅 Todos os dias';
+  if(weekDays.length===2 && set.has(0) && set.has(6)) return '📅 Apenas finais de semana';
+  if(weekDays.length===5 && [1,2,3,4,5].every(d=>set.has(d))) return '📅 Dias de semana';
+  return '📅 '+WD_ORDER.filter(d=>set.has(d)).map(d=>WD_ABBR[d]).join(' • ');
+}
+
+function nextRecurrenceLabel(weekDays){
+  if(!weekDays || !weekDays.length) return '';
+  const todayDow=new Date().getDay();
+  for(let i=1;i<=7;i++){
+    const d=(todayDow+i)%7;
+    if(weekDays.includes(d)) return i===1?`amanhã (${WD_NAMES[d]})`:WD_NAMES[d];
+  }
+  return '';
+}
+
+// Junta as tarefas de "hoje" (não recorrentes) com as tarefas recorrentes
+// aplicáveis (dentro do período configurado), estejam elas em qual bucket
+// de data estiverem armazenadas.
+function getTodayEffectiveTasks(appRef){
+  const today=todayKey();
+  const todayDow=new Date(today+'T00:00:00').getDay();
+  const routines=(appRef.state.data.routines)||{};
+  const recMap=getRecurrenceMap();
+  const doneMap=getRecurringDoneMap();
+  const seen=new Set();
+  const result=[];
+  Object.keys(routines).forEach(dateKey=>{
+    (routines[dateKey]||[]).forEach(t=>{
+      if(seen.has(t.id)) return;
+      const rec=recMap[t.id];
+      if(!rec){
+        if(dateKey===today){ seen.add(t.id); result.push(t); }
+        return;
+      }
+      seen.add(t.id);
+      const start=rec.startDate||dateKey;
+      const end=rec.endDate||null;
+      if(today<start) return;
+      if(end && today>end) return;
+      const matchesToday=(rec.weekDays||[]).includes(todayDow);
+      const doneToday=!!(doneMap[t.id] && doneMap[t.id][today]);
+      result.push(Object.assign({}, t, {
+        done: doneToday, __recurring:true, __weekDays:rec.weekDays||[], __matchesToday:matchesToday
+      }));
+    });
+  });
+  return result;
+}
+
+// Localiza uma tarefa em qualquer bucket de data (necessário pois tarefas
+// recorrentes continuam fisicamente guardadas no dia em que foram criadas).
+function findTaskAnyDate(appRef, id){
+  const routines=(appRef.state.data.routines)||{};
+  for(const dateKey of Object.keys(routines)){
+    const t=(routines[dateKey]||[]).find(x=>x.id===id);
+    if(t) return {task:t, dateKey};
+  }
+  return null;
 }
 
 let _toastTimer;
@@ -2203,6 +2407,8 @@ _isSyncing: false,
     if(error||!data) return;
     // Rebuild routines sem duplicar
     const newRoutines={};
+    const newRecMap={};
+    const newDoneMap={};
    data.forEach(t=>{
   const dk = t.date_key || todayKey();
 
@@ -2231,9 +2437,19 @@ _isSyncing: false,
     created_at: t.created_at,
     updated_at: t.updated_at
   });
+
+  // Recorrência (colunas opcionais — só existem se a migração SQL foi aplicada)
+  if(t.dias_semana && Array.isArray(t.dias_semana) && t.dias_semana.length){
+    newRecMap[t.id] = { weekDays: t.dias_semana, startDate: t.data_inicio || dk, endDate: t.data_fim || '' };
+  }
+  if(t.concluidas_recorrencia && typeof t.concluidas_recorrencia==='object'){
+    newDoneMap[t.id] = t.concluidas_recorrencia;
+  }
 });
     // Substitui completamente pelo estado do banco (fonte da verdade)
     this.state.data.routines=newRoutines;
+    saveRecurrenceMap(newRecMap);
+    saveRecurringDoneMap(newDoneMap);
   },
 
   async loadGoalsRemote(){
@@ -2257,6 +2473,8 @@ const prioridadeMap = {
   media: 2,
   alta: 3
 };
+
+const rec=getTaskRecurrence(task.id);
 
 const payload = {
   id: task.id || crypto.randomUUID(),
@@ -2286,8 +2504,7 @@ const payload = {
   updated_at: new Date().toISOString()
 };
     if(!_isOnline){ offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload}); return; }
-    const {error}=await window.supabaseClient.from('tarefas').upsert([payload]);
-    if(error) offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
+    await upsertTaskWithRecurrence(payload, rec);
   },
 
   async deleteTaskRemote(id){
@@ -2411,8 +2628,11 @@ const payload = {
   ══════════════════════════════════════ */
   renderDashboard(){
     const today=todayKey();
-    const tasks=(this.state.data.routines||{})[today]||[];
-    const total=tasks.length, done=tasks.filter(t=>t.done).length;
+    const tasks=getTodayEffectiveTasks(this);
+    // Tarefas recorrentes bloqueadas hoje (outro dia da semana) não contam
+    // para o progresso/estatísticas do dia, apenas ficam visíveis na lista.
+    const actionable=tasks.filter(t=>!(t.__recurring && t.__matchesToday===false));
+    const total=actionable.length, done=actionable.filter(t=>t.done).length;
     const pct=total?Math.round(done/total*100):0;
 
     const now=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
@@ -2483,8 +2703,10 @@ const payload = {
   taskHTML(task){
     const priColors={alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'};
     const priLabels={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
-    return `<div class="task-item ${task.done?'task-done':''}" id="task-${task.id}">
-      <input type="checkbox" ${task.done?'checked':''} onchange="app.toggleTask('${task.id}')">
+    const locked=task.__recurring && task.__matchesToday===false;
+    const chip=task.__recurring?weekDaysChip(task.__weekDays):'';
+    return `<div class="task-item ${task.done?'task-done':''} ${locked?'task-locked':''}" id="task-${task.id}">
+      <input type="checkbox" ${task.done?'checked':''} ${locked?'disabled':''} onchange="app.toggleTask('${task.id}')">
       <div style="flex:1;min-width:0">
         <div class="task-title">${esc(task.title)}${task.alarmTime?`<i class="fas fa-bell alarm-icon" title="Alarme: ${task.alarmTime}"></i>`:''}</div>
         ${task.description?`<div class="task-desc">${esc(task.description)}</div>`:''}
@@ -2492,7 +2714,9 @@ const payload = {
           <span class="badge ${priColors[task.priority||'media']}">${priLabels[task.priority||'media']}</span>
           ${task.focus?`<span class="badge badge-focus">${esc(task.focus)}</span>`:''}
           ${task.estimateMin?`<span class="badge" style="background:var(--surface4);color:var(--text-3);border:1px solid var(--border)"><i class="fas fa-clock" style="font-size:.6rem"></i> ${task.estimateMin}min</span>`:''}
+          ${chip?`<span class="badge badge-recur">${chip}</span>`:''}
         </div>
+        ${locked?`<div class="task-locked-hint"><i class="fas fa-lock"></i> Próxima execução: ${nextRecurrenceLabel(task.__weekDays)}</div>`:''}
       </div>
       <div style="display:flex;gap:.3rem">
         <button class="btn btn-icon btn-sm" onclick="app.openEditTask('${task.id}')" title="Editar"><i class="fas fa-pen"></i></button>
@@ -2503,6 +2727,27 @@ const payload = {
 
   toggleTask(id){
     const today=todayKey();
+    const rec=getTaskRecurrence(id);
+    if(rec){
+      const todayDow=new Date(today+'T00:00:00').getDay();
+      if(!(rec.weekDays||[]).includes(todayDow)) return; // bloqueada hoje
+      const doneMap=getRecurringDoneMap();
+      doneMap[id]=doneMap[id]||{};
+      const wasDone=!!doneMap[id][today];
+      doneMap[id][today]=!wasDone;
+      saveRecurringDoneMap(doneMap);
+      syncRecurringDoneRemote(id);
+      if(!wasDone){ addXp(10); showToast('✅ Tarefa concluída! +10 XP','success'); }
+      else {
+        const g=loadGamify();
+        g.totalXp=Math.max(0,(g.totalXp||0)-10);
+        g.totalDone=Math.max(0,(g.totalDone||0)-1);
+        saveGamify(g); syncGamifyRemote(g);
+        showToast('↩️ Tarefa desmarcada (-10 XP)','default');
+      }
+      this.renderDashboard();
+      return;
+    }
     const tasks=(this.state.data.routines||{})[today]||[];
     const task=tasks.find(t=>t.id===id);
     if(!task) return;
@@ -2555,20 +2800,26 @@ const payload = {
     q('task-id').value=''; q('task-title').value=''; q('task-description').value='';
     q('task-priority').value='media'; q('task-estimate').value='30';
     q('task-focus').value='trabalho'; q('task-alarm').value='';
+    setTaskWeekdayPicker([]);
+    q('task-start-date').value=todayKey(); q('task-end-date').value='';
     this.populateGoalSelect();
     q('task-modal').classList.add('active');
     setTimeout(()=>q('task-title').focus(),100);
   },
 
   openEditTask(id){
-    const today=todayKey();
-    const task=((this.state.data.routines||{})[today]||[]).find(t=>t.id===id);
+    const found=findTaskAnyDate(this, id);
+    const task=found?found.task:null;
     if(!task) return;
     q('task-modal-title').innerHTML='<i class="fas fa-pen" style="color:var(--primary);margin-right:.4rem"></i>Editar Tarefa';
     q('task-id').value=task.id; q('task-title').value=task.title||'';
     q('task-description').value=task.description||''; q('task-priority').value=task.priority||'media';
     q('task-estimate').value=task.estimateMin||30; q('task-focus').value=task.focus||'trabalho';
     q('task-alarm').value=task.alarmTime||'';
+    const rec=getTaskRecurrence(id);
+    setTaskWeekdayPicker(rec?rec.weekDays:[]);
+    q('task-start-date').value=rec?rec.startDate:(found.dateKey||todayKey());
+    q('task-end-date').value=rec?(rec.endDate||''):'';
     this.populateGoalSelect(task.linkedGoalId);
     q('task-modal').classList.add('active');
   },
@@ -2584,15 +2835,24 @@ const payload = {
     const today=todayKey();
     if(!this.state.data.routines) this.state.data.routines={};
     if(!this.state.data.routines[today]) this.state.data.routines[today]=[];
+
+    const weekDays=getTaskWeekdayPicker();
+    const startDate=q('task-start-date').value||today;
+    const endDate=q('task-end-date').value||'';
+    const newRec = weekDays.length ? {weekDays, startDate, endDate} : null;
+
     const existingId=q('task-id').value, now=new Date().toISOString();
+    let savedId=existingId;
     if(existingId){
-      const task=this.state.data.routines[today].find(t=>t.id===existingId);
+      const found=findTaskAnyDate(this, existingId);
+      const task=found?found.task:null;
       if(task){
         task.title=title; task.description=q('task-description').value.trim();
         task.priority=q('task-priority').value; task.estimateMin=Number(q('task-estimate').value)||30;
         task.focus=q('task-focus').value; task.linkedGoalId=q('task-goal').value;
         task.alarmTime=q('task-alarm').value; task.updated_at=now;
-        this.saveLocal(); this.renderDashboard(); this.saveTaskRemote(task,today);
+        if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
+        this.saveLocal(); this.saveTaskRemote(task,found.dateKey);
         showToast('Tarefa atualizada ✏️','success');
       }
     } else {
@@ -2602,18 +2862,26 @@ const payload = {
         focus:q('task-focus').value, linkedGoalId:q('task-goal').value,
         alarmTime:q('task-alarm').value, done:false, created_at:now, updated_at:now
       };
+      savedId=task.id;
+      if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
       this.state.data.routines[today].push(task);
-      this.saveLocal(); this.renderDashboard(); this.saveTaskRemote(task,today);
+      this.saveLocal(); this.saveTaskRemote(task,today);
       showToast('Tarefa criada! 🎯','success');
     }
+
+    this.renderDashboard();
     closeModal('task-modal');
   },
 
   deleteTask(id){
     if(!confirm('Excluir esta tarefa?')) return;
-    const today=todayKey();
-    if(!this.state.data.routines[today]) return;
-    this.state.data.routines[today]=this.state.data.routines[today].filter(t=>t.id!==id);
+    const found=findTaskAnyDate(this, id);
+    if(found && this.state.data.routines[found.dateKey]){
+      this.state.data.routines[found.dateKey]=this.state.data.routines[found.dateKey].filter(t=>t.id!==id);
+    }
+    removeTaskRecurrence(id);
+    const doneMap=getRecurringDoneMap();
+    if(doneMap[id]){ delete doneMap[id]; saveRecurringDoneMap(doneMap); }
     this.saveLocal(); this.renderDashboard(); this.deleteTaskRemote(id);
     showToast('Tarefa excluída','default');
   },
@@ -3341,6 +3609,25 @@ q('btn-new-task').addEventListener('click',()=>app.openAddTask());
 q('task-modal-close').addEventListener('click',()=>closeModal('task-modal'));
 q('task-modal-cancel').addEventListener('click',()=>closeModal('task-modal'));
 q('task-modal-save').addEventListener('click',()=>app.saveTask());
+
+// Seletor de dias da semana (recorrência de tarefas)
+function setTaskWeekdayPicker(weekDays){
+  const set=new Set(weekDays||[]);
+  document.querySelectorAll('#task-weekdays .wd-pill').forEach(p=>{
+    p.classList.toggle('selected', set.has(Number(p.dataset.day)));
+  });
+}
+function getTaskWeekdayPicker(){
+  return Array.from(document.querySelectorAll('#task-weekdays .wd-pill.selected')).map(p=>Number(p.dataset.day));
+}
+const _wdPicker=q('task-weekdays');
+if(_wdPicker){
+  _wdPicker.addEventListener('click',(e)=>{
+    const pill=e.target.closest('.wd-pill');
+    if(!pill) return;
+    pill.classList.toggle('selected');
+  });
+}
 
 // Meta
 q('btn-new-goal').addEventListener('click',()=>app.openAddGoal());
@@ -4256,6 +4543,7 @@ function showDailyEntry() {
 
   const overlay = document.createElement('div');
   overlay.id = 'daily-entry';
+  overlay.className = 'de-overlay';
   document.body.appendChild(overlay);
   renderDeStep();
 }
@@ -6011,6 +6299,7 @@ function updateDailyEntryBtn(){
   const label = document.getElementById('btn-daily-entry-label');
   if(!btn) return;
   if(done){
+    btn.classList.add('daily-done');
     btn.style.background='linear-gradient(135deg,#065f46,#047857)';
     btn.style.boxShadow='0 4px 18px rgba(52,211,153,.22)';
     btn.style.opacity='.85'; btn.style.cursor='default';
@@ -6018,6 +6307,7 @@ function updateDailyEntryBtn(){
     if(label) label.textContent='Entrada diária concluída';
     btn.onclick=null;
   } else {
+    btn.classList.remove('daily-done');
     btn.style.background='linear-gradient(135deg,#7c3aed,#a855f7)';
     btn.style.boxShadow='0 4px 18px rgba(139,92,246,.35)';
     btn.style.opacity='1'; btn.style.cursor='pointer';
