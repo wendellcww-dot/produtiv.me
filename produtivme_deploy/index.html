@@ -164,12 +164,35 @@ main{padding:1rem 1rem 120px;max-width:720px;margin:0 auto}
 .xp-fill{background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:20px;height:100%;transition:width .6s cubic-bezier(.4,0,.2,1)}
 
 /* ── TAREFAS ── */
-.task-item{background:var(--surface3);padding:.85rem .9rem;border-radius:var(--radius-sm);display:flex;gap:.7rem;align-items:center;margin-bottom:.45rem;border:1px solid var(--border);transition:all var(--t);animation:slideIn .2s ease}
+.task-item{background:var(--surface3);padding:.85rem .9rem;border-radius:var(--radius-sm);display:flex;gap:.7rem;align-items:flex-start;margin-bottom:.45rem;border:1px solid var(--border);transition:all var(--t);animation:slideIn .2s ease;cursor:pointer}
+.task-item input[type="checkbox"]{margin-top:.15rem}
 .task-item:hover{background:rgba(167,139,250,0.07);border-color:var(--border2)}
 .task-done{opacity:.52}
 .task-done .task-title{text-decoration:line-through;color:var(--text-3)}
 .task-title{font-weight:600;font-size:.93rem;line-height:1.35;color:var(--text)}
-.task-desc{color:var(--text-3);font-size:.8rem;margin-top:.12rem;line-height:1.4}
+.task-desc{color:var(--text-3);font-size:.8rem;margin-top:.12rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.task-desc-more{color:var(--primary);font-weight:700;font-size:.76rem;margin-top:.15rem;cursor:pointer;display:inline-block}
+.task-share-btn{display:inline-flex;align-items:center;gap:.3rem;background:var(--primary-glow);color:var(--primary);border:1px solid rgba(167,139,250,.25);border-radius:20px;padding:.22rem .6rem;font-size:.72rem;font-weight:700;cursor:pointer;margin-top:.4rem}
+.task-share-btn:hover{background:rgba(167,139,250,.22)}
+
+/* ── Sheet de detalhes da tarefa (bottom sheet no mobile, modal no desktop) ── */
+.task-sheet-overlay{position:fixed;inset:0;z-index:1250;background:rgba(6,6,16,.72);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
+.task-sheet-overlay.active{display:flex;animation:fadeIn .2s ease}
+.task-sheet{width:100%;max-width:480px;max-height:86vh;overflow-y:auto;background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border2);border-top-left-radius:22px;border-top-right-radius:22px;padding:.6rem 1.25rem 1.5rem;animation:sheetSlideUp .28s cubic-bezier(.4,0,.2,1)}
+@keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.task-sheet-handle{width:38px;height:4px;border-radius:3px;background:var(--border2);margin:.5rem auto 1rem}
+.task-sheet-title{font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--text);line-height:1.3}
+.task-sheet-row{display:flex;align-items:flex-start;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--border)}
+.task-sheet-row:last-of-type{border-bottom:0}
+.task-sheet-row i{width:18px;text-align:center;color:var(--text-3);margin-top:.15rem;flex-shrink:0}
+.task-sheet-row-label{font-size:.68rem;color:var(--text-3);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.task-sheet-row-val{font-size:.9rem;color:var(--text);line-height:1.5;margin-top:.1rem;white-space:pre-wrap;word-break:break-word}
+.task-sheet-actions{display:flex;gap:.5rem;margin-top:1.1rem}
+@media (min-width:640px){
+  .task-sheet-overlay{align-items:center}
+  .task-sheet{border-radius:var(--radius-lg);max-height:80vh;animation:dePopIn .28s cubic-bezier(.4,0,.2,1)}
+  .task-sheet-handle{display:none}
+}
 .task-meta{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.32rem}
 .badge{display:inline-flex;align-items:center;gap:.22rem;padding:.15rem .5rem;border-radius:20px;font-size:.68rem;font-weight:700}
 .badge-alta{background:rgba(248,113,113,.14);color:#f87171;border:1px solid rgba(248,113,113,.22)}
@@ -649,6 +672,26 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .jshare-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .75rem;background:var(--surface3);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:.4rem}
 .jshare-thumb{width:42px;height:42px;border-radius:8px;flex-shrink:0;background:var(--surface4);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--text-3);overflow:hidden}
 .jshare-thumb img{width:100%;height:100%;object-fit:cover}
+
+/* ── Grid de compartilhamentos (estilo perfil) ── */
+.jshare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.2rem}
+.jshare-cell{position:relative;aspect-ratio:9/16;border-radius:6px;overflow:hidden;background:var(--surface3);cursor:pointer;border:1px solid var(--border)}
+.jshare-cell img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.jshare-cell:active img{transform:scale(.96)}
+.jshare-cell-empty{display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--text-3)}
+.jshare-cell-badge{position:absolute;bottom:.25rem;right:.3rem;font-size:.62rem;background:rgba(0,0,0,.55);color:#fff;padding:.05rem .3rem;border-radius:5px;backdrop-filter:blur(2px)}
+.jshare-load-more{width:100%;padding:.7rem;margin-top:.6rem;border-radius:var(--radius-sm);background:var(--surface3);border:1px solid var(--border);color:var(--text-2);font-weight:700;font-size:.82rem;cursor:pointer}
+.jshare-load-more:hover{background:var(--surface4)}
+
+/* ── Metadados do post (visualização completa) ── */
+.jpm-meta{padding:1rem 1.1rem 1.2rem;background:var(--surface2)}
+.jpm-caption{font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.3rem}
+.jpm-date{font-size:.74rem;color:var(--text-3);margin-bottom:.75rem}
+.jpm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.6rem}
+.jpm-stat{background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:.5rem;text-align:center}
+.jpm-stat-val{font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:var(--text)}
+.jpm-stat-lbl{font-size:.64rem;color:var(--text-3);margin-top:.1rem;text-transform:uppercase;letter-spacing:.03em}
+.jpm-badges{display:flex;flex-wrap:wrap;gap:.35rem}
 </style>
 </head>
 <body>
@@ -1119,7 +1162,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="card" style="margin-bottom:.875rem">
-          <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos</div>
+          <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos<span class="badge-pill" id="jornada-shares-count">0</span></div>
           <div id="jornada-shares"></div>
         </div>
 
@@ -1185,9 +1228,12 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   </div>
 </div>
 
-<!-- ══ MODAL FOTO EXPANDIDA ══ -->
-<div id="jornada-photo-modal" class="modal" onclick="closeModal('jornada-photo-modal')" style="align-items:center;justify-content:center;padding:1rem">
-  <img id="jornada-photo-full" style="max-width:100%;max-height:90vh;border-radius:var(--radius);object-fit:contain">
+<!-- ══ MODAL FOTO EXPANDIDA / POST DA JORNADA ══ -->
+<div id="jornada-photo-modal" class="modal" onclick="if(event.target===this) closeModal('jornada-photo-modal')" style="align-items:center;justify-content:center;padding:1rem">
+  <div style="width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:var(--radius-lg)">
+    <img id="jornada-photo-full" style="width:100%;max-height:70vh;border-radius:var(--radius-lg) var(--radius-lg) 0 0;object-fit:contain;background:#000;display:block">
+    <div id="jornada-photo-meta"></div>
+  </div>
 </div>
 
 <!-- ══ MODAL JORNADA — REGISTRAR MOMENTO ══ -->
@@ -1229,11 +1275,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
       <button class="btn btn-primary" onclick="jornadaSalvarEvento()"><i class="fas fa-check"></i> Salvar</button>
     </div>
   </div>
-</div>
-
-<!-- ══ MODAL FOTO EXPANDIDA ══ -->
-<div id="jornada-photo-modal" class="modal" onclick="closeModal('jornada-photo-modal')" style="align-items:center;justify-content:center;padding:1rem">
-  <img id="jornada-photo-full" style="max-width:100%;max-height:90vh;border-radius:var(--radius);object-fit:contain" alt="">
 </div>
 
 <!-- TAREFA -->
@@ -2705,24 +2746,62 @@ const payload = {
     const priLabels={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
     const locked=task.__recurring && task.__matchesToday===false;
     const chip=task.__recurring?weekDaysChip(task.__weekDays):'';
-    return `<div class="task-item ${task.done?'task-done':''} ${locked?'task-locked':''}" id="task-${task.id}">
-      <input type="checkbox" ${task.done?'checked':''} ${locked?'disabled':''} onchange="app.toggleTask('${task.id}')">
+    const desc=task.description||'';
+    const descTrunc=desc.length>90;
+    return `<div class="task-item ${task.done?'task-done':''} ${locked?'task-locked':''}" id="task-${task.id}" onclick="if(!event.target.closest('input,.task-share-btn,.task-desc-more')) app.openTaskDetail('${task.id}')">
+      <input type="checkbox" ${task.done?'checked':''} ${locked?'disabled':''} onclick="event.stopPropagation()" onchange="app.toggleTask('${task.id}')">
       <div style="flex:1;min-width:0">
         <div class="task-title">${esc(task.title)}${task.alarmTime?`<i class="fas fa-bell alarm-icon" title="Alarme: ${task.alarmTime}"></i>`:''}</div>
-        ${task.description?`<div class="task-desc">${esc(task.description)}</div>`:''}
+        ${desc?`<div class="task-desc">${esc(desc)}</div>${descTrunc?`<span class="task-desc-more">... Ver mais</span>`:''}`:''}
         <div class="task-meta">
           <span class="badge ${priColors[task.priority||'media']}">${priLabels[task.priority||'media']}</span>
           ${task.focus?`<span class="badge badge-focus">${esc(task.focus)}</span>`:''}
-          ${task.estimateMin?`<span class="badge" style="background:var(--surface4);color:var(--text-3);border:1px solid var(--border)"><i class="fas fa-clock" style="font-size:.6rem"></i> ${task.estimateMin}min</span>`:''}
           ${chip?`<span class="badge badge-recur">${chip}</span>`:''}
         </div>
         ${locked?`<div class="task-locked-hint"><i class="fas fa-lock"></i> Próxima execução: ${nextRecurrenceLabel(task.__weekDays)}</div>`:''}
-      </div>
-      <div style="display:flex;gap:.3rem">
-        <button class="btn btn-icon btn-sm" onclick="app.openEditTask('${task.id}')" title="Editar"><i class="fas fa-pen"></i></button>
-        <button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteTask('${task.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+        ${task.done?`<div class="task-share-btn" onclick="event.stopPropagation();app.shareTask('${task.id}')"><i class="fas fa-paper-plane"></i> Compartilhar</div>`:''}
       </div>
     </div>`;
+  },
+
+  // Abre o bottom sheet (mobile) / modal (desktop) com os detalhes completos da tarefa
+  openTaskDetail(id){
+    const found=findTaskAnyDate(this, id);
+    if(!found) return;
+    const task=found.task;
+    const rec=getTaskRecurrence(id);
+    const locked=rec && !(rec.weekDays||[]).includes(new Date().getDay());
+    const priLabels={alta:'🔴 Alta prioridade',media:'🟡 Média prioridade',baixa:'🟢 Baixa prioridade'};
+
+    let html=`<div class="task-sheet-handle"></div>
+      <div class="task-sheet-title">${esc(task.title)}</div>
+      <div class="task-meta" style="margin-top:.5rem">
+        <span class="badge ${{alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'}[task.priority||'media']}">${priLabels[task.priority||'media']}</span>
+        ${task.focus?`<span class="badge badge-focus">${esc(task.focus)}</span>`:''}
+        ${rec?`<span class="badge badge-recur">${weekDaysChip(rec.weekDays)}</span>`:''}
+      </div>`;
+
+    if(task.description) html+=`<div class="task-sheet-row"><i class="fas fa-align-left"></i><div><div class="task-sheet-row-label">Descrição</div><div class="task-sheet-row-val">${esc(task.description)}</div></div></div>`;
+    html+=`<div class="task-sheet-row"><i class="fas fa-calendar-day"></i><div><div class="task-sheet-row-label">Data</div><div class="task-sheet-row-val">${_jFmtDate(found.dateKey+'T12:00:00')}${rec?` <span style="color:var(--text-3);font-size:.78rem">(início da recorrência)</span>`:''}</div></div></div>`;
+    if(task.alarmTime) html+=`<div class="task-sheet-row"><i class="fas fa-bell"></i><div><div class="task-sheet-row-label">Horário</div><div class="task-sheet-row-val">${esc(task.alarmTime)}</div></div></div>`;
+    if(rec) html+=`<div class="task-sheet-row"><i class="fas fa-repeat"></i><div><div class="task-sheet-row-label">Recorrência</div><div class="task-sheet-row-val">${weekDaysChip(rec.weekDays)}${locked?` · <span style="color:var(--text-3)">${nextRecurrenceLabel(rec.weekDays)}</span>`:''}${rec.endDate?` · até ${_jFmtDate(rec.endDate+'T12:00:00')}`:''}</div></div></div>`;
+
+    html+=`<div class="task-sheet-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeTaskSheet();app.openEditTask('${task.id}')"><i class="fas fa-pen"></i> Editar</button>
+      ${task.done?`<button class="btn btn-primary" style="flex:1" onclick="closeTaskSheet();app.shareTask('${task.id}')"><i class="fas fa-paper-plane"></i> Compartilhar</button>`:''}
+      <button class="btn btn-ghost" style="color:var(--danger)" onclick="closeTaskSheet();app.deleteTask('${task.id}')"><i class="fas fa-trash"></i></button>
+    </div>`;
+
+    q('task-sheet-content').innerHTML=html;
+    q('task-sheet-overlay').classList.add('active');
+  },
+
+  // Abre o gerador de imagem pré-preenchido com os dados da tarefa concluída
+  shareTask(id){
+    const found=findTaskAnyDate(this, id);
+    if(!found) return;
+    window._shareTaskData=found.task;
+    openShareModal('tarefa');
   },
 
   toggleTask(id){
@@ -2737,7 +2816,7 @@ const payload = {
       doneMap[id][today]=!wasDone;
       saveRecurringDoneMap(doneMap);
       syncRecurringDoneRemote(id);
-      if(!wasDone){ addXp(10); showToast('✅ Tarefa concluída! +10 XP','success'); }
+      if(!wasDone){ addXp(10); showToast('✅ Tarefa concluída! +10 XP','success'); if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto(); }
       else {
         const g=loadGamify();
         g.totalXp=Math.max(0,(g.totalXp||0)-10);
@@ -2771,6 +2850,7 @@ const payload = {
 
     if(task.done){
       addXp(10, el); showToast('✅ Tarefa concluída! +10 XP','success');
+      if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
       if(tasks.every(t=>t.done)&&tasks.length>0) window._verificarParabens?.();
     } else if(wasDone) {
       const g=loadGamify();
@@ -2792,6 +2872,7 @@ const payload = {
     if(bar) bar.style.width=pct+'%';
     this.renderXP();
     checkMedals(this.computeStreak());
+    if(typeof checkRecordes==='function') checkRecordes();
     if(typeof updateDailyChallenge==='function') setTimeout(updateDailyChallenge,500);
   },
 
@@ -3024,14 +3105,21 @@ const payload = {
   saveGoal(){
     const title=q('goal-title').value.trim(); if(!title){ showToast('Digite um título','error'); return; }
     if(!this.state.data.goals) this.state.data.goals=[];
+    const isFirstGoal=this.state.data.goals.length===0;
     const existId=q('goal-id').value, now=new Date().toISOString();
     if(existId){
       const g=this.state.data.goals.find(g=>g.id===existId);
-      if(g){ g.title=title; g.desc=q('goal-desc').value.trim(); g.type=q('goal-type').value; g.priority=q('goal-priority').value; g.start=q('goal-start').value; g.end=q('goal-end').value; g.progress=Number(q('goal-progress').value)||0; this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g); showToast('Meta atualizada','success'); }
+      if(g){
+        const wasComplete=(g.progress||0)>=100;
+        g.title=title; g.desc=q('goal-desc').value.trim(); g.type=q('goal-type').value; g.priority=q('goal-priority').value; g.start=q('goal-start').value; g.end=q('goal-end').value; g.progress=Number(q('goal-progress').value)||0; this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g); showToast('Meta atualizada','success');
+        if(!wasComplete && g.progress>=100 && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+      }
     } else {
       const g={id:crypto.randomUUID(),title,desc:q('goal-desc').value.trim(),type:q('goal-type').value,priority:q('goal-priority').value,start:q('goal-start').value,end:q('goal-end').value,progress:Number(q('goal-progress').value)||0,completed:false,created_at:now};
       this.state.data.goals.push(g); this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g);
       showToast('Meta criada 🎯','success');
+      if(isFirstGoal && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta','🎯 Primeira meta criada');
+      if(g.progress>=100 && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
     }
     closeModal('goal-modal');
   },
@@ -3080,7 +3168,13 @@ const payload = {
     if(marcando) h.days.push(day); else h.days.splice(idx,1);
     // Salva local e renderiza imediatamente (feedback rápido)
     saveHabits(habits); this.renderHabits();
-    if(marcando){ addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido'); showToast('Hábito marcado! +5 XP','success'); }
+    if(marcando){
+      addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido'); showToast('Hábito marcado! +5 XP','success');
+      if(habits.length>0 && habits.every(x=>(x.days||[]).includes(day)) && day===todayKey() && typeof jornadaAutoRegistrar==='function'){
+        jornadaAutoRegistrar('habito','💪 Todos os hábitos do dia concluídos');
+      }
+      if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
+    }
     // Salva no banco — banco é fonte de verdade
     if(this.state.user&&!this.state.user.local){
       const {error}=await window.supabaseClient.from('habitos').update({days:h.days})
@@ -3611,6 +3705,16 @@ q('task-modal-cancel').addEventListener('click',()=>closeModal('task-modal'));
 q('task-modal-save').addEventListener('click',()=>app.saveTask());
 
 // Seletor de dias da semana (recorrência de tarefas)
+function closeTaskSheet(){ q('task-sheet-overlay').classList.remove('active'); }
+window.closeTaskSheet=closeTaskSheet;
+// "... Ver mais" expande a descrição sem abrir o sheet inteiro
+document.addEventListener('click',(e)=>{
+  const more=e.target.closest('.task-desc-more');
+  if(!more) return;
+  e.stopPropagation();
+  const desc=more.previousElementSibling;
+  if(desc && desc.classList.contains('task-desc')){ desc.style.webkitLineClamp='unset'; desc.style.display='block'; more.remove(); }
+});
 function setTaskWeekdayPicker(weekDays){
   const set=new Set(weekDays||[]);
   document.querySelectorAll('#task-weekdays .wd-pill').forEach(p=>{
@@ -4265,6 +4369,11 @@ const RealtimeManager = (() => {
   </div>
 </div>
 
+<!-- TASK DETAIL SHEET -->
+<div id="task-sheet-overlay" class="task-sheet-overlay" onclick="if(event.target===this) closeTaskSheet()">
+  <div class="task-sheet" id="task-sheet-content"></div>
+</div>
+
 <!-- SHARE MODAL -->
 <div id="share-modal">
   <div class="share-inner">
@@ -4666,6 +4775,7 @@ function deConfirmHumor() {
   }
   addXp(5);
   if(typeof addPC==='function') addPC(3,'humor_registrado');
+  if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
   deNext();
 }
 
@@ -4781,6 +4891,7 @@ function addPC(amount, reason=''){
       showToast(`${ligaAgora.icon} Nova Liga: ${ligaAgora.name}!`,'gold',5000);
       showAutoSharePopup('liga', `${ligaAgora.icon} ${ligaAgora.name}!`, 'Você subiu de liga! Compartilhar essa conquista?');
     }, 1000);
+    if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('patente',`👑 Nova Liga: ${ligaAgora.icon} ${ligaAgora.name}`);
   }
   // Popup visual premium
   const popup = document.createElement('div');
@@ -5095,6 +5206,7 @@ function checkRecordes(){
   if(streak > (records.maxStreak||0)){
     records.maxStreak = streak;
     alerts.push(`🏆 Novo recorde de streak: ${streak} dias consecutivos!`);
+    if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('marco',`🏆 Novo recorde: ${streak} dias consecutivos`);
   }
   
   // Recorde de tarefas
@@ -5438,22 +5550,25 @@ const C={WHITE:'#fff',W80:'rgba(255,255,255,.80)',W55:'rgba(255,255,255,.55)',W3
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath(); }
 
 function smT(ctx,text,x,y,typo,color,align,maxW){
-  align=align||'center'; maxW=maxW||SM_W-160;
+  align=align||'center'; maxW=(maxW||SM_W-160)*0.94; // margem de segurança p/ emojis que medem mais estreito do que renderizam
   ctx.textAlign=align; ctx.fillStyle=color;
   let sz=typo.size; ctx.font=`${typo.weight} ${sz}px ${typo.font}`;
   while(sz>18 && ctx.measureText(String(text)).width>maxW){ sz-=2; ctx.font=`${typo.weight} ${sz}px ${typo.font}`; }
-  ctx.fillText(String(text),x,y);
+  const yClamped=Math.min(y, SM_H-SM_SAFE_BOT-10); // nunca desenha em cima do rodapé/marca d'água
+  ctx.fillText(String(text),x,yClamped);
   return sz*typo.lh;
 }
 
 function smWrap(ctx,text,x,y,maxW,typo,color,align,maxLines){
-  align=align||'center'; maxLines=maxLines||3;
+  align=align||'center'; maxLines=maxLines||3; maxW=maxW*0.94;
   ctx.textAlign=align; ctx.fillStyle=color;
   let sz=typo.size; ctx.font=`${typo.weight} ${sz}px ${typo.font}`;
   const makeLines=()=>{ const words=String(text).split(' '); let lines=[],cur=''; for(const w of words){ const t=cur?cur+' '+w:w; if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t; } if(cur)lines.push(cur); return lines; };
   let lines=makeLines();
   while(lines.length>maxLines&&sz>16){ sz-=2; ctx.font=`${typo.weight} ${sz}px ${typo.font}`; lines=makeLines(); }
-  const lh=sz*typo.lh; lines.slice(0,maxLines).forEach((l,i)=>ctx.fillText(l,x,y+i*lh));
+  const lh=sz*typo.lh;
+  const maxY=SM_H-SM_SAFE_BOT-10;
+  lines.slice(0,maxLines).forEach((l,i)=>{ const ly=y+i*lh; if(ly<=maxY) ctx.fillText(l,x,ly); });
   return lh*Math.min(lines.length,maxLines);
 }
 
@@ -5488,6 +5603,16 @@ function sm_buildContent(type){
   if(type==='evolucao'){ const ci=typeof loadCheckin==='function'?loadCheckin():{}; const map={pessimo:1,mal:2,ok:3,bem:4,otimo:5}; const vals=Object.values(ci.history||{}).map(h=>map[h]).filter(Boolean); const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):3; const mood=['','😞','😕','😐','🙂','😄'][avg]||'😐'; return {kind:'stats',title:'Minha Evolução',icon:'📈',rows:[{icon:'✅',label:'Tarefas',val:g.totalDone||0},{icon:'🔥',label:'Streak',val:`${streak} dias`},{icon:'⚡',label:'XP',val:g.totalXp||0},{icon:'😊',label:'Humor',val:mood}],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type}; }
   if(type==='semanal'){ const wk=typeof getWeekTasks==='function'?getWeekTasks(0):{done:0,total:0}; const now2=new Date(); const sW=new Date(now2); sW.setDate(now2.getDate()-now2.getDay()); const eW=new Date(sW); eW.setDate(sW.getDate()+6); const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); return {kind:'stats',title:`${fmt(sW)} – ${fmt(eW)}`,icon:'📊',rows:[{icon:'✅',label:'Tarefas na semana',val:wk.done},{icon:'🔥',label:'Streak',val:`${streak} dias`},{icon:'⚡',label:'XP',val:g.totalXp||0}],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type}; }
   if(type==='comp_semanal'||type==='comp_mensal'){ const isW=type==='comp_semanal'; const curr=isW?(typeof getWeekTasks==='function'?getWeekTasks(0):{done:0}):(typeof getMonthTasks==='function'?getMonthTasks(0):{done:0}); const prev=isW?(typeof getWeekTasks==='function'?getWeekTasks(1):{done:0}):(typeof getMonthTasks==='function'?getMonthTasks(1):{done:0}); const prev2=isW&&typeof getWeekTasks==='function'?getWeekTasks(2):{done:0}; const useC=!isW||(curr.done>=2); const bA=useC?prev:prev2,bB=useC?curr:prev; const now3=new Date(); const sC=new Date(now3); sC.setDate(now3.getDate()-now3.getDay()); const sP=new Date(sC); sP.setDate(sC.getDate()-7); const sP2=new Date(sP); sP2.setDate(sP.getDate()-7); const fmt2=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); const eA=new Date(useC?sP:sP2); eA.setDate(eA.getDate()+6); const eB=new Date(useC?sC:sP); eB.setDate(eB.getDate()+6); const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; const n4=new Date(); const lA=isW?(useC?'Sem. Passada':`${fmt2(useC?sP:sP2)} – ${fmt2(eA)}`):meses[(n4.getMonth()+11)%12]; const lB=isW?(useC?'Esta Semana':`${fmt2(useC?sC:sP)} – ${fmt2(eB)}`):meses[n4.getMonth()]; return {kind:'comp',title:isW?'Comparação Semanal':'Comparação Mensal',icon:isW?'📅':'📆',labelA:lA,labelB:lB,valA:bA.done,valB:bB.done,diff:bB.done-bA.done,trending:bB.done>=bA.done?'up':'down',badge:liga?`${liga.icon} ${liga.name}`:'',frase,type}; }
+  if(type==='tarefa'){
+    const t=window._shareTaskData||{};
+    const titulo=(t.title||'Tarefa concluída').length>48?(t.title||'').slice(0,45)+'…':(t.title||'Tarefa concluída');
+    return {kind:'stats',title:titulo,icon:'✅',rows:[
+      {icon:'📁',label:'Categoria',val:t.focus?t.focus.charAt(0).toUpperCase()+t.focus.slice(1):'Geral'},
+      {icon:'📅',label:'Data',val:new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})},
+      {icon:'🔥',label:'Streak',val:`${streak} dias`},
+      {icon:'⚡',label:'XP',val:g.totalXp||0},
+    ],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type};
+  }
   return {kind:'hero',icon:'🔥',headline:streak,unit:'dias',badge:'',sub:'',stats:[],frase,type};
 }
 
@@ -5663,20 +5788,16 @@ async function doShare(){
 
   const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
   const file = new File([blob],'produtivme-share.png',{type:'image/png'});
-  let shared = false;
   try {
     if(navigator.share && navigator.canShare({files:[file]})){
       await navigator.share({files:[file], title:'Minha evolução no Produtiv.me'});
-      shared = true;
+      _askSaveJornada(thumbB64); // downloadShareImage() já pergunta sozinho, então só chamamos aqui
     } else {
       downloadShareImage();
-      shared = true;
     }
   } catch(e) {
     if(e.name !== 'AbortError') downloadShareImage();
   }
-
-  if(shared) _askSaveJornada(thumbB64);
 }
 
 function _askSaveJornada(thumbB64){
@@ -5727,12 +5848,21 @@ function _askSaveJornada(thumbB64){
 function _confirmSaveJornada(type, encodedDesc){
   const desc = decodeURIComponent(encodedDesc);
   const canvas = document.getElementById('share-canvas');
-  // Capturar thumbnail atual do canvas
+  // Capturar thumbnail (grid) e versão maior (visualização completa) do canvas
   const thumbCanvas = document.createElement('canvas');
   thumbCanvas.width = 200; thumbCanvas.height = Math.round(200*(canvas.height/canvas.width));
   thumbCanvas.getContext('2d').drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
   const thumbB64 = thumbCanvas.toDataURL('image/jpeg', 0.75);
-  if(typeof jornadaRegistrarShare === 'function') jornadaRegistrarShare(type, desc, thumbB64);
+
+  const fullCanvas = document.createElement('canvas');
+  fullCanvas.width = 540; fullCanvas.height = Math.round(540*(canvas.height/canvas.width));
+  fullCanvas.getContext('2d').drawImage(canvas, 0, 0, fullCanvas.width, fullCanvas.height);
+  const fullB64 = fullCanvas.toDataURL('image/jpeg', 0.85);
+
+  if(typeof jornadaRegistrarShare === 'function'){
+    const id=jornadaRegistrarShare(type, desc, thumbB64);
+    JDB.set('share_'+id, fullB64).catch(()=>{});
+  }
   document.getElementById('jornada-save-toast')?.remove();
   showToast('Salvo na Jornada! 📸', 'success');
 }
@@ -5743,6 +5873,10 @@ function downloadShareImage(){
   const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
   a.download='produtivme-'+_shareType+'.png'; a.click();
   showToast('📥 Imagem baixada!','success');
+  const thumbCanvas=document.createElement('canvas');
+  thumbCanvas.width=200; thumbCanvas.height=Math.round(200*(canvas.height/canvas.width));
+  thumbCanvas.getContext('2d').drawImage(canvas,0,0,thumbCanvas.width,thumbCanvas.height);
+  _askSaveJornada(thumbCanvas.toDataURL('image/jpeg',0.75));
 }
 
 
@@ -5798,6 +5932,7 @@ function checkAutoShare_TasksComplete(done, total, streak){
       '🎯 Dia zerado!',
       `Você concluiu ${total} tarefa${total>1?'s':''} hoje. Compartilhar no Instagram?`
     );
+    if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('tarefa',`✅ Todas as ${total} tarefas do dia concluídas`);
   }
 }
 
@@ -5815,16 +5950,18 @@ function checkAutoShare_LevelUp(oldXp, newXp){
       `🏆 Nível ${newLv} alcançado!`,
       'Você subiu de nível! Compartilhar essa conquista?'
     );
+    if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('patente',`⚡ Novo nível: ${newLv}`);
   }
 }
 
 function checkAutoShare_Streak(streak){
-  const milestones = [3,7,14,21,30,60,90,180,365];
+  const milestones = [3,7,14,21,30,60,90,100,180,365];
   if(milestones.includes(streak)){
     showAutoSharePopup('streak',
       `🔥 ${streak} dias seguidos!`,
       `Sequência de ${streak} dias! Compartilhar no Instagram?`
     );
+    if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('marco',`🔥 ${streak} dias consecutivos`);
   }
 }
 
@@ -5833,6 +5970,7 @@ function checkAutoShare_Medal(medalName){
     `🏅 Medalha conquistada!`,
     `"${medalName}" desbloqueada! Compartilhar no Instagram?`
   );
+  if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('conquista',`🏅 Medalha: ${medalName}`);
 }
 
 // Sobrescreve generateShareCard para usar frase rotativa
@@ -5904,7 +6042,15 @@ const JORNADA_SHARES_KEY = 'pm18_jornada_shares_v1';
 
 function loadJornada(){ try{ return JSON.parse(localStorage.getItem(JORNADA_KEY)||'[]'); }catch(e){ return []; } }
 function saveJornada(d){ try{ localStorage.setItem(JORNADA_KEY,JSON.stringify(d)); }catch(e){ showToast('Armazenamento cheio','error'); } }
-function loadJShares(){ try{ return JSON.parse(localStorage.getItem(JORNADA_SHARES_KEY)||'[]'); }catch(e){ return []; } }
+function loadJShares(){
+  try{
+    const arr=JSON.parse(localStorage.getItem(JORNADA_SHARES_KEY)||'[]');
+    let migrated=false;
+    arr.forEach(s=>{ if(!s.id){ s.id='sh_'+Date.now()+'_'+Math.random().toString(36).slice(2,6); migrated=true; } });
+    if(migrated) localStorage.setItem(JORNADA_SHARES_KEY, JSON.stringify(arr));
+    return arr;
+  }catch(e){ return []; }
+}
 function saveJShares(d){ try{ localStorage.setItem(JORNADA_SHARES_KEY,JSON.stringify(d)); }catch(e){} }
 
 /* ── IndexedDB para fotos ── */
@@ -6027,10 +6173,45 @@ function jornadaAutoRegistrar(type,desc,opts={}){
 }
 window.jornadaAutoRegistrar=jornadaAutoRegistrar;
 
-/* ── Registrar compartilhamento ── */
+// Registra automaticamente um "Dia Perfeito" na Jornada assim que as 3
+// condições (humor + todas as tarefas + todos os hábitos) forem batidas hoje.
+function checkDiaPerfeitoAuto(){
+  if(typeof getDiaPerfeito!=='function') return;
+  const checks=getDiaPerfeito();
+  if(checks.length>0 && checks.every(c=>c.done)) jornadaAutoRegistrar('dia_perfeito','🌟 Dia Perfeito alcançado');
+}
+window.checkDiaPerfeitoAuto=checkDiaPerfeitoAuto;
+// Captura uma "fotografia" do estado do usuário no momento do compartilhamento,
+// para exibir depois na visualização completa do post (like um post do Instagram).
+function _jSnapshotHoje(){
+  const hoje=todayKey();
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const ci=typeof loadCheckin==='function'?loadCheckin():{};
+  const moodMap={pessimo:'😞',mal:'😕',ok:'😐',bem:'🙂',otimo:'😄'};
+  const mood=ci.history?.[hoje]?moodMap[ci.history[hoje]]||null:null;
+  const tarefasHoje=(window.app?.state?.data?.routines||{})[hoje]||[];
+  const habs=typeof loadHabits==='function'?loadHabits():[];
+  const goals=window.app?.state?.data?.goals||[];
+  const metaConcluida=[...goals].reverse().find(gl=>(gl.progress||0)>=100);
+  return {
+    streak:_jStreak(), xp:g.totalXp||0, liga:liga?{icon:liga.icon,name:liga.name}:null,
+    mood, tasksDone:tarefasHoje.filter(t=>t.done).length, tasksTotal:tarefasHoje.length,
+    habitsDone:habs.filter(h=>(h.days||[]).includes(hoje)).length, habitsTotal:habs.length,
+    diaPerfeito: typeof checkDiaPerfeitoAuto==='function' && typeof getDiaPerfeito==='function' ? getDiaPerfeito().every(c=>c.done) : false,
+    metaConcluida: metaConcluida?metaConcluida.title:null,
+  };
+}
+
 function jornadaRegistrarShare(type,desc,thumb){
-  const s=loadJShares(); s.unshift({type,desc,ts:new Date().toISOString(),thumb:thumb||null});
+  const s=loadJShares();
+  const isFirst=s.length===0;
+  const id='sh_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  s.unshift({id,type,desc,ts:new Date().toISOString(),thumb:thumb||null, snap:_jSnapshotHoje()});
   if(s.length>60) s.length=60; saveJShares(s);
+  if(isFirst && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('marco','📸 Primeiro compartilhamento');
+  return id;
 }
 window.jornadaRegistrarShare=jornadaRegistrarShare;
 
@@ -6105,6 +6286,7 @@ window.jornadaDeletarEvento=jornadaDeletarEvento;
 async function jornadaVerFoto(id){
   const p=await JDB.get(id).catch(()=>null); if(!p) return;
   const img=document.getElementById('jornada-photo-full'); if(img) img.src=p;
+  const meta=document.getElementById('jornada-photo-meta'); if(meta) meta.innerHTML='';
   const m=document.getElementById('jornada-photo-modal'); if(m) m.classList.add('active');
 }
 window.jornadaVerFoto=jornadaVerFoto;
@@ -6145,7 +6327,7 @@ function _renderJornadaHero(){
   const stats=[
     {val:streak+'🔥',lbl:'Streak'},{val:maxStreak,lbl:'Recorde'},
     {val:dp,lbl:'Dias Perfeitos'},{val:g.totalXp||0,lbl:'XP Total'},
-    {val:pc.total||0,lbl:'PC Total'},{val:_jPresenceDays(),lbl:'Dias Ativos'},
+    {val:pc.total||0,lbl:'PC Total'},{val:loadJShares().length,lbl:'Posts'},
   ];
   const el=document.getElementById('jornada-hero-stats');
   if(el) el.innerHTML=stats.map(s=>`<div class="jhs"><div class="jhs-val">${s.val}</div><div class="jhs-lbl">${s.lbl}</div></div>`).join('');
@@ -6254,36 +6436,61 @@ function _renderJornadaMeses(){
   sel.onchange=()=>_renderJornadaTimeline(sel.value);
 }
 
+let _jSharePage=1;
+const J_SHARE_PAGE_SIZE=12;
 function _renderJornadaShares(){
   const el=document.getElementById('jornada-shares'); if(!el) return;
   const shares=loadJShares();
+  const cnt=document.getElementById('jornada-shares-count'); if(cnt) cnt.textContent=shares.length;
   if(!shares.length){ el.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1.2rem 0">Nenhum compartilhamento salvo ainda.<br><span style="font-size:.74rem;opacity:.6">Após compartilhar, você poderá salvar aqui.</span></div>'; return; }
-  el.innerHTML=shares.slice(0,20).map((s,i)=>`
-    <div class="jshare-item" id="jshare-${i}">
-      <div class="jshare-thumb">
-        ${s.thumb
-          ? `<img src="${s.thumb}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;cursor:pointer" onclick="jornadaVerShareFull(${i})" title="Ver imagem">`
-          : `<span style="font-size:1.2rem">📱</span>`}
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_jEsc(s.desc||s.type)}</div>
-        <div style="font-size:.71rem;color:var(--text-3);margin-top:.1rem">${_jFmtDate(s.ts)}</div>
-      </div>
-      <div style="display:flex;gap:.3rem;align-items:center;flex-shrink:0">
-        <span style="font-size:.7rem;color:var(--primary);background:var(--primary-glow);padding:.18rem .5rem;border-radius:6px;white-space:nowrap">📱 Compartilhado</span>
-        <button onclick="jornadaDeletarShare(${i})" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:.8rem;padding:.2rem" title="Remover"><i class="fas fa-times"></i></button>
-      </div>
+  const visible=shares.slice(0, _jSharePage*J_SHARE_PAGE_SIZE);
+  const cells=visible.map(s=>`
+    <div class="jshare-cell" onclick="jornadaVerShareFull('${s.id}')">
+      ${s.thumb
+        ? `<img src="${s.thumb}" loading="lazy" alt="${_jEsc(s.desc||s.type)}">`
+        : `<div class="jshare-cell-empty">📱</div>`}
+      <span class="jshare-cell-badge">${JEV_TYPES[s.type]?.icon||'📱'}</span>
     </div>`).join('');
+  const hasMore=shares.length>visible.length;
+  el.innerHTML=`<div class="jshare-grid">${cells}</div>${hasMore?`<button class="jshare-load-more" onclick="_jShareLoadMore()"><i class="fas fa-chevron-down"></i> Carregar mais (${shares.length-visible.length})</button>`:''}`;
 }
+function _jShareLoadMore(){ _jSharePage++; _renderJornadaShares(); }
+window._jShareLoadMore=_jShareLoadMore;
 
-function jornadaDeletarShare(i){
-  const shares=loadJShares(); shares.splice(i,1); saveJShares(shares); _renderJornadaShares();
+async function jornadaDeletarShare(id){
+  const shares=loadJShares().filter(s=>s.id!==id); saveJShares(shares);
+  await JDB.del('share_'+id).catch(()=>{});
+  _renderJornadaShares();
+  closeModal('jornada-photo-modal');
 }
 window.jornadaDeletarShare=jornadaDeletarShare;
 
-function jornadaVerShareFull(i){
-  const shares=loadJShares(); const s=shares[i]; if(!s?.thumb) return;
-  const img=document.getElementById('jornada-photo-full'); if(img) img.src=s.thumb;
+async function jornadaVerShareFull(id){
+  const shares=loadJShares(); const s=shares.find(x=>x.id===id); if(!s) return;
+  const full=await JDB.get('share_'+id).catch(()=>null);
+  const img=document.getElementById('jornada-photo-full'); if(img) img.src=full||s.thumb||'';
+  const meta=document.getElementById('jornada-photo-meta'); if(!meta) return;
+
+  const snap=s.snap||{};
+  const t=JEV_TYPES[s.type]||JEV_TYPES.auto;
+  const badges=[];
+  if(snap.diaPerfeito) badges.push(`<span class="badge" style="background:rgba(244,114,182,.12);color:#f472b6">🌟 Dia Perfeito</span>`);
+  if(snap.metaConcluida) badges.push(`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">🎯 ${_jEsc(snap.metaConcluida)}</span>`);
+  if(snap.liga) badges.push(`<span class="badge" style="background:rgba(251,191,36,.12);color:var(--gold)">${snap.liga.icon} ${_jEsc(snap.liga.name)}</span>`);
+
+  meta.innerHTML=`
+    <div class="jpm-caption">${t.icon} ${_jEsc(s.desc||s.type)}</div>
+    <div class="jpm-date">${_jFmtDate(s.ts)} · ${_jFmtTime(s.ts)} · <span style="color:var(--text-2)">${t.label}</span></div>
+    <div class="jpm-stats">
+      <div class="jpm-stat"><div class="jpm-stat-val">🔥 ${snap.streak??'—'}</div><div class="jpm-stat-lbl">Streak</div></div>
+      <div class="jpm-stat"><div class="jpm-stat-val">⚡ ${snap.xp??'—'}</div><div class="jpm-stat-lbl">XP</div></div>
+      <div class="jpm-stat"><div class="jpm-stat-val">${snap.mood||'—'}</div><div class="jpm-stat-lbl">Humor</div></div>
+      <div class="jpm-stat"><div class="jpm-stat-val">✅ ${snap.tasksDone??0}/${snap.tasksTotal??0}</div><div class="jpm-stat-lbl">Tarefas</div></div>
+      <div class="jpm-stat"><div class="jpm-stat-val">💪 ${snap.habitsDone??0}/${snap.habitsTotal??0}</div><div class="jpm-stat-lbl">Hábitos</div></div>
+      <div class="jpm-stat"><div class="jpm-stat-val"><i class="fas fa-trash" style="cursor:pointer;color:var(--danger)" onclick="jornadaDeletarShare('${s.id}')"></i></div><div class="jpm-stat-lbl">Remover</div></div>
+    </div>
+    ${badges.length?`<div class="jpm-badges">${badges.join('')}</div>`:''}
+  `;
   const m=document.getElementById('jornada-photo-modal'); if(m) m.classList.add('active');
 }
 window.jornadaVerShareFull=jornadaVerShareFull;
