@@ -3160,11 +3160,14 @@ const payload = {
       const g=this.state.data.goals.find(g=>g.id===existId);
       if(g){
         const wasComplete=(g.progress||0)>=100;
-        g.title=title; g.desc=q('goal-desc').value.trim(); g.type=q('goal-type').value; g.priority=q('goal-priority').value; g.start=q('goal-start').value; g.end=q('goal-end').value; g.progress=Number(q('goal-progress').value)||0; this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g); showToast('Meta atualizada','success');
+        g.title=title; g.desc=q('goal-desc').value.trim(); g.type=q('goal-type').value; g.priority=q('goal-priority').value; g.start=q('goal-start').value; g.end=q('goal-end').value; g.progress=Number(q('goal-progress').value)||0;
+        if(!wasComplete && g.progress>=100) g.completedAt=now;
+        this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g); showToast('Meta atualizada','success');
         if(!wasComplete && g.progress>=100 && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
       }
     } else {
       const g={id:crypto.randomUUID(),title,desc:q('goal-desc').value.trim(),type:q('goal-type').value,priority:q('goal-priority').value,start:q('goal-start').value,end:q('goal-end').value,progress:Number(q('goal-progress').value)||0,completed:false,created_at:now};
+      if(g.progress>=100) g.completedAt=now;
       this.state.data.goals.push(g); this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g);
       showToast('Meta criada 🎯','success');
       if(isFirstGoal && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta','🎯 Primeira meta criada');
@@ -6283,7 +6286,7 @@ function _jSnapshotHoje(){
   const tarefasHoje=(window.app?.state?.data?.routines||{})[hoje]||[];
   const habs=typeof loadHabits==='function'?loadHabits():[];
   const goals=window.app?.state?.data?.goals||[];
-  const metaConcluida=[...goals].reverse().find(gl=>(gl.progress||0)>=100);
+  const metaConcluida=goals.find(gl=>(gl.progress||0)>=100 && gl.completedAt && gl.completedAt.slice(0,10)===hoje);
   return {
     streak:_jStreak(), xp:g.totalXp||0, liga:liga?{icon:liga.icon,name:liga.name}:null,
     mood, tasksDone:tarefasHoje.filter(t=>t.done).length, tasksTotal:tarefasHoje.length,
