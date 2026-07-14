@@ -2092,6 +2092,7 @@ _isSyncing: false,
       this.showApp();
       showLoading('Sincronizando dados...');
       await this.syncRemote();
+      this.renderAll();
       hideLoading();
       this.carryOverTasks();
     }
@@ -2145,7 +2146,7 @@ _isSyncing: false,
       }
       this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
-      this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); hideLoading(); this.carryOverTasks();
+      this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); this.renderAll(); hideLoading(); this.carryOverTasks();
     });
 
     q('register-form').addEventListener('submit', async e=>{
@@ -2169,7 +2170,7 @@ _isSyncing: false,
         this.state.user={id:data.user.id,email:data.user.email,name:name||data.user.email.split('@')[0]};
         localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
         this.showApp();
-        showLoading('Sincronizando...'); await this.syncRemote(); hideLoading();
+        showLoading('Sincronizando...'); await this.syncRemote(); this.renderAll(); hideLoading();
         this.carryOverTasks();
       } else {
         showAlert('✅ Conta criada! Faça login para continuar.',false);
@@ -2708,6 +2709,8 @@ const payload = {
     this.renderFinance();
     this.renderFrases();
     this.renderAnalytics();
+    if(typeof renderJornada==='function') renderJornada();
+    if(typeof updateDailyEntryBtn==='function') updateDailyEntryBtn();
   },
 
   /* ══════════════════════════════════════
