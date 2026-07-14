@@ -1230,9 +1230,10 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 </div>
 
 <!-- ══ MODAL FOTO EXPANDIDA / POST DA JORNADA ══ -->
-<div id="jornada-photo-modal" class="modal" onclick="if(event.target===this) closeModal('jornada-photo-modal')" style="align-items:center;justify-content:center;padding:1rem">
-  <div style="width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:var(--radius-lg)">
-    <img id="jornada-photo-full" style="width:100%;max-height:70vh;border-radius:var(--radius-lg) var(--radius-lg) 0 0;object-fit:contain;background:#000;display:block">
+<div id="jornada-photo-modal" class="modal" onclick="if(event.target===this) closeJornadaPhoto()" style="align-items:center;justify-content:center;padding:1rem">
+  <div style="width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:var(--radius-lg);position:relative">
+    <button onclick="closeJornadaPhoto()" title="Fechar" style="position:sticky;top:.6rem;left:calc(100% - 2.4rem);width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:.95rem;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5"><i class="fas fa-times"></i></button>
+    <img id="jornada-photo-full" style="width:100%;max-height:70vh;margin-top:-2.4rem;border-radius:var(--radius-lg) var(--radius-lg) 0 0;object-fit:contain;background:#000;display:block">
     <div id="jornada-photo-meta"></div>
   </div>
 </div>
@@ -1536,6 +1537,8 @@ const FINANCE_KEY   = 'pm18_finance_v1';
 ══════════════════════════════════════ */
 const q = id => document.getElementById(id);
 window.closeModal = id => { const m=q(id); if(m) m.classList.remove('active'); };
+function closeJornadaPhoto(){ closeModal('jornada-photo-modal'); }
+window.closeJornadaPhoto=closeJornadaPhoto;
 
 function esc(t){ if(!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtDate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
@@ -6208,15 +6211,35 @@ function _jFmtMes(ym){ const [y,m]=ym.split('-'); return new Date(+y,+m-1,1).toL
 
 /* ── Avatar ── */
 async function jornadaCarregarAvatar(){
-  const p=await JDB.get('avatar').catch(()=>null);
   const img=document.getElementById('jornada-avatar-img');
   const icon=document.getElementById('jornada-avatar-icon');
+  let p=await JDB.get('avatar').catch(()=>null);
   if(p&&img){ img.src=p; img.style.display='block'; if(icon) icon.style.display='none'; }
   else if(img){ img.style.display='none'; if(icon) icon.style.display='flex'; }
+
+  // Se não tem local (ex: outro dispositivo), busca a versão sincronizada no Supabase
+  const user=window.app?.state?.user;
+  if(!p && user && !user.local){
+    try{
+      const {data,error}=await window.supabaseClient.from('profiles').select('avatar_b64').eq('id',user.id).maybeSingle();
+      if(!error && data?.avatar_b64){
+        await JDB.set('avatar', data.avatar_b64).catch(()=>{});
+        if(img){ img.src=data.avatar_b64; img.style.display='block'; if(icon) icon.style.display='none'; }
+      }
+    }catch(e){}
+  }
 }
 async function jornadaTrocarAvatar(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-  inp.onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const b=await _jFile2B64(f); const r=await _jResize(b,240,240); await JDB.set('avatar',r); jornadaCarregarAvatar(); showToast('Foto de perfil atualizada 📸','success'); };
+  inp.onchange=async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const b=await _jFile2B64(f); const r=await _jResize(b,240,240);
+    await JDB.set('avatar',r); jornadaCarregarAvatar(); showToast('Foto de perfil atualizada 📸','success');
+    const user=window.app?.state?.user;
+    if(user&&!user.local){
+      window.supabaseClient.from('profiles').update({avatar_b64:r}).eq('id',user.id).then(({error})=>{ if(error) console.error('[Avatar sync]',error); });
+    }
+  };
   inp.click();
 }
 window.jornadaTrocarAvatar=jornadaTrocarAvatar;
