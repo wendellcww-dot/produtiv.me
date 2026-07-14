@@ -2274,6 +2274,9 @@ _isSyncing: false,
         this.loadGamifyRemote(),
         this.loadDiarioRemote(),
         this.loadCustomQRemote(),
+        this.loadEntradaDiariaRemote(),
+        this.loadJornadaRemote(),
+        this.loadJSharesRemote(),
       ]);
       this.saveLocal();
       setSyncStatus('online');
@@ -2356,6 +2359,9 @@ _isSyncing: false,
         this.loadGamifyRemote(),
         this.loadDiarioRemote(),
         this.loadCustomQRemote(),
+        this.loadEntradaDiariaRemote(),
+        this.loadJornadaRemote(),
+        this.loadJSharesRemote(),
       ]);
       this.saveLocal();
       setSyncStatus('online');
@@ -2372,6 +2378,45 @@ _isSyncing: false,
       .from('questione_custom').select('*').eq('user_id',this.state.user.id);
     if(error||!data) return;
     saveCustomQuestions(data.map(q=>({id:q.id,icon:q.icon||'💭',text:q.text})));
+  },
+
+  // Carrega o estado do botão "Iniciar meu dia" do Supabase
+  async loadEntradaDiariaRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const hoje=todayKey();
+    const {data,error}=await window.supabaseClient
+      .from('entrada_diaria').select('date_key').eq('user_id',this.state.user.id).eq('date_key',hoje).maybeSingle();
+    if(error||!data) return;
+    localStorage.setItem(DAILY_BTN_KEY, hoje);
+    if(typeof updateDailyEntryBtn==='function') updateDailyEntryBtn();
+  },
+
+  // Carrega a linha do tempo (eventos automáticos + manuais) do Supabase
+  async loadJornadaRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('jornada_eventos').select('*').eq('user_id',this.state.user.id)
+      .order('ts',{ascending:false}).limit(300);
+    if(error||!data) return;
+    const local=loadJornada();
+    const byId={}; local.forEach(e=>byId[e.id]=e);
+    data.forEach(r=>{ byId[r.id]={id:r.id,type:r.type,desc:r.descricao,ts:r.ts,streak:r.streak,liga:r.liga,xp:r.xp,hasPhoto:r.has_photo,auto:r.auto}; });
+    const merged=Object.values(byId).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    saveJornada(merged);
+  },
+
+  // Carrega os compartilhamentos (grid do perfil) do Supabase
+  async loadJSharesRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('jornada_compartilhamentos').select('*').eq('user_id',this.state.user.id)
+      .order('ts',{ascending:false}).limit(200);
+    if(error||!data) return;
+    const local=loadJShares();
+    const byId={}; local.forEach(s=>byId[s.id]=s);
+    data.forEach(r=>{ byId[r.id]={id:r.id,type:r.type,desc:r.descricao,ts:r.ts,thumb:r.thumb,snap:r.snap||{}}; });
+    const merged=Object.values(byId).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    saveJShares(merged);
   },
 
   async loadFrasesRemote(){
@@ -6178,11 +6223,41 @@ function jornadaAutoRegistrar(type,desc,opts={}){
   const pc=typeof loadPC==='function'?loadPC():{};
   const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  evs.unshift({id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,auto:true});
+  const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,auto:true};
+  evs.unshift(ev);
   saveJornada(evs);
+  saveJornadaEventRemote(ev);
   if(opts.share) jornadaRegistrarShare(type,desc,null);
 }
 window.jornadaAutoRegistrar=jornadaAutoRegistrar;
+
+// Sincroniza a conclusão da "Entrada Diária" de hoje com o Supabase
+async function saveEntradaDiariaRemote(dateKey){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  try{
+    const {error}=await window.supabaseClient.from('entrada_diaria').upsert([{
+      user_id:user.id, date_key:dateKey, ts:new Date().toISOString()
+    }],{onConflict:'user_id,date_key'});
+    if(error) throw error;
+  }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
+}
+window.saveEntradaDiariaRemote=saveEntradaDiariaRemote;
+
+// Sincroniza um evento da Jornada (automático ou manual) com o Supabase
+async function saveJornadaEventRemote(ev){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  try{
+    const {error}=await window.supabaseClient.from('jornada_eventos').upsert([{
+      id:ev.id, user_id:user.id, type:ev.type, descricao:ev.desc, ts:ev.ts,
+      streak:ev.streak??null, liga:ev.liga||null, xp:ev.xp??null,
+      has_photo:!!ev.hasPhoto, auto:!!ev.auto
+    }],{onConflict:'id'});
+    if(error) throw error;
+  }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
+}
+window.saveJornadaEventRemote=saveJornadaEventRemote;
 
 // Registra automaticamente um "Dia Perfeito" na Jornada assim que as 3
 // condições (humor + todas as tarefas + todos os hábitos) forem batidas hoje.
@@ -6219,12 +6294,28 @@ function jornadaRegistrarShare(type,desc,thumb){
   const s=loadJShares();
   const isFirst=s.length===0;
   const id='sh_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  s.unshift({id,type,desc,ts:new Date().toISOString(),thumb:thumb||null, snap:_jSnapshotHoje()});
+  const share={id,type,desc,ts:new Date().toISOString(),thumb:thumb||null, snap:_jSnapshotHoje()};
+  s.unshift(share);
   if(s.length>60) s.length=60; saveJShares(s);
+  saveJShareRemote(share);
   if(isFirst && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('marco','📸 Primeiro compartilhamento');
   return id;
 }
 window.jornadaRegistrarShare=jornadaRegistrarShare;
+
+// Sincroniza um compartilhamento salvo (post do perfil) com o Supabase
+async function saveJShareRemote(share){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  try{
+    const {error}=await window.supabaseClient.from('jornada_compartilhamentos').upsert([{
+      id:share.id, user_id:user.id, type:share.type, descricao:share.desc,
+      ts:share.ts, thumb:share.thumb||null, snap:share.snap||{}
+    }],{onConflict:'id'});
+    if(error) throw error;
+  }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
+}
+window.saveJShareRemote=saveJShareRemote;
 
 /* ── Hook openShareModal removido — agora o usuário é perguntado após compartilhar ── */
 
@@ -6279,6 +6370,7 @@ async function jornadaSalvarEvento(){
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:!!_jevPhoto,auto:false};
   const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
+  saveJornadaEventRemote(ev);
   if(_jevPhoto) await JDB.set(id,_jevPhoto).catch(()=>{});
   closeModal('jornada-modal');
   showToast('Momento registrado! 📸','success');
@@ -6289,6 +6381,8 @@ window.jornadaSalvarEvento=jornadaSalvarEvento;
 async function jornadaDeletarEvento(id){
   saveJornada(loadJornada().filter(e=>e.id!==id));
   await JDB.del(id).catch(()=>{});
+  const user=window.app?.state?.user;
+  if(user&&!user.local){ window.supabaseClient.from('jornada_eventos').delete().eq('id',id).eq('user_id',user.id).then(()=>{}); }
   const el=document.getElementById('jtl-'+id);
   if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);}
 }
@@ -6471,6 +6565,8 @@ window._jShareLoadMore=_jShareLoadMore;
 async function jornadaDeletarShare(id){
   const shares=loadJShares().filter(s=>s.id!==id); saveJShares(shares);
   await JDB.del('share_'+id).catch(()=>{});
+  const user=window.app?.state?.user;
+  if(user&&!user.local){ window.supabaseClient.from('jornada_compartilhamentos').delete().eq('id',id).eq('user_id',user.id).then(()=>{}); }
   _renderJornadaShares();
   closeModal('jornada-photo-modal');
 }
@@ -6561,6 +6657,7 @@ let _pendingDailyReward=false;
       if(typeof addPC==='function') addPC(2,'Entrada diária');
       setTimeout(updateDailyEntryBtn,200);
       _showDailyRewardAnim();
+      saveEntradaDiariaRemote(hoje);
     }
     _pendingDailyReward=false;
   };
