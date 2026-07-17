@@ -810,7 +810,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div class="xp-bar-top">
             <div class="xp-level">
               <span class="lvl-badge" id="xp-level-badge">Nv.1</span>
-              <span id="xp-level-name" style="font-size:.88rem;color:var(--text)">Iniciante</span>
               <span style="font-size:.85rem">🔥 <span id="streak-count">0</span> dias</span>
             </div>
             <div class="xp-amount" style="display:flex;align-items:center;gap:.4rem">
@@ -818,6 +817,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
               <button onclick="if(typeof openShareModal==='function')openShareModal('liga')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
             </div>
           </div>
+          <div style="font-size:.74rem;color:var(--text-3);margin-top:-.35rem;margin-bottom:.5rem">📅 <span id="presence-days-count">0</span> dias de presença</div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
           <div id="pc-panel" style="margin-top:.5rem">
             <div class="pc-title">Pontos de Consistência</div>
@@ -3038,11 +3038,11 @@ const payload = {
     if(typeof renderPCWidget==='function') setTimeout(renderPCWidget, 100);
     const g=getGamifyState(), lv=computeLevel(g.totalXp);
     if(q('xp-level-badge')) q('xp-level-badge').textContent='Nv.'+lv.level;
-    if(q('xp-level-name')) q('xp-level-name').textContent=lv.name;
     if(q('xp-current')) q('xp-current').textContent=g.totalXp;
     if(q('xp-next')) q('xp-next').textContent=lv.xpNext;
     if(q('xp-bar-fill')) q('xp-bar-fill').style.width=lv.pct+'%';
     if(q('stat-total-xp')) q('stat-total-xp').textContent=g.totalXp;
+    if(q('presence-days-count')) q('presence-days-count').textContent=typeof _jPresenceDays==='function'?_jPresenceDays():0;
   },
 
   /* ── MEDALHAS ── */
