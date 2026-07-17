@@ -4152,6 +4152,14 @@ const RealtimeManager = (() => {
         p => onTableChange('questione_respostas', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'diario_reflexao', filter:`user_id=eq.${userId}` },
         p => onTableChange('diario_reflexao', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'entrada_diaria', filter:`user_id=eq.${userId}` },
+        p => onTableChange('entrada_diaria', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'jornada_eventos', filter:`user_id=eq.${userId}` },
+        p => onTableChange('jornada_eventos', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'jornada_compartilhamentos', filter:`user_id=eq.${userId}` },
+        p => onTableChange('jornada_compartilhamentos', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'profiles', filter:`id=eq.${userId}` },
+        p => onTableChange('profiles', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
@@ -6217,12 +6225,13 @@ async function jornadaCarregarAvatar(){
   if(p&&img){ img.src=p; img.style.display='block'; if(icon) icon.style.display='none'; }
   else if(img){ img.style.display='none'; if(icon) icon.style.display='flex'; }
 
-  // Se não tem local (ex: outro dispositivo), busca a versão sincronizada no Supabase
+  // Sempre confere se existe uma versão mais recente sincronizada no Supabase
+  // (ex: você trocou a foto em outro aparelho) e atualiza o cache local se mudou.
   const user=window.app?.state?.user;
-  if(!p && user && !user.local){
+  if(user && !user.local){
     try{
       const {data,error}=await window.supabaseClient.from('profiles').select('avatar_b64').eq('id',user.id).maybeSingle();
-      if(!error && data?.avatar_b64){
+      if(!error && data?.avatar_b64 && data.avatar_b64!==p){
         await JDB.set('avatar', data.avatar_b64).catch(()=>{});
         if(img){ img.src=data.avatar_b64; img.style.display='block'; if(icon) icon.style.display='none'; }
       }
