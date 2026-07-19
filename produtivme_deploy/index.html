@@ -559,6 +559,17 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 
 /* ══ SISTEMA DE LIGAS E CONSISTÊNCIA ══ */
 .liga-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:20px;font-size:.78rem;font-weight:700;border:1px solid transparent}
+
+/* ── Modal: escada de patentes ── */
+.ligas-ladder{display:flex;flex-direction:column;gap:.4rem;max-height:60vh;overflow-y:auto}
+.ligas-item{display:flex;align-items:center;gap:.7rem;padding:.65rem .8rem;border-radius:var(--radius-sm);background:var(--surface3);border:1px solid var(--border)}
+.ligas-item.achieved{opacity:.7}
+.ligas-item.current{background:var(--primary-glow);border-color:var(--primary)}
+.ligas-item-icon{font-size:1.3rem;width:32px;text-align:center;flex-shrink:0}
+.ligas-item-name{font-size:.88rem;font-weight:700;color:var(--text)}
+.ligas-item-pts{font-size:.72rem;color:var(--text-3);margin-top:.1rem}
+.ligas-item-check{margin-left:auto;color:var(--green);font-size:.9rem;flex-shrink:0}
+.ligas-item-lock{margin-left:auto;color:var(--text-3);font-size:.8rem;flex-shrink:0}
 .liga-iniciante{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:#4ade80}
 .liga-evolucao{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3);color:#60a5fa}
 .liga-consistente{background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.3);color:#fb923c}
@@ -835,6 +846,9 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             <div class="pc-meta">
               <span style="font-size:.65rem;color:var(--text-3)" id="pc-liga-atual"></span>
               <span style="font-size:.65rem;color:var(--text-3)" id="pc-liga-prox"></span>
+            </div>
+            <div style="text-align:center;margin-top:.55rem">
+              <span onclick="abrirModalLigas()" style="font-size:.74rem;color:var(--primary);font-weight:700;cursor:pointer">🏅 Ver todas as patentes</span>
             </div>
           </div>
         </div>
@@ -1137,18 +1151,8 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="card" style="margin-bottom:.875rem">
-          <div class="card-title"><i class="fas fa-trophy"></i>Mural de Conquistas<span class="badge-pill" id="jornada-mural-count">0/0</span></div>
-          <div id="jornada-mural" class="jornada-mural-grid"></div>
-        </div>
-
-        <div class="card" style="margin-bottom:.875rem">
-          <div class="card-title"><i class="fas fa-chart-line"></i>Resumo da Jornada</div>
-          <div id="jornada-resumo" class="jornada-resumo-grid"></div>
-        </div>
-
-        <div class="card" id="jornada-momentos-card" style="margin-bottom:.875rem">
-          <div class="card-title"><i class="fas fa-star"></i>Momentos Marcantes</div>
-          <div id="jornada-momentos"></div>
+          <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos<span class="badge-pill" id="jornada-shares-count">0</span></div>
+          <div id="jornada-shares"></div>
         </div>
 
         <div class="card" style="margin-bottom:.875rem">
@@ -1162,9 +1166,19 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div id="jornada-timeline"></div>
         </div>
 
+        <div class="card" id="jornada-momentos-card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-star"></i>Momentos Marcantes</div>
+          <div id="jornada-momentos"></div>
+        </div>
+
         <div class="card" style="margin-bottom:.875rem">
-          <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos<span class="badge-pill" id="jornada-shares-count">0</span></div>
-          <div id="jornada-shares"></div>
+          <div class="card-title"><i class="fas fa-chart-line"></i>Resumo da Jornada</div>
+          <div id="jornada-resumo" class="jornada-resumo-grid"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-trophy"></i>Mural de Conquistas<span class="badge-pill" id="jornada-mural-count">0/0</span></div>
+          <div id="jornada-mural" class="jornada-mural-grid"></div>
         </div>
 
       </div>
@@ -1235,6 +1249,18 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <button onclick="closeJornadaPhoto()" title="Fechar" style="position:sticky;top:.6rem;left:calc(100% - 2.4rem);width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:.95rem;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5"><i class="fas fa-times"></i></button>
     <img id="jornada-photo-full" style="width:100%;max-height:70vh;margin-top:-2.4rem;border-radius:var(--radius-lg) var(--radius-lg) 0 0;object-fit:contain;background:#000;display:block">
     <div id="jornada-photo-meta"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: TODAS AS PATENTES ══ -->
+<div id="ligas-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-medal" style="color:var(--primary);margin-right:.4rem"></i>Patentes de Consistência</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('ligas-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Ganhe Pontos de Consistência completando tarefas e hábitos todos os dias para subir de patente.</div>
+    <div class="ligas-ladder" id="ligas-ladder"></div>
   </div>
 </div>
 
@@ -5018,6 +5044,29 @@ function renderPCWidget(){
   const elProx = document.getElementById('pc-liga-prox');
   if(elProx && next) elProx.textContent = next.icon + ' ' + next.name;
 }
+
+function abrirModalLigas(){
+  const pc = loadPC().total || 0;
+  const liga = getLiga(pc);
+  const html = LIGAS.map(l=>{
+    const achieved = pc >= l.min;
+    const isCurrent = l.id === liga.id;
+    const faltam = l.min - pc;
+    return `<div class="ligas-item ${achieved?'achieved':''} ${isCurrent?'current':''}">
+      <div class="ligas-item-icon">${l.icon}</div>
+      <div>
+        <div class="ligas-item-name">${l.name}</div>
+        <div class="ligas-item-pts">${l.min.toLocaleString('pt-BR')} pts${!achieved?` · faltam ${faltam.toLocaleString('pt-BR')}`:''}</div>
+      </div>
+      ${isCurrent ? '<span class="ligas-item-check"><i class="fas fa-star"></i> Atual</span>' : achieved ? '<span class="ligas-item-check"><i class="fas fa-check-circle"></i></span>' : '<span class="ligas-item-lock"><i class="fas fa-lock"></i></span>'}
+    </div>`;
+  }).join('');
+  const el = document.getElementById('ligas-ladder');
+  if(el) el.innerHTML = html;
+  const m = document.getElementById('ligas-modal');
+  if(m) m.classList.add('active');
+}
+window.abrirModalLigas = abrirModalLigas;
 
 /* ══ DESAFIOS DIÁRIOS ══ */
 function loadChallenge(){ try{ return JSON.parse(localStorage.getItem(DAILY_CHALLENGE_KEY)||'{}'); }catch(e){ return {}; } }
