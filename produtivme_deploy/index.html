@@ -2366,6 +2366,7 @@ _isSyncing: false,
         this.loadEntradaDiariaRemote(),
         this.loadJornadaRemote(),
         this.loadJSharesRemote(),
+        this.loadPresenceRemote(),
       ]);
       this.saveLocal();
       setSyncStatus('online');
@@ -2421,6 +2422,23 @@ _isSyncing: false,
     data.forEach(r=>{ byId[r.id]={id:r.id,type:r.type,desc:r.descricao,ts:r.ts,thumb:r.thumb,snap:r.snap||{}}; });
     const merged=Object.values(byId).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     saveJShares(merged);
+  },
+
+  // Une os dias de presença locais com os do Supabase (nunca perde dias de nenhum aparelho)
+  // e, se o merge trouxer dias novos que o Supabase ainda não tinha, já reenvia atualizado.
+  async loadPresenceRemote(){
+    if(!this.state.user||this.state.user.local) return;
+    const {data,error}=await window.supabaseClient
+      .from('profiles').select('presence_days').eq('id',this.state.user.id).maybeSingle();
+    if(error) return;
+    const local=loadPresence();
+    const localDays=local.days||[];
+    const remoteDays=data?.presence_days||[];
+    const merged=Array.from(new Set([...localDays,...remoteDays])).sort();
+    if(merged.length===localDays.length && merged.length===remoteDays.length) return; // já igual, nada a fazer
+    local.days=merged;
+    savePresence(local);
+    if(merged.length!==remoteDays.length) savePresenceRemote(merged);
   },
 
   async loadFrasesRemote(){
@@ -5122,6 +5140,17 @@ function saveCheckin(d){ localStorage.setItem(CHECKIN_KEY, JSON.stringify(d)); }
 function loadPresence(){ try{ return JSON.parse(localStorage.getItem(PRESENCE_KEY)||'{}'); }catch(e){ return {}; } }
 function savePresence(d){ localStorage.setItem(PRESENCE_KEY, JSON.stringify(d)); }
 
+// Sincroniza a lista de dias de presença com o Supabase (mesma coluna jsonb usada no merge do sync)
+async function savePresenceRemote(days){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  try{
+    const {error}=await window.supabaseClient.from('profiles').update({presence_days:days}).eq('id',user.id);
+    if(error) throw error;
+  }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
+}
+window.savePresenceRemote=savePresenceRemote;
+
 function registerDailyPresence(){
   const today = new Date().toISOString().split('T')[0];
   const p = loadPresence();
@@ -5145,7 +5174,8 @@ function registerDailyPresence(){
   p.streak = streak;
   p.totalDays = days.length;
   savePresence(p);
-  
+  savePresenceRemote(days);
+
   // Atualiza presenceDays no gamify
   const g = loadGamify();
   g.presenceDays = days.length;
