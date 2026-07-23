@@ -513,12 +513,15 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 #share-modal.active{display:flex}
 #share-modal .share-inner{background:var(--surface);border-radius:var(--radius);padding:1.1rem;width:min(370px,96vw);max-height:92vh;overflow-y:auto}
 #share-canvas-wrap{display:flex;justify-content:center;margin-bottom:.75rem}
-#share-canvas-wrap canvas{border-radius:8px;max-width:170px;height:auto;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+#share-canvas-wrap .sm-crop-box{position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4);width:170px;aspect-ratio:9/16;transition:aspect-ratio .25s ease}
+#share-canvas-wrap .sm-crop-box.sm-feed{aspect-ratio:4/5}
+#share-canvas-wrap canvas{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:auto}
 .share-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem}
 .share-header-title{font-family:var(--font-display);font-weight:800;font-size:.92rem;letter-spacing:.04em;color:var(--primary)}
 .share-tpl-bar{display:flex;gap:.28rem;overflow-x:auto;padding-bottom:.35rem;margin-bottom:.55rem;scrollbar-width:none}
 .share-tpl{padding:.26rem .6rem;border-radius:20px;font-size:.72rem;font-weight:700;border:1px solid var(--border);background:var(--surface3);color:var(--text-2);cursor:pointer;white-space:nowrap;transition:all var(--t);flex-shrink:0}
-.share-tpl.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.share-tpl.active,.share-fmt.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.share-fmt{padding:.26rem .6rem;border-radius:20px;font-size:.72rem;font-weight:700;border:1px solid var(--border);background:var(--surface3);color:var(--text-2);cursor:pointer;white-space:nowrap;transition:all var(--t);flex-shrink:0}
 .share-photo-bar{display:flex;gap:.3rem;align-items:center;margin-bottom:.5rem;flex-wrap:wrap}
 .share-photo-btn{padding:.26rem .55rem;font-size:.72rem;font-weight:600;border-radius:8px;border:1px solid var(--border);background:var(--surface3);color:var(--text-2);cursor:pointer;transition:all var(--t)}
 .share-photo-btn:hover{border-color:var(--primary);color:var(--primary)}
@@ -963,6 +966,16 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           </div>
           <button class="btn btn-primary btn-sm btn-block" id="btn-save-mood"><i class="fas fa-check"></i> Registrar Humor</button>
         </div>
+        <div class="card" style="background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));border-color:rgba(244,114,182,.18);cursor:pointer" onclick="navTo('questione')">
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div style="font-size:1.8rem;flex-shrink:0">💭</div>
+            <div style="flex:1">
+              <div class="card-title" style="margin:0"><i class="fas fa-comment-dots"></i>Refletir</div>
+              <div style="font-size:.8rem;color:var(--text-3);margin-top:.2rem">Perguntas para enxergar sua evolução</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--text-3)"></i>
+          </div>
+        </div>
         <div class="card">
           <div class="card-title"><i class="fas fa-book-open"></i>Diário de Reflexão</div>
           <div id="psico-questions"></div>
@@ -977,14 +990,16 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
       <!-- ══ QUESTIONE-SE ══ -->
       <div id="questione-screen" class="screen">
         <div style="background:linear-gradient(135deg,rgba(244,114,182,.1),rgba(167,139,250,.07));border:1px solid rgba(244,114,182,.18);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;display:flex;gap:.9rem;align-items:flex-start">
-          <div style="font-size:1.8rem;flex-shrink:0">🔮</div>
+          <div style="font-size:1.8rem;flex-shrink:0">💭</div>
           <div>
-            <div style="font-family:var(--font-display);font-weight:800;font-size:1rem;margin-bottom:.25rem">Questione-se</div>
-            <div style="font-size:.83rem;color:var(--text-2);line-height:1.5">Perguntas para reflexão profunda.</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:1rem;margin-bottom:.25rem">Refletir</div>
+            <div style="font-size:.8rem;color:var(--text-2);font-style:italic;margin-bottom:.4rem">"As melhores respostas começam com as perguntas certas."</div>
+            <div style="font-size:.83rem;color:var(--text-2);line-height:1.5">Reserve alguns minutos para responder perguntas que ajudam você a enxergar sua evolução. Não existem respostas certas — existe apenas honestidade consigo mesmo.</div>
           </div>
         </div>
+        <div id="questione-reminder-banner"></div>
         <div class="card" style="padding:.9rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
               <div style="font-size:.75rem;font-weight:600;color:var(--text-3)">Respostas Salvas</div>
               <div class="progress-bar" style="margin-top:.4rem;width:130px"><div class="progress-fill" id="questione-progress-fill" style="width:0%"></div></div>
@@ -994,8 +1009,18 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
               <button id="btn-add-question" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nova</button>
             </div>
           </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border)">
+            <span style="font-size:.76rem;color:var(--text-3)" id="questione-freq-hint">Perguntas de hoje</span>
+            <span id="questione-ver-todas" style="font-size:.78rem;color:var(--primary);font-weight:700;cursor:pointer">Ver todas as perguntas</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.55rem">
+            <span id="questione-session-progress" style="font-size:.76rem;color:var(--text-2);font-weight:600"></span>
+            <span id="questione-ver-historico" style="font-size:.78rem;color:var(--primary);font-weight:700;cursor:pointer"><i class="fas fa-clock-rotate-left"></i> Ver histórico</span>
+          </div>
         </div>
         <div id="questions-list"></div>
+        <div id="reflexao-historico" style="display:none"></div>
+        <button class="btn btn-primary btn-block" id="btn-finalizar-reflexao" style="margin-top:.4rem"><i class="fas fa-check-circle"></i> Finalizar Reflexão</button>
       </div>
 
       <!-- ══ FRASES ══ -->
@@ -1315,10 +1340,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <input id="task-id" type="hidden">
     <div class="form-group"><label>Título *</label><input id="task-title" required placeholder="Ex: Estudar por 30 minutos"></div>
     <div class="form-group"><label>Descrição</label><textarea id="task-description" rows="2" placeholder="Detalhes opcionais..."></textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
-      <div class="form-group"><label>Prioridade</label><select id="task-priority"><option value="alta">🔴 Alta</option><option value="media" selected>🟡 Média</option><option value="baixa">🟢 Baixa</option></select></div>
-      <div class="form-group"><label>Tempo (min)</label><input id="task-estimate" type="number" min="5" value="30"></div>
-    </div>
+    <div class="form-group"><label>Prioridade</label><select id="task-priority"><option value="alta">🔴 Alta</option><option value="media" selected>🟡 Média</option><option value="baixa">🟢 Baixa</option></select></div>
     <div class="form-group"><label>Área de Foco</label><select id="task-focus"><option value="trabalho">💼 Trabalho</option><option value="estudos">📚 Estudos</option><option value="saude">💪 Saúde</option><option value="pessoal">🏠 Pessoal</option><option value="financas">💰 Finanças</option></select></div>
     <div class="form-group"><label>Meta Vinculada</label><select id="task-goal"><option value="">Nenhuma</option></select></div>
     <div class="form-group"><label>🔔 Alarme</label><input type="time" id="task-alarm" style="max-width:160px"><div style="font-size:.74rem;color:var(--text-3);margin-top:.2rem">Deixe vazio para não ter alarme</div></div>
@@ -1992,7 +2014,7 @@ function checkMedals(streak){
     g.medals=[...current,...newMs]; saveGamify(g);
     // Mostra popup de compartilhamento para a primeira medalha nova
     const medal = MEDALS.find(m=>m.id===newMs[0]);
-    if(medal) setTimeout(()=>checkAutoShare_Medal(medal.name), 2000);
+    if(medal) setTimeout(()=>checkAutoShare_Medal(medal), 2000);
   }
   app.renderMedals();
 }
@@ -2049,15 +2071,67 @@ const QUESTIONS = [
   {id:'q6',icon:'💡',text:'Qual é o próximo passo que você já sabe que precisa dar?'},
   {id:'q7',icon:'🔥',text:'O que você faria se soubesse que não poderia falhar?'},
   {id:'q8',icon:'🤔',text:'Qual hábito está sabotando seu crescimento?'},
-  {id:'q9',icon:'🎁',text:'Que presente você pode dar a si mesmo hoje: ação ou desculpa?'},
+  {id:'q9',icon:'🎁',text:'Qual ação de hoje seria um presente para o seu eu de amanhã?'},
   {id:'q10',icon:'🌟',text:'Em qual área da sua vida você está sendo covarde?'},
-  {id:'q11',icon:'📖',text:'O que você precisa aprender que ainda não começou?'},
+  {id:'q11',icon:'📖',text:'O que você sabe que precisa aprender, mas continua adiando?'},
   {id:'q12',icon:'💬',text:'Que conversa difícil você precisa ter e está postergando?'},
 ];
 
 function loadCustomQuestions(){ try{ return JSON.parse(localStorage.getItem(CUSTOM_Q_KEY)||'[]'); }catch(e){ return []; } }
 function saveCustomQuestions(l){ localStorage.setItem(CUSTOM_Q_KEY, JSON.stringify(l)); }
 function getAllQuestions(){ return [...QUESTIONS,...loadCustomQuestions()]; }
+
+/* ── Histórico de respostas do Refletir (base para rotação inteligente,
+   comparação de evolução e a seção de Histórico) ── */
+const REFLEXAO_LOG_KEY='pm18_reflexao_log_v1';
+function loadReflexaoLog(){ try{ return JSON.parse(localStorage.getItem(REFLEXAO_LOG_KEY)||'[]'); }catch(e){ return []; } }
+function saveReflexaoLog(l){ localStorage.setItem(REFLEXAO_LOG_KEY, JSON.stringify(l)); }
+function yesterdayKey(){ const d=new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Registra/atualiza (upsert por dia+pergunta) as respostas de hoje no histórico.
+function logReflexaoAnswers(qas){
+  const log=loadReflexaoLog(), today=todayKey(), ts=new Date().toISOString();
+  qas.forEach(item=>{
+    const idx=log.findIndex(e=>e.date===today && e.questionId===item.id);
+    const entry={date:today, ts, questionId:item.id, icon:item.icon, text:item.text, answer:item.answer};
+    if(idx>=0) log[idx]=entry; else log.unshift(entry);
+  });
+  saveReflexaoLog(log);
+}
+// Última resposta anterior (dia diferente de hoje) para uma pergunta — usada na comparação de evolução.
+function getPreviousAnswer(questionId){
+  const today=todayKey();
+  const entries=loadReflexaoLog().filter(e=>e.questionId===questionId && e.date!==today);
+  if(!entries.length) return null;
+  entries.sort((a,b)=>b.date.localeCompare(a.date));
+  return entries[0];
+}
+// Pequeno gerador pseudo-aleatório determinístico (seed = dia do ano) para variar a ordem sem ser aleatório de verdade.
+function _seededShuffle(arr, seed){
+  const a=arr.slice(); let s=seed||1;
+  const rnd=()=>{ s=(s*9301+49297)%233280; return s/233280; };
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+// Segunda a sábado: mostra 3 perguntas rotativas, priorizando as respondidas com menos
+// frequência e evitando repetir as mesmas perguntas de ontem. Domingo: todas ficam
+// disponíveis (tratado direto em renderQuestions).
+let _qShowAll=false;
+function getTodayQuestionSet(all){
+  if(!all.length) return [];
+  const log=loadReflexaoLog();
+  const countMap={}; log.forEach(e=>{ countMap[e.questionId]=(countMap[e.questionId]||0)+1; });
+  const yKey=yesterdayKey();
+  const shownYesterday=new Set(log.filter(e=>e.date===yKey).map(e=>e.questionId));
+  const dayOfYear=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0).getTime())/86400000);
+  let pool=_seededShuffle(all, dayOfYear+1);
+  pool.sort((a,b)=>{
+    const ca=countMap[a.id]||0, cb=countMap[b.id]||0;
+    if(ca!==cb) return ca-cb; // menos respondidas primeiro
+    const ya=shownYesterday.has(a.id)?1:0, yb=shownYesterday.has(b.id)?1:0;
+    return ya-yb; // evita repetir as de ontem quando possível
+  });
+  return pool.slice(0,3);
+}
 function loadHabits(){ try{ return JSON.parse(localStorage.getItem(HABITS_KEY)||'[]'); }catch(e){ return []; } }
 function saveHabits(d){ localStorage.setItem(HABITS_KEY, JSON.stringify(d)); }
 function loadMood(){ try{ return JSON.parse(localStorage.getItem(MOOD_KEY)||'[]'); }catch(e){ return []; } }
@@ -2272,12 +2346,12 @@ _isSyncing: false,
         // Lazy render por tela
         if(screen==='rotina'){ this.renderHistoryDate(); this.renderWeekChart(); }
         else if(screen==='financeiro'){ this.renderFinance(); }
-        else if(screen==='analytics'){ this.renderAnalytics(); }
+        else if(screen==='analytics'){ this.renderAnalytics(); if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['comparacao_semanal']); }
         else if(screen==='mental'){ this.renderMental(); this.renderMoodChart(); }
         else if(screen==='questione'){ this.renderQuestions(); }
         else if(screen==='frases'){ this.renderFrases(); }
-        else if(screen==='jornada'){ if(typeof renderJornada==='function') renderJornada(); }
-        else if(screen==='jornada'){ if(typeof renderJornada==='function') renderJornada(); }
+        else if(screen==='jornada'){ if(typeof renderJornada==='function') renderJornada(); if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['ver_jornada']); }
+        else if(screen==='metas'){ if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['atualizar_meta']); }
       });
     });
     // History date
@@ -2975,7 +3049,7 @@ const payload = {
   openAddTask(){
     q('task-modal-title').innerHTML='<i class="fas fa-plus" style="color:var(--primary);margin-right:.4rem"></i>Nova Tarefa';
     q('task-id').value=''; q('task-title').value=''; q('task-description').value='';
-    q('task-priority').value='media'; q('task-estimate').value='30';
+    q('task-priority').value='media';
     q('task-focus').value='trabalho'; q('task-alarm').value='';
     setTaskWeekdayPicker([]);
     q('task-start-date').value=todayKey(); q('task-end-date').value='';
@@ -2991,7 +3065,7 @@ const payload = {
     q('task-modal-title').innerHTML='<i class="fas fa-pen" style="color:var(--primary);margin-right:.4rem"></i>Editar Tarefa';
     q('task-id').value=task.id; q('task-title').value=task.title||'';
     q('task-description').value=task.description||''; q('task-priority').value=task.priority||'media';
-    q('task-estimate').value=task.estimateMin||30; q('task-focus').value=task.focus||'trabalho';
+    q('task-focus').value=task.focus||'trabalho';
     q('task-alarm').value=task.alarmTime||'';
     const rec=getTaskRecurrence(id);
     setTaskWeekdayPicker(rec?rec.weekDays:[]);
@@ -3025,7 +3099,7 @@ const payload = {
       const task=found?found.task:null;
       if(task){
         task.title=title; task.description=q('task-description').value.trim();
-        task.priority=q('task-priority').value; task.estimateMin=Number(q('task-estimate').value)||30;
+        task.priority=q('task-priority').value;
         task.focus=q('task-focus').value; task.linkedGoalId=q('task-goal').value;
         task.alarmTime=q('task-alarm').value; task.updated_at=now;
         if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
@@ -3035,7 +3109,7 @@ const payload = {
     } else {
       const task={
         id:crypto.randomUUID(), title, description:q('task-description').value.trim(),
-        priority:q('task-priority').value, estimateMin:Number(q('task-estimate').value)||30,
+        priority:q('task-priority').value,
         focus:q('task-focus').value, linkedGoalId:q('task-goal').value,
         alarmTime:q('task-alarm').value, done:false, created_at:now, updated_at:now
       };
@@ -3093,11 +3167,19 @@ const payload = {
   renderMedals(){
     const grid=q('medals-grid'); if(!grid) return;
     const g=getGamifyState();
-    grid.innerHTML=MEDALS.map(m=>`
-      <div class="medal-item ${g.medals.includes(m.id)?'unlocked':''}" title="${m.name}">
+    grid.innerHTML=MEDALS.map(m=>{
+      const unlocked=g.medals.includes(m.id);
+      return `<div class="medal-item ${unlocked?'unlocked':''}" title="${m.name}" ${unlocked?`onclick="app.shareMedal('${m.id}')" style="cursor:pointer"`:''}>
         <div class="medal-icon">${m.icon}</div>
         <div class="medal-name">${m.name}</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
+  },
+
+  shareMedal(id){
+    const m=MEDALS.find(x=>x.id===id); if(!m) return;
+    window._shareMedalData=m;
+    openShareModal('medalha');
   },
 
   /* ── INSIGHT IA ── */
@@ -3358,9 +3440,36 @@ const payload = {
     if(q('questione-answered')) q('questione-answered').textContent=answered;
     if(q('questione-total')) q('questione-total').textContent=all.length;
     if(q('questione-progress-fill')) q('questione-progress-fill').style.width=(all.length?Math.round(answered/all.length*100):0)+'%';
+
+    const isSunday=new Date().getDay()===0;
+    const shown=(_qShowAll||isSunday)?all:getTodayQuestionSet(all);
+    const hint=q('questione-freq-hint');
+    if(hint) hint.textContent=isSunday?'Domingo — todas as perguntas disponíveis':`Perguntas de hoje (${shown.length})`;
+    const verTodas=q('questione-ver-todas');
+    if(verTodas){
+      verTodas.style.display=isSunday?'none':'inline';
+      verTodas.textContent=_qShowAll?'Ver perguntas de hoje':'Ver todas as perguntas';
+    }
+
+    // Pergunta X de Y — progresso da sessão atual
+    const sp=q('questione-session-progress');
+    if(sp){
+      const answeredInSet=shown.filter(it=>saved[it.id]&&saved[it.id].trim()).length;
+      sp.textContent=shown.length?`Pergunta ${Math.min(answeredInSet+1,shown.length)} de ${shown.length}`:'';
+    }
+
+    this.renderReminderBanner();
+
     const list=q('questions-list'); if(!list) return;
-    list.innerHTML=all.map((item,idx)=>{
+    list.innerHTML=shown.map((item,idx)=>{
       const ans=saved[item.id]||'', isCustom=customIds.has(item.id);
+      const prev=getPreviousAnswer(item.id);
+      const compareHtml=prev?`<div class="reflexao-compare" style="margin-top:.5rem;padding:.6rem .7rem;border-radius:8px;background:rgba(167,139,250,.06);border:1px solid var(--border)">
+          <div style="font-size:.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em">Resposta anterior (${fmtDate(prev.date)})</div>
+          <div style="font-size:.8rem;color:var(--text-2);margin:.25rem 0;font-style:italic">"${esc(prev.answer)}"</div>
+          <div style="text-align:center;color:var(--text-3);font-size:.75rem">↓</div>
+          <div style="font-size:.68rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.03em;margin-top:.2rem">Resposta atual</div>
+        </div>`:'';
       return `<div class="question-card" id="qcard-${item.id}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem">
           <div style="display:flex;align-items:center;gap:.6rem">
@@ -3368,9 +3477,13 @@ const payload = {
             <div style="font-size:1.15rem">${item.icon}</div>
             ${isCustom?'<span class="badge badge-focus" style="font-size:.65rem">Minha</span>':''}
           </div>
-          ${isCustom?`<button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteCustomQuestion('${item.id}')"><i class="fas fa-trash"></i></button>`:''}
+          ${isCustom?`<div style="display:flex;gap:.25rem">
+            <button class="btn btn-icon btn-sm" onclick="app.editCustomQuestion('${item.id}')"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteCustomQuestion('${item.id}')"><i class="fas fa-trash"></i></button>
+          </div>`:''}
         </div>
         <div class="question-text">${esc(item.text)}</div>
+        ${compareHtml}
         <textarea class="question-answer" id="qanswer-${item.id}" placeholder="Escreva sua resposta aqui..." rows="3">${esc(ans)}</textarea>
         <div class="question-actions">
           <div class="answer-saved-badge ${ans?'visible':''}" id="qsaved-${item.id}"><i class="fas fa-check-circle"></i> Salvo</div>
@@ -3378,11 +3491,125 @@ const payload = {
         </div>
       </div>`;
     }).join('');
-    all.forEach(item=>{
+    shown.forEach(item=>{
       const ta=q('qanswer-'+item.id);
       if(!ta) return;
-      ta.addEventListener('input', debounce(()=>this.saveAnswer(item.id,true),5000));
+      ta.addEventListener('input', debounce(()=>{ this.saveAnswer(item.id,true); this.renderQuestions(); },2000));
     });
+  },
+
+  /* ── Lembrete suave (sem culpa) quando o usuário fica dias sem refletir ── */
+  renderReminderBanner(){
+    const box=q('questione-reminder-banner'); if(!box) return;
+    const log=loadReflexaoLog();
+    if(!log.length){ box.innerHTML=''; return; }
+    const lastDate=log.reduce((max,e)=>e.date>max?e.date:max, log[0].date);
+    const days=Math.floor((new Date(todayKey()+'T00:00:00')-new Date(lastDate+'T00:00:00'))/86400000);
+    if(days<3){ box.innerHTML=''; return; }
+    const msgs=[
+      'Faz alguns dias que você não reserva um momento para refletir.',
+      'Suas respostas de hoje podem mostrar o quanto você evoluiu.',
+      'Responder uma pergunta leva menos de 3 minutos.'
+    ];
+    const msg=msgs[days%msgs.length];
+    box.innerHTML=`<div class="card" style="padding:.8rem 1rem;background:rgba(167,139,250,.06);border-color:var(--border);display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem">
+      <div style="font-size:1.2rem">💭</div>
+      <div style="font-size:.82rem;color:var(--text-2)">${esc(msg)}</div>
+    </div>`;
+  },
+
+  /* ── Histórico de Reflexões ── */
+  renderReflexaoHistorico(){
+    const wrap=q('reflexao-historico'); if(!wrap) return;
+    const search=(q('reflexao-hist-search')?.value||'').toLowerCase().trim();
+    const period=q('reflexao-hist-period')?.value||'all';
+    const order=q('reflexao-hist-order')?.value||'desc';
+    let log=loadReflexaoLog();
+    if(period!=='all'){
+      const days=Number(period);
+      const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
+      const cutoffKey=cutoff.toISOString().slice(0,10);
+      log=log.filter(e=>e.date>=cutoffKey);
+    }
+    if(search) log=log.filter(e=>(e.text||'').toLowerCase().includes(search)||(e.answer||'').toLowerCase().includes(search));
+    log=log.slice().sort((a,b)=>order==='desc'?b.date.localeCompare(a.date)||b.ts?.localeCompare(a.ts):a.date.localeCompare(b.date)||a.ts?.localeCompare(b.ts));
+    const listHtml=log.length?log.map(e=>`
+      <div class="question-card">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+          <span style="font-size:1.1rem">${e.icon||'💭'}</span>
+          <span style="font-size:.72rem;color:var(--text-3);font-weight:600">${fmtDate(e.date)}</span>
+        </div>
+        <div class="question-text" style="margin-bottom:.4rem">${esc(e.text)}</div>
+        <div style="font-size:.85rem;color:var(--text-2);white-space:pre-wrap">${esc(e.answer)}</div>
+      </div>`).join(''):'<div class="empty-state" style="padding:1.2rem"><i class="fas fa-book"></i><p>Nenhuma reflexão encontrada</p></div>';
+    wrap.innerHTML=`
+      <div class="card" style="padding:.8rem">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+          <input id="reflexao-hist-search" type="text" placeholder="Pesquisar..." style="flex:1;min-width:120px" value="${esc(search)}">
+          <select id="reflexao-hist-period" style="width:auto">
+            <option value="all" ${period==='all'?'selected':''}>Todo período</option>
+            <option value="7" ${period==='7'?'selected':''}>7 dias</option>
+            <option value="30" ${period==='30'?'selected':''}>30 dias</option>
+            <option value="90" ${period==='90'?'selected':''}>90 dias</option>
+          </select>
+          <select id="reflexao-hist-order" style="width:auto">
+            <option value="desc" ${order==='desc'?'selected':''}>Mais recentes</option>
+            <option value="asc" ${order==='asc'?'selected':''}>Mais antigas</option>
+          </select>
+        </div>
+      </div>
+      ${listHtml}`;
+    q('reflexao-hist-search').addEventListener('input', debounce(()=>this.renderReflexaoHistorico(),300));
+    q('reflexao-hist-period').addEventListener('change',()=>this.renderReflexaoHistorico());
+    q('reflexao-hist-order').addEventListener('change',()=>this.renderReflexaoHistorico());
+  },
+
+  editCustomQuestion(id){
+    const item=loadCustomQuestions().find(x=>x.id===id); if(!item) return;
+    q('question-emoji').value=item.icon||'💭'; q('question-text-input').value=item.text||'';
+    q('question-modal').dataset.editing=id;
+    const title=q('question-modal').querySelector('.modal-header h3');
+    if(title) title.innerHTML='<i class="fas fa-pen" style="color:var(--primary);margin-right:.4rem"></i>Editar Pergunta';
+    const saveBtn=q('btn-save-question');
+    if(saveBtn) saveBtn.innerHTML='<i class="fas fa-check"></i> Salvar';
+    q('question-modal').classList.add('active');
+  },
+
+  finalizarReflexao(){
+    const saved=this.loadQuestionAnswers(), all=getAllQuestions();
+    const isSunday=new Date().getDay()===0;
+    const shown=(_qShowAll||isSunday)?all:getTodayQuestionSet(all);
+    const qasFull=shown.filter(it=>saved[it.id]&&saved[it.id].trim()).map(it=>({id:it.id,icon:it.icon,text:it.text,answer:saved[it.id]}));
+    if(!qasFull.length){ showToast('Responda pelo menos uma pergunta antes de finalizar','error'); return; }
+    const isNew=jornadaRegistrarReflexao(qasFull.map(({id,...rest})=>rest));
+    logReflexaoAnswers(qasFull);
+    addXp(8);
+    showToast(isNew?'🧠 Reflexão registrada na Jornada! +8 XP':'Reflexão de hoje atualizada','success');
+    if(typeof renderJornada==='function') renderJornada();
+    this.showReflexaoConcluida();
+  },
+
+  showReflexaoConcluida(){
+    let modal=q('reflexao-concluida-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='reflexao-concluida-modal';
+      modal.className='modal';
+      modal.innerHTML=`<div class="modal-content" style="text-align:center;padding:2rem 1.5rem">
+        <div style="font-size:2.6rem;margin-bottom:.5rem;animation:reflexaoPop .5s ease">✨</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin-bottom:.4rem">Reflexão concluída.</div>
+        <div style="font-size:.85rem;color:var(--text-3);margin-bottom:1.2rem">Conhecer a si mesmo é o primeiro passo para evoluir.</div>
+        <button class="btn btn-primary btn-block" onclick="closeModal('reflexao-concluida-modal')">Continuar</button>
+      </div>`;
+      document.body.appendChild(modal);
+      if(!q('reflexao-pop-style')){
+        const st=document.createElement('style'); st.id='reflexao-pop-style';
+        st.textContent='@keyframes reflexaoPop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}';
+        document.head.appendChild(st);
+      }
+    }
+    modal.classList.add('active');
+    setTimeout(()=>modal.classList.remove('active'), 3200);
   },
 
   saveAnswer(questionId, silent){
@@ -3855,8 +4082,21 @@ q('fin-goal-save').addEventListener('click',()=>app.saveFinGoal());
 // Questione-se
 q('btn-add-question').addEventListener('click',()=>{
   q('question-emoji').value='💭'; q('question-text-input').value='';
+  delete q('question-modal').dataset.editing;
+  const title=q('question-modal').querySelector('.modal-header h3');
+  if(title) title.innerHTML='<i class="fas fa-search" style="color:var(--primary);margin-right:.4rem"></i>Nova Pergunta';
+  const saveBtn=q('btn-save-question');
+  if(saveBtn) saveBtn.innerHTML='<i class="fas fa-check"></i> Adicionar';
   q('question-modal').classList.add('active');
 });
+if(q('questione-ver-todas')) q('questione-ver-todas').addEventListener('click',()=>{ _qShowAll=!_qShowAll; app.renderQuestions(); });
+if(q('questione-ver-historico')) q('questione-ver-historico').addEventListener('click',()=>{
+  const listEl=q('questions-list'), histEl=q('reflexao-historico'), toggle=q('questione-ver-historico');
+  const showingHist=histEl.style.display!=='none';
+  if(showingHist){ histEl.style.display='none'; listEl.style.display=''; toggle.innerHTML='<i class="fas fa-clock-rotate-left"></i> Ver histórico'; }
+  else{ listEl.style.display='none'; histEl.style.display=''; toggle.innerHTML='<i class="fas fa-arrow-left"></i> Voltar às perguntas'; app.renderReflexaoHistorico(); }
+});
+if(q('btn-finalizar-reflexao')) q('btn-finalizar-reflexao').addEventListener('click',()=>app.finalizarReflexao());
 document.querySelectorAll('.emoji-opt').forEach(el=>{
   el.addEventListener('click',()=>{
     document.querySelectorAll('.emoji-opt').forEach(e=>e.style.borderColor='transparent');
@@ -3867,12 +4107,20 @@ document.querySelectorAll('.emoji-opt').forEach(el=>{
 q('btn-save-question').addEventListener('click',()=>{
   const text=q('question-text-input').value.trim();
   if(!text){ showToast('Digite sua pergunta','error'); return; }
+  const editingId=q('question-modal').dataset.editing;
   const customs=loadCustomQuestions();
-  customs.push({id:'cq-'+Date.now(),icon:q('question-emoji').value||'💭',text});
+  let nq;
+  if(editingId){
+    const idx=customs.findIndex(c=>c.id===editingId);
+    if(idx>=0){ customs[idx]={...customs[idx],icon:q('question-emoji').value||'💭',text}; nq=customs[idx]; }
+  } else {
+    nq={id:'cq-'+Date.now(),icon:q('question-emoji').value||'💭',text};
+    customs.push(nq);
+  }
   saveCustomQuestions(customs); app.renderQuestions();
-  closeModal('question-modal'); showToast('Pergunta adicionada! 🔮','success');
-  if(app.state.user&&!app.state.user.local){
-    const nq=customs[customs.length-1];
+  delete q('question-modal').dataset.editing;
+  closeModal('question-modal'); showToast(editingId?'Pergunta atualizada! ✅':'Pergunta adicionada! 🔮','success');
+  if(app.state.user&&!app.state.user.local && nq){
     window.supabaseClient.from('questione_custom').upsert([{
       id:nq.id, user_id:app.state.user.id, icon:nq.icon||'💭', text:nq.text,
       created_at:new Date().toISOString()
@@ -4501,6 +4749,12 @@ const RealtimeManager = (() => {
       <button class="share-tpl"        data-t="apple"     onclick="sm_setTpl('apple',this)">Apple</button>
     </div>
 
+    <!-- Formato: Stories (9:16) ou Feed (4:5) -->
+    <div class="share-tpl-bar" style="margin-top:-.3rem">
+      <button class="share-fmt active" data-f="stories" onclick="sm_setFormat('stories',this)"><i class="fas fa-mobile-alt"></i> Stories</button>
+      <button class="share-fmt" data-f="feed" onclick="sm_setFormat('feed',this)"><i class="fas fa-th-large"></i> Feed</button>
+    </div>
+
     <!-- Photo controls -->
     <div class="share-photo-bar">
       <button class="share-photo-btn" onclick="sm_pickPhoto('camera')"><i class="fas fa-camera"></i> Câmera</button>
@@ -4523,7 +4777,7 @@ const RealtimeManager = (() => {
     </div>
 
     <!-- Canvas preview -->
-    <div id="share-canvas-wrap"><canvas id="share-canvas" width="1080" height="1920"></canvas></div>
+    <div id="share-canvas-wrap"><div class="sm-crop-box" id="sm-crop-box"><canvas id="share-canvas" width="1080" height="1920"></canvas></div></div>
 
     <!-- Actions -->
     <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
@@ -4541,25 +4795,25 @@ const RealtimeManager = (() => {
 const TUTORIAL_STEPS = [
   {
     icon:'⚡', title:'Bem-vindo ao Produtiv.me!',
-    desc:'Vou mostrar rapidamente como usar o sistema para organizar sua vida, desenvolver disciplina e alcançar seus objetivos.',
+    desc:'Vou te mostrar rapidamente como o sistema funciona hoje, para você organizar sua vida, desenvolver disciplina e acompanhar sua evolução de verdade.',
     target: null, nav: 'dashboard',
     btns: [{label:'Começar', action:'next', cls:'btn-primary'}, {label:'Pular', action:'skip', cls:'btn-ghost'}]
   },
   {
-    icon:'📋', title:'Rotina — Tarefas do Dia',
-    desc:'Organize tudo o que precisa fazer durante o dia. Adicione, priorize e marque como concluído.',
+    icon:'☀️', title:'Entrada Diária',
+    desc:'Todo dia começa por aqui: streak, humor, missão do dia e sua recompensa. É o primeiro passo antes de qualquer outra coisa.',
+    target: '#daily-entry-btn-wrap', nav: 'dashboard',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'📋', title:'Rotina',
+    desc:'Organize suas tarefas do dia. Defina prioridade, categoria e até dias da semana para tarefas que se repetem.',
     target: '#routine-tasks-list', nav: 'dashboard',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
-    icon:'🏆', title:'XP e Evolução',
-    desc:'Ganhe XP completando tarefas e hábitos, suba de nível e desbloqueie conquistas especiais.',
-    target: '.xp-bar-wrapper', nav: 'dashboard',
-    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
-  },
-  {
-    icon:'🎯', title:'Metas e Hábitos',
-    desc:'Defina objetivos claros, acompanhe sua evolução e construa hábitos diários consistentes.',
+    icon:'🎯', title:'Metas',
+    desc:'Defina objetivos claros, acompanhe o progresso de cada um e construa hábitos diários consistentes.',
     target: '[data-screen="metas"]', nav: 'metas',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
@@ -4570,32 +4824,38 @@ const TUTORIAL_STEPS = [
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
-    icon:'🧠', title:'Mental — Como você está hoje?',
-    desc:'Registre seu humor e responda perguntas diárias para cuidar da sua saúde mental.',
+    icon:'🧭', title:'Jornada',
+    desc:'Sua história de evolução: linha do tempo, momentos marcantes, resumo e conquistas — tudo registrado automaticamente.',
+    target: '[data-screen="jornada"]', nav: 'jornada',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'🧠', title:'Sua Mente',
+    desc:'Registre seu humor, mantenha um diário de reflexão e use o Refletir — perguntas que ajudam você a enxergar sua própria evolução.',
     target: '[data-screen="mental"]', nav: 'mental',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
     icon:'💬', title:'Frases Motivacionais',
-    desc:'Encontre e salve frases que te inspiram. Adicione suas próprias frases favoritas.',
+    desc:'Encontre e salve frases que te inspiram, ou adicione suas próprias frases favoritas.',
     target: '[data-screen="frases"]', nav: 'frases',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
-    icon:'🔍', title:'Refletir — Questione-se',
-    desc:'Responda perguntas do dia sobre você mesmo. O autoconhecimento é o primeiro passo para evoluir.',
-    target: '[data-screen="questione"]', nav: 'questione',
+    icon:'📤', title:'Compartilhamentos',
+    desc:'Transforme suas conquistas em posts prontos para o Instagram. Tudo o que você compartilhar fica salvo aqui, como um perfil da sua evolução.',
+    target: '#jornada-shares', nav: 'jornada',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
-    icon:'📊', title:'Análise — Relatórios',
-    desc:'Veja gráficos e relatórios da sua evolução. Entenda seus padrões e melhore sempre.',
-    target: '[data-screen="analytics"]', nav: 'analytics',
+    icon:'👑', title:'XP, Patentes e Medalhas',
+    desc:'Ganhe XP completando tarefas e hábitos, suba de patente com Pontos de Consistência e desbloqueie medalhas especiais pelo caminho.',
+    target: '.xp-bar-wrapper', nav: 'dashboard',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
     icon:'📱', title:'Instale o app!',
-    desc:'Tenha o produtiv.me sempre à mão, com acesso rápido direto da tela inicial.',
+    desc:'Tenha o Produtiv.me sempre à mão, com acesso rápido direto da tela inicial do seu celular ou computador.',
     target: null, nav: 'dashboard', install: true,
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
@@ -5068,23 +5328,94 @@ function abrirModalLigas(){
 }
 window.abrirModalLigas = abrirModalLigas;
 
-/* ══ DESAFIOS DIÁRIOS ══ */
+/* ══ DESAFIOS DIÁRIOS — Banco personalizado baseado nos dados reais do usuário ══ */
 function loadChallenge(){ try{ return JSON.parse(localStorage.getItem(DAILY_CHALLENGE_KEY)||'{}'); }catch(e){ return {}; } }
 function saveChallenge(d){ localStorage.setItem(DAILY_CHALLENGE_KEY, JSON.stringify(d)); }
+
+// Monta o "retrato" do usuário hoje, usado para decidir quais desafios fazem sentido
+function _chBuildContext(){
+  const hoje = todayKey();
+  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
+  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
+  const habsHoje = habs; // hábitos não têm agenda por dia da semana — todos valem hoje
+  const ci = typeof loadCheckin === 'function' ? loadCheckin() : {};
+  const goals = (window.app?.state?.data?.goals || []);
+  const g = typeof loadGamify === 'function' ? loadGamify() : {};
+  const streak = typeof window.app?.computeStreak === 'function' ? window.app.computeStreak() : 0;
+  const maxStreak = g.records?.maxStreak || 0;
+  const entradaDiariaFeita = localStorage.getItem('pm18_daily_btn_v1') === hoje;
+  const shares = typeof loadJShares === 'function' ? loadJShares() : [];
+  const diasDesdeUltimoShare = shares.length ? Math.floor((Date.now()-new Date(shares[0].ts).getTime())/86400000) : 999;
+  const jornadaHoje = (typeof loadJornada === 'function' ? loadJornada() : []).filter(e=>e.ts.startsWith(hoje));
+  const reflexaoFeita = jornadaHoje.some(e=>e.type==='reflexao');
+  const medalhaHoje = jornadaHoje.find(e=>e.type==='conquista'||e.type==='patente');
+  const metaProxima = [...goals].filter(gl=>(gl.progress||0)>=60 && (gl.progress||0)<100).sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
+  return {hoje,tarefasHoje,habs,habsHoje,ci,goals,g,streak,maxStreak,entradaDiariaFeita,shares,diasDesdeUltimoShare,reflexaoFeita,medalhaHoje,metaProxima};
+}
+
+// Cada entrada: condição (quando esse desafio faz sentido) + construção (texto/meta usando dados reais)
+const CHALLENGE_BANK = [
+  { type:'tarefas_pendentes', icon:'✅',
+    when:c=>c.tarefasHoje.length>0 && c.tarefasHoje.some(t=>!t.done),
+    build:c=>({label:`Conclua todas as ${c.tarefasHoje.length} tarefas planejadas para hoje`, meta:c.tarefasHoje.length}) },
+  { type:'meta_proxima', icon:'🎯',
+    when:c=>!!c.metaProxima,
+    build:c=>({label:`Dê mais um passo na sua meta de "${c.metaProxima.title}" (${c.metaProxima.progress}%)`, meta:100, metaId:c.metaProxima.id}) },
+  { type:'entrada_diaria', icon:'☀️',
+    when:c=>!c.entradaDiariaFeita,
+    build:()=>({label:'Complete sua Entrada Diária', meta:1}) },
+  { type:'reflexao', icon:'💭',
+    when:c=>!c.reflexaoFeita,
+    build:()=>({label:'Reserve 3 minutos para refletir sobre o seu dia', meta:1}) },
+  { type:'compartilhar_conquista', icon:'📤',
+    when:c=>c.diasDesdeUltimoShare>=3,
+    build:()=>({label:'Compartilhe uma conquista da sua Jornada', meta:1}) },
+  { type:'compartilhar_medalha', icon:'🏅',
+    when:c=>!!c.medalhaHoje,
+    build:c=>({label:`Compartilhe sua conquista: ${c.medalhaHoje.desc}`, meta:1}) },
+  { type:'manter_sequencia', icon:'🔥',
+    when:c=>c.streak>=1 && c.tarefasHoje.length>0,
+    build:c=>({label:`Mantenha sua sequência de ${c.streak} dias — conclua tudo hoje`, meta:c.tarefasHoje.length}) },
+  { type:'rotina_completa', icon:'📋',
+    when:c=>(c.tarefasHoje.length+c.habsHoje.length)>0 && (c.tarefasHoje.some(t=>!t.done) || c.habsHoje.length>0),
+    build:c=>({label:'Complete toda a sua rotina de hoje (tarefas + hábitos)', meta:c.tarefasHoje.length+c.habsHoje.length}) },
+  { type:'habitos', icon:'💪',
+    when:c=>c.habsHoje.length>0,
+    build:c=>({label:`Complete todos os ${c.habsHoje.length} hábitos de hoje`, meta:c.habsHoje.length}) },
+  { type:'humor', icon:'😊',
+    when:c=>c.ci.lastDay!==c.hoje,
+    build:()=>({label:'Registre seu humor do dia', meta:1}) },
+  { type:'dia_perfeito', icon:'🌟',
+    when:c=>c.tarefasHoje.length>0,
+    build:()=>({label:'Conquiste um Dia Perfeito hoje', meta:1}) },
+  { type:'bater_recorde', icon:'🏆',
+    when:c=>c.streak>0 && c.streak===c.maxStreak-1,
+    build:c=>({label:`Falta 1 dia para bater seu recorde de ${c.maxStreak} dias!`, meta:c.tarefasHoje.length||1}) },
+  { type:'ver_jornada', icon:'📖',
+    when:c=>c.streak>=3,
+    build:()=>({label:'Revise sua Jornada e veja o quanto você já evoluiu', meta:1}) },
+  { type:'atualizar_meta', icon:'📈',
+    when:c=>c.goals.length>0,
+    build:c=>({label:`Atualize o progresso de uma das suas ${c.goals.length} metas`, meta:1}) },
+  { type:'comparacao_semanal', icon:'📊',
+    when:c=>new Date().getDay()===1,
+    build:()=>({label:'Veja como foi sua evolução nesta semana', meta:1}) },
+  { type:'ver_patentes', icon:'👑',
+    when:c=>c.g.totalXp>0,
+    build:()=>({label:'Confira quantos pontos faltam para sua próxima patente', meta:1}) },
+];
 
 function generateDailyChallenge(){
   const hoje = todayKey();
   const ch = loadChallenge();
   if(ch.date === hoje) return ch; // já gerado hoje
-  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
-  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
-  const types = [];
-  if(tarefasHoje.length >= 3) types.push({type:'tarefas', meta:3, label:'Concluir 3 tarefas hoje', icon:'✅'});
-  if(tarefasHoje.length > 0) types.push({type:'humor', meta:1, label:'Registrar humor do dia', icon:'😊'});
-  if(habs.length > 0) types.push({type:'habitos', meta:habs.length, label:`Completar todos os ${habs.length} hábitos`, icon:'🔄'});
-  types.push({type:'dia_perfeito', meta:1, label:'Conquistar um Dia Perfeito', icon:'🌟'});
-  const chosen = types[Math.floor(Math.random() * types.length)] || types[0];
-  const novo = { date: hoje, ...chosen, progress: 0, done: false };
+  const ctx = _chBuildContext();
+  const applicable = CHALLENGE_BANK.filter(c=>{ try{ return c.when(ctx); }catch(e){ return false; } });
+  const pool = (applicable.length>1 ? applicable.filter(c=>c.type!==ch.type) : applicable); // evita repetir o de ontem se der
+  const escolhido = (pool.length?pool:applicable)[Math.floor(Math.random()*(pool.length?pool.length:applicable.length))]
+                    || CHALLENGE_BANK[0];
+  const built = escolhido.build(ctx);
+  const novo = { date: hoje, type: escolhido.type, icon: escolhido.icon, label: built.label, meta: built.meta, metaId: built.metaId||null, progress: 0, done: false };
   saveChallenge(novo);
   return novo;
 }
@@ -5093,18 +5424,41 @@ function updateDailyChallenge(){
   const hoje = todayKey();
   const ch = loadChallenge();
   if(ch.date !== hoje || ch.done) return;
-  const tarefasHoje = (window.app?.state?.data?.routines?.[hoje] || []);
-  const habs = typeof loadHabits === 'function' ? loadHabits() : [];
-  const ci = loadCheckin();
+  const ctx = _chBuildContext();
   let progress = 0;
-  if(ch.type === 'tarefas') progress = tarefasHoje.filter(t=>t.done).length;
-  else if(ch.type === 'humor') progress = ci.lastDay === hoje ? 1 : 0;
-  else if(ch.type === 'habitos') progress = habs.filter(h=>(h.days||[]).includes(hoje)).length;
-  else if(ch.type === 'dia_perfeito'){
-    const allTasks = tarefasHoje.length > 0 && tarefasHoje.every(t=>t.done);
-    const allHabs = habs.length > 0 && habs.every(h=>(h.days||[]).includes(hoje));
-    const humor = ci.lastDay === hoje;
-    progress = (allTasks && allHabs && humor) ? 1 : 0;
+  switch(ch.type){
+    case 'tarefas_pendentes':
+    case 'manter_sequencia':
+    case 'bater_recorde':
+      progress = ctx.tarefasHoje.filter(t=>t.done).length; break;
+    case 'rotina_completa':
+      progress = ctx.tarefasHoje.filter(t=>t.done).length + ctx.habsHoje.filter(h=>(h.days||[]).includes(hoje)).length;
+      break;
+    case 'habitos':
+      progress = ctx.habsHoje.filter(h=>(h.days||[]).includes(hoje)).length; break;
+    case 'meta_proxima': {
+      const gl = ctx.goals.find(x=>x.id===ch.metaId);
+      progress = gl ? (gl.progress||0) : ch.progress;
+      break; }
+    case 'entrada_diaria':
+      progress = ctx.entradaDiariaFeita ? 1 : 0; break;
+    case 'reflexao':
+      progress = ctx.reflexaoFeita ? 1 : 0; break;
+    case 'compartilhar_conquista':
+    case 'compartilhar_medalha':
+      progress = (ctx.shares[0] && ctx.shares[0].ts.startsWith(hoje)) ? 1 : 0; break;
+    case 'humor':
+      progress = ctx.ci.lastDay === hoje ? 1 : 0; break;
+    case 'dia_perfeito': {
+      const allTasks = ctx.tarefasHoje.length > 0 && ctx.tarefasHoje.every(t=>t.done);
+      const allHabs = ctx.habsHoje.length === 0 || ctx.habsHoje.every(h=>(h.days||[]).includes(hoje));
+      const humor = ctx.ci.lastDay === hoje;
+      progress = (allTasks && allHabs && humor) ? 1 : 0;
+      break; }
+    case 'ver_jornada': case 'atualizar_meta': case 'comparacao_semanal': case 'ver_patentes':
+      progress = ch.progress; break; // marcados manualmente ao abrir a tela (ver marcarDesafioVisual)
+    default:
+      progress = ch.progress;
   }
   ch.progress = Math.min(progress, ch.meta);
   if(ch.progress >= ch.meta && !ch.done){
@@ -5117,6 +5471,17 @@ function updateDailyChallenge(){
   }
   renderDesafioWidget();
 }
+
+// Alguns desafios (ver jornada, patentes, meta, comparação semanal) não têm um
+// "progresso" mensurável — são marcados como concluídos ao abrir a tela relacionada.
+function marcarDesafioVisual(tipos){
+  const hoje = todayKey();
+  const ch = loadChallenge();
+  if(ch.date !== hoje || ch.done || !tipos.includes(ch.type)) return;
+  ch.progress = ch.meta;
+  updateDailyChallenge();
+}
+window.marcarDesafioVisual = marcarDesafioVisual;
 
 function renderDesafioWidget(){
   const el = document.getElementById('desafio-widget');
@@ -5598,6 +5963,7 @@ function openShareModal(type='streak'){
 function closeShareModal(){
   document.getElementById('share-modal').classList.remove('active');
   window._shareTaskData=null;
+  window._shareMedalData=null;
 }
 
 function renderShareTypeButtons(){
@@ -5607,6 +5973,7 @@ function renderShareTypeButtons(){
     {id:'nivel', label:'🏆 Nível'},
     {id:'liga', label:'👑 Liga'},
     {id:'tarefa', label:'✅ Tarefa'},
+    {id:'medalha', label:'🏅 Medalha'},
     {id:'semanal', label:'📊 Semanal'},
     {id:'comp_semanal', label:'📅 Comparação Semanal'},
     {id:'comp_mensal', label:'📆 Comparação Mensal'},
@@ -5636,6 +6003,30 @@ function sm_setTpl(tpl,btn){
   sm_render();
 }
 window.sm_setTpl=sm_setTpl;
+
+// Stories (9:16, nativo do canvas) ou Feed (4:5) — o Feed é um recorte central
+// do mesmo canvas na hora de exportar/compartilhar, sem tocar no desenho.
+let _smFormat='stories';
+function sm_setFormat(fmt,btn){
+  _smFormat=fmt;
+  document.querySelectorAll('.share-fmt').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const box=document.getElementById('sm-crop-box');
+  if(box) box.classList.toggle('sm-feed', fmt==='feed');
+}
+window.sm_setFormat=sm_setFormat;
+
+// Retorna o canvas pronto para exportar: original (Stories) ou recortado 4:5 (Feed)
+function sm_getExportCanvas(){
+  const src=document.getElementById('share-canvas');
+  if(_smFormat!=='feed') return src;
+  const targetH=Math.round(src.width*5/4); // 1080 → 1350 (4:5)
+  const cropY=Math.round((src.height-targetH)/2);
+  const out=document.createElement('canvas');
+  out.width=src.width; out.height=targetH;
+  out.getContext('2d').drawImage(src,0,cropY,src.width,targetH,0,0,src.width,targetH);
+  return out;
+}
 
 // ── Photo picker ──
 function sm_pickPhoto(mode){ document.getElementById(mode==='camera'?'sm-f-camera':'sm-f-gallery')?.click(); }
@@ -5762,6 +6153,19 @@ function sm_buildContent(type){
       {icon:'📁',label:'Categoria',val:t.focus?t.focus.charAt(0).toUpperCase()+t.focus.slice(1):'Geral'},
       {icon:'📅',label:'Data',val:new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})},
       {icon:'🔥',label:'Streak',val:`${streak} dias`},
+      {icon:'⚡',label:'XP',val:g.totalXp||0},
+    ],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type};
+  }
+  if(type==='medalha'){
+    let m=window._shareMedalData;
+    if(!m){
+      // Aberto direto pelo Studio → usa a medalha mais recente conquistada
+      const earned=(g.medals||[]);
+      m=MEDALS.find(x=>x.id===earned[earned.length-1]) || {icon:'🏅',name:'Nenhuma medalha ainda',desc:'Continue evoluindo para desbloquear'};
+    }
+    return {kind:'stats',title:m.name,icon:m.icon,rows:[
+      {icon:'📝',label:'Descrição',val:m.desc},
+      {icon:'📅',label:'Data',val:new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})},
       {icon:'⚡',label:'XP',val:g.totalXp||0},
     ],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type};
   }
@@ -5930,7 +6334,7 @@ function sm_render(){ generateShareCard(_shareType); }
 
 
 async function doShare(){
-  const canvas = document.getElementById('share-canvas');
+  const canvas = sm_getExportCanvas();
 
   // Gerar thumbnail 200px para a Jornada antes de compartilhar
   const thumbCanvas = document.createElement('canvas');
@@ -5999,7 +6403,7 @@ function _askSaveJornada(thumbB64){
 
 function _confirmSaveJornada(type, encodedDesc){
   const desc = decodeURIComponent(encodedDesc);
-  const canvas = document.getElementById('share-canvas');
+  const canvas = sm_getExportCanvas();
   // Capturar thumbnail (grid) e versão maior (visualização completa) do canvas
   const thumbCanvas = document.createElement('canvas');
   thumbCanvas.width = 200; thumbCanvas.height = Math.round(200*(canvas.height/canvas.width));
@@ -6021,7 +6425,7 @@ function _confirmSaveJornada(type, encodedDesc){
 window._confirmSaveJornada = _confirmSaveJornada;
 
 function downloadShareImage(){
-  const canvas=document.getElementById('share-canvas');
+  const canvas=sm_getExportCanvas();
   const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
   a.download='produtivme-'+_shareType+'.png'; a.click();
   showToast('📥 Imagem baixada!','success');
@@ -6117,12 +6521,13 @@ function checkAutoShare_Streak(streak){
   }
 }
 
-function checkAutoShare_Medal(medalName){
-  showAutoSharePopup('nivel',
+function checkAutoShare_Medal(medal){
+  window._shareMedalData = medal;
+  showAutoSharePopup('medalha',
     `🏅 Medalha conquistada!`,
-    `"${medalName}" desbloqueada! Compartilhar no Instagram?`
+    `"${medal.name}" desbloqueada! Compartilhar no Instagram?`
   );
-  if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('conquista',`🏅 Medalha: ${medalName}`);
+  if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('conquista',`🏅 Medalha: ${medal.name}`);
 }
 
 // Sobrescreve generateShareCard para usar frase rotativa
@@ -6407,6 +6812,51 @@ function _jSnapshotHoje(){
   };
 }
 
+// ── Reflexão (área Refletir) ──────────────────────────────────────────────
+// O texto completo de perguntas/respostas fica só local (mesmo padrão das
+// fotos de eventos, que também não sincronizam entre aparelhos); só o
+// resumo ("🧠 Reflexão registrada") entra na Jornada e sincroniza normalmente.
+const REFLEXAO_PAYLOAD_KEY='pm18_reflexao_payload_v1';
+function _loadReflexaoPayloads(){ try{ return JSON.parse(localStorage.getItem(REFLEXAO_PAYLOAD_KEY)||'{}'); }catch(e){ return {}; } }
+function _saveReflexaoPayloads(m){ localStorage.setItem(REFLEXAO_PAYLOAD_KEY, JSON.stringify(m)); }
+
+function jornadaRegistrarReflexao(qas){
+  const hoje=todayKey();
+  const evs=loadJornada();
+  const payloads=_loadReflexaoPayloads();
+  const existing=evs.find(e=>e.type==='reflexao'&&e.ts.startsWith(hoje));
+  if(existing){
+    payloads[existing.id]=qas; _saveReflexaoPayloads(payloads);
+    return false; // já existia — só atualizou
+  }
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const ev={id,type:'reflexao',desc:'🧠 Reflexão registrada',ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,hasReflexao:true,auto:true};
+  evs.unshift(ev); saveJornada(evs);
+  payloads[id]=qas; _saveReflexaoPayloads(payloads);
+  if(typeof saveJornadaEventRemote==='function') saveJornadaEventRemote(ev);
+  return true; // novo registro
+}
+window.jornadaRegistrarReflexao=jornadaRegistrarReflexao;
+
+function jornadaVerReflexao(id){
+  const qas=_loadReflexaoPayloads()[id];
+  if(!qas || !qas.length){ showToast('Detalhes dessa reflexão não estão disponíveis neste aparelho','default'); return; }
+  const html=qas.map(item=>`
+    <div class="task-sheet-row" style="display:block">
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.3rem">${item.icon} ${_jEsc(item.text)}</div>
+      <div class="task-sheet-row-val" style="color:var(--text-2)">${_jEsc(item.answer)}</div>
+    </div>`).join('');
+  q('task-sheet-content').innerHTML=`
+    <div class="task-sheet-handle"></div>
+    <div class="task-sheet-title">🧠 Reflexão</div>
+    <div style="margin-top:.6rem">${html}</div>`;
+  q('task-sheet-overlay').classList.add('active');
+}
+window.jornadaVerReflexao=jornadaVerReflexao;
+
 function jornadaRegistrarShare(type,desc,thumb){
   const s=loadJShares();
   const isFirst=s.length===0;
@@ -6635,7 +7085,7 @@ async function _renderJornadaTimeline(filtroMes='all'){
         ${_jFmtDate(ev.ts)} · ${_jFmtTime(ev.ts)}
         ${ev.auto?'<span style="font-size:.62rem;color:var(--text-3);background:var(--surface4);padding:.05rem .35rem;border-radius:4px">auto</span>':''}
       </div>
-      <div class="jtl-title">${_jEsc(ev.desc)}</div>
+      <div class="jtl-title" ${ev.hasReflexao?`style="cursor:pointer;color:var(--primary)" onclick="jornadaVerReflexao('${_jEsc(ev.id)}')"`:''}>${_jEsc(ev.desc)}${ev.hasReflexao?' <i class="fas fa-chevron-right" style="font-size:.7rem"></i>':''}</div>
       <div class="jtl-meta">
         ${ev.streak?`<span class="badge" style="background:rgba(251,146,60,.1);color:var(--orange)">🔥 ${ev.streak} dias</span>`:''}
         ${ev.liga?`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">${_jEsc(ev.liga)}</span>`:''}
