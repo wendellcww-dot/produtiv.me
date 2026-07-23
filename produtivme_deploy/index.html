@@ -966,7 +966,12 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           </div>
           <button class="btn btn-primary btn-sm btn-block" id="btn-save-mood"><i class="fas fa-check"></i> Registrar Humor</button>
         </div>
-        <div class="card" style="background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));border-color:rgba(244,114,182,.18);cursor:pointer" onclick="navTo('questione')">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-book-open"></i>Diário de Reflexão</div>
+          <div id="psico-questions"></div>
+          <button class="btn btn-ghost btn-sm btn-block" id="btn-save-reflection" style="margin-top:.5rem"><i class="fas fa-save"></i> Salvar Reflexão</button>
+        </div>
+        <div class="card" id="refletir-entry-card" style="background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));border-color:rgba(244,114,182,.18);cursor:pointer" onclick="navTo('questione')">
           <div style="display:flex;align-items:center;gap:.8rem">
             <div style="font-size:1.8rem;flex-shrink:0">💭</div>
             <div style="flex:1">
@@ -975,11 +980,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             </div>
             <i class="fas fa-chevron-right" style="color:var(--text-3)"></i>
           </div>
-        </div>
-        <div class="card">
-          <div class="card-title"><i class="fas fa-book-open"></i>Diário de Reflexão</div>
-          <div id="psico-questions"></div>
-          <button class="btn btn-ghost btn-sm btn-block" id="btn-save-reflection" style="margin-top:.5rem"><i class="fas fa-save"></i> Salvar Reflexão</button>
         </div>
         <div class="card">
           <div class="card-title"><i class="fas fa-chart-line"></i>Histórico de Humor</div>
@@ -4831,8 +4831,14 @@ const TUTORIAL_STEPS = [
   },
   {
     icon:'🧠', title:'Sua Mente',
-    desc:'Registre seu humor, mantenha um diário de reflexão e use o Refletir — perguntas que ajudam você a enxergar sua própria evolução.',
+    desc:'Registre seu humor e mantenha um diário de reflexão diária.',
     target: '[data-screen="mental"]', nav: 'mental',
+    btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
+  },
+  {
+    icon:'💭', title:'Refletir',
+    desc:'Perguntas profundas que ajudam você a enxergar sua própria evolução. A cada semana o Domingo libera todas as perguntas para uma revisão completa.',
+    target: '#refletir-entry-card', nav: 'mental',
     btns: [{label:'Anterior', action:'prev', cls:'btn-ghost'}, {label:'Próximo', action:'next', cls:'btn-primary'}]
   },
   {
