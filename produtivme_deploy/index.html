@@ -971,7 +971,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div id="psico-questions"></div>
           <button class="btn btn-ghost btn-sm btn-block" id="btn-save-reflection" style="margin-top:.5rem"><i class="fas fa-save"></i> Salvar Reflexão</button>
         </div>
-        <div class="card" id="refletir-entry-card" style="background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));border-color:rgba(244,114,182,.18);cursor:pointer" onclick="navTo('questione')">
+        <div class="card" id="refletir-entry-card" style="background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));border-color:rgba(244,114,182,.18);cursor:pointer" onclick="abrirQuestione()">
           <div style="display:flex;align-items:center;gap:.8rem">
             <div style="font-size:1.8rem;flex-shrink:0">💭</div>
             <div style="flex:1">
@@ -989,6 +989,9 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 
       <!-- ══ QUESTIONE-SE ══ -->
       <div id="questione-screen" class="screen">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.7rem;cursor:pointer;color:var(--text-2);font-size:.85rem;font-weight:600" onclick="voltarDeQuestione()">
+          <i class="fas fa-arrow-left"></i> Voltar
+        </div>
         <div style="background:linear-gradient(135deg,rgba(244,114,182,.1),rgba(167,139,250,.07));border:1px solid rgba(244,114,182,.18);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;display:flex;gap:.9rem;align-items:flex-start">
           <div style="font-size:1.8rem;flex-shrink:0">💭</div>
           <div>
@@ -1746,6 +1749,19 @@ function hideLoading(){ q('loading-overlay').classList.remove('active'); }
 window.navTo = function(screen){
   const btn = document.querySelector(`.nav-item[data-screen="${screen}"]`);
   if(btn) btn.click();
+};
+
+// Refletir é uma subtela acessada pelo card em Sua Mente, sem item próprio
+// na barra inferior — por isso não pode usar navTo (que depende de um nav-item).
+window.abrirQuestione = function(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el = q('questione-screen');
+  if(el) el.classList.add('active');
+  if(window.app && typeof app.renderQuestions === 'function') app.renderQuestions();
+  window.scrollTo(0,0);
+};
+window.voltarDeQuestione = function(){
+  navTo('mental');
 };
 
 /* ══════════════════════════════════════
