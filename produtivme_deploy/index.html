@@ -126,6 +126,22 @@ main{padding:1rem 1rem 120px;max-width:720px;margin:0 auto}
 
 /* ── HERO CARD ── */
 .hero-card{background:linear-gradient(135deg,var(--primary-xdark) 0%,#312e81 50%,var(--ink3) 100%);border:1px solid rgba(167,139,250,0.28);position:relative;overflow:hidden}
+
+/* ── Frase do Dia ── */
+.frase-hero{background:linear-gradient(150deg,#4c1d95 0%,#6d28d9 45%,#312e81 100%);border:1px solid rgba(167,139,250,.32);border-radius:var(--radius-lg);padding:1.8rem 1.5rem 1.4rem;margin-bottom:.875rem;position:relative;overflow:hidden;text-align:center;box-shadow:0 12px 40px rgba(76,29,149,.35)}
+.frase-hero::before{content:'';position:absolute;top:-40%;right:-20%;width:70%;height:140%;background:radial-gradient(circle,rgba(255,255,255,.08),transparent 70%);pointer-events:none}
+.frase-hero-quote-icon{font-size:1.5rem;color:rgba(255,255,255,.35);margin-bottom:.4rem}
+.frase-hero-cat{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.14);border-radius:20px;padding:.2rem .7rem;margin-bottom:.85rem}
+.frase-hero-text{font-family:var(--font-display);font-size:1.18rem;font-weight:700;color:#fff;line-height:1.45;min-height:2.9em;animation:fraseIn .35s ease}
+.frase-hero-author{font-size:.78rem;color:rgba(255,255,255,.55);margin-top:.7rem}
+.frase-hero-author::before{content:'— '}
+.frase-hero-actions{display:flex;justify-content:center;gap:.6rem;margin-top:1.1rem}
+.frase-hero-btn{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:1rem;cursor:pointer;transition:all var(--t);display:flex;align-items:center;justify-content:center}
+.frase-hero-btn:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
+.frase-hero-btn.faved{background:#f472b6;border-color:#f472b6}
+@keyframes fraseIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.frase-card-fav-btn{background:none;border:none;cursor:pointer;color:var(--text-3);font-size:.9rem;padding:.2rem}
+.frase-card-fav-btn.faved{color:#f472b6}
 .hero-card::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;background:radial-gradient(circle,rgba(167,139,250,0.18) 0%,transparent 70%);pointer-events:none}
 .hero-card::after{content:'';position:absolute;bottom:-30px;left:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(244,114,182,0.10) 0%,transparent 70%);pointer-events:none}
 
@@ -1028,18 +1044,33 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 
       <!-- ══ FRASES ══ -->
       <div id="frases-screen" class="screen">
-        <div class="card hero-card" style="color:#fff;margin-bottom:.875rem">
-          <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;margin-bottom:.2rem">✨ Frases & Inspiração</div>
-          <div style="font-size:.82rem;color:rgba(255,255,255,.6)">Palavras que movem e transformam</div>
+        <div class="frase-hero" id="frase-hero-card">
+          <div class="frase-hero-quote-icon"><i class="fas fa-quote-left"></i></div>
+          <div class="frase-hero-cat" id="frase-hero-cat">Motivação</div>
+          <div class="frase-hero-text" id="frase-hero-text">Carregando...</div>
+          <div class="frase-hero-author" id="frase-hero-author"></div>
+          <div class="frase-hero-actions">
+            <button class="frase-hero-btn" id="btn-frase-fav" onclick="app.toggleHeroFraseFav()"><i class="far fa-heart"></i></button>
+            <button class="frase-hero-btn" onclick="app.shareFrase()"><i class="fas fa-paper-plane"></i></button>
+            <button class="frase-hero-btn" onclick="app.novaFraseAleatoria()"><i class="fas fa-dice"></i></button>
+          </div>
         </div>
+
         <div class="card" style="padding:.9rem">
+          <input id="frase-search" type="text" placeholder="🔍 Buscar frase por palavra-chave..." style="margin-bottom:.65rem">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
             <div style="display:flex;flex-wrap:wrap;gap:.35rem" id="frase-filters">
               <button class="btn btn-primary btn-sm frase-filter active" data-cat="all">Todas</button>
-              <button class="btn btn-ghost btn-sm frase-filter" data-cat="produtividade">Produtividade</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="fav"><i class="fas fa-heart" style="color:#f472b6"></i> Favoritas</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="motivacao">Motivação</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="disciplina">Disciplina</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="estudos">Estudos</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="trabalho">Trabalho</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="saude">Saúde</button>
               <button class="btn btn-ghost btn-sm frase-filter" data-cat="mentalidade">Mentalidade</button>
-              <button class="btn btn-ghost btn-sm frase-filter" data-cat="financas">Finanças</button>
-              <button class="btn btn-ghost btn-sm frase-filter" data-cat="vida">Vida</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="consistencia">Consistência</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="coragem">Coragem</button>
+              <button class="btn btn-ghost btn-sm frase-filter" data-cat="reflexao">Reflexão</button>
             </div>
             <button id="btn-nova-frase" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nova</button>
           </div>
@@ -1610,6 +1641,23 @@ function todayKey(){
 const TASK_RECUR_KEY='pm18_task_recurrence_v1';
 const TASK_RECUR_DONE_KEY='pm18_task_recurrence_done_v1';
 
+// ── "Lápides" de tarefas excluídas ──────────────────────────────────────────
+// Problema que isso resolve: exclui uma tarefa localmente, mas o DELETE no
+// Supabase é assíncrono; se uma sincronização (realtime ou periódica) buscar
+// os dados remotos ANTES desse delete terminar, a tarefa "ressuscitava"
+// porque o merge antigo substituía tudo pela última leitura remota.
+// Agora guardamos o id localmente por um tempo e barramos ele em qualquer
+// merge, não importa o que a leitura remota diga.
+const TASK_TOMBSTONE_KEY='pm18_task_tombstones_v1';
+function getTaskTombstones(){ try{ return JSON.parse(localStorage.getItem(TASK_TOMBSTONE_KEY)||'{}'); }catch(e){ return {}; } }
+function saveTaskTombstones(m){ localStorage.setItem(TASK_TOMBSTONE_KEY, JSON.stringify(m)); }
+function addTaskTombstone(id){ const m=getTaskTombstones(); m[id]=Date.now(); saveTaskTombstones(m); }
+function pruneTaskTombstones(){
+  const m=getTaskTombstones(), cutoff=Date.now()-30*86400000; let changed=false;
+  Object.keys(m).forEach(id=>{ if(m[id]<cutoff){ delete m[id]; changed=true; } });
+  if(changed) saveTaskTombstones(m);
+}
+
 function getRecurrenceMap(){ try{ return JSON.parse(localStorage.getItem(TASK_RECUR_KEY)||'{}'); }catch(e){ return {}; } }
 function saveRecurrenceMap(m){ localStorage.setItem(TASK_RECUR_KEY, JSON.stringify(m)); }
 function setTaskRecurrence(id, cfg){ const m=getRecurrenceMap(); m[id]=cfg; saveRecurrenceMap(m); }
@@ -1638,15 +1686,16 @@ async function upsertTaskWithRecurrence(payload, rec){
       data_fim: (rec&&rec.endDate)?rec.endDate:null
     };
     const {error}=await window.supabaseClient.from('tarefas').upsert([fullPayload]);
-    if(!error){ _recurColumnsAvailable=true; return; }
+    if(!error){ _recurColumnsAvailable=true; return true; }
     if(!isMissingColumnError(error)){
       offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload:fullPayload});
-      return;
+      return false;
     }
     _recurColumnsAvailable=false; // roda a migração SQL para sincronizar recorrência entre dispositivos
   }
   const {error}=await window.supabaseClient.from('tarefas').upsert([payload]);
-  if(error) offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload});
+  if(error){ offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload}); return false; }
+  return true;
 }
 async function syncRecurringDoneRemote(taskId){
   const user=window.app?.state?.user;
@@ -1856,13 +1905,13 @@ const offlineQueue = {
 
         else if(a.type==='upsert_goal'){
           await window.supabaseClient
-            .from('goals')
+            .from('metas')
             .upsert([a.payload],{onConflict:'id'});
         }
 
         else if(a.type==='delete_goal'){
           await window.supabaseClient
-            .from('goals')
+            .from('metas')
             .delete()
             .eq('id',a.id)
             .eq('user_id',a.user_id);
@@ -2059,23 +2108,155 @@ const MOTIVATIONS = [
    FRASES DATA
 ══════════════════════════════════════ */
 const FRASES_KEY = 'pm18_frases_v1';
+const FRASE_CATS = [
+  {id:'motivacao',    label:'Motivação',    icon:'🔥'},
+  {id:'disciplina',   label:'Disciplina',   icon:'🎯'},
+  {id:'estudos',      label:'Estudos',      icon:'📚'},
+  {id:'trabalho',     label:'Trabalho',     icon:'💼'},
+  {id:'saude',        label:'Saúde',        icon:'🌿'},
+  {id:'mentalidade',  label:'Mentalidade',  icon:'🧠'},
+  {id:'consistencia', label:'Consistência', icon:'🔁'},
+  {id:'coragem',      label:'Coragem',      icon:'🦁'},
+  {id:'reflexao',     label:'Reflexão',     icon:'💭'},
+];
 const FRASES_DEFAULT = [
-  {id:'f1',text:'A disciplina é a ponte entre metas e realizações.',author:'Jim Rohn',cat:'produtividade'},
-  {id:'f2',text:'Não espere. Nunca haverá um momento perfeito.',author:'Napoleon Hill',cat:'mentalidade'},
-  {id:'f3',text:'Você não precisa ser grande para começar, mas precisa começar para ser grande.',author:'Zig Ziglar',cat:'produtividade'},
-  {id:'f4',text:'O sucesso é a soma de pequenos esforços repetidos dia após dia.',author:'Robert Collier',cat:'produtividade'},
-  {id:'f5',text:'Dinheiro é um amplificador de caráter.',author:'Warren Buffett',cat:'financas'},
-  {id:'f6',text:'Gaste menos do que você ganha. Invista a diferença.',author:'David Bach',cat:'financas'},
-  {id:'f7',text:'A maior riqueza é a saúde.',author:'Virgílio',cat:'vida'},
-  {id:'f8',text:'Sua mente é um jardim. Seus pensamentos são as sementes.',author:'Desconhecido',cat:'mentalidade'},
-  {id:'f9',text:'Não é o quanto você ganha que importa, mas o quanto você guarda.',author:'Robert Kiyosaki',cat:'financas'},
-  {id:'f10',text:'A vida não é medida pelo número de respirações, mas pelos momentos que nos tiram o fôlego.',author:'Maya Angelou',cat:'vida'},
-  {id:'f11',text:'Foco é a chave. Concentre-se no que realmente importa.',author:'Bill Gates',cat:'produtividade'},
-  {id:'f12',text:'A mudança é dolorosa. Mas nada é tão doloroso quanto estar preso onde não pertence.',author:'Mandy Hale',cat:'mentalidade'},
+  // ── Motivação ──
+  {id:'f1',text:'A disciplina leva você para lugares onde a motivação nunca consegue chegar.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f2',text:'O futuro que você deseja está escondido nas escolhas que faz hoje.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f3',text:'A coragem começa quando você decide agir antes de se sentir pronto.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f4',text:'Você não precisa ser grande para começar, mas precisa começar para ser grande.',author:'Zig Ziglar',cat:'motivacao'},
+  {id:'f5',text:'Motivação te tira do lugar. Disciplina te mantém em movimento.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f6',text:'Não espere. Nunca haverá um momento perfeito.',author:'Napoleon Hill',cat:'motivacao'},
+  {id:'f7',text:'A ação é o antídoto para o medo, a dúvida e a insegurança.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f8',text:'Cada tarefa concluída é uma prova de que você é capaz de mais do que imagina.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f9',text:'Grandes jornadas começam com passos que parecem pequenos demais para importar.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f10',text:'Você é a única pessoa que pode decidir começar agora.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f11',text:'Foco é a chave. Concentre-se no que realmente importa.',author:'Bill Gates',cat:'motivacao'},
+  // ── Disciplina ──
+  {id:'f12',text:'Consistência é continuar mesmo quando ninguém está vendo.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f13',text:'A disciplina é a ponte entre metas e realizações.',author:'Jim Rohn',cat:'disciplina'},
+  {id:'f14',text:'Você não precisa ser perfeito hoje. Precisa apenas continuar amanhã.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f15',text:'Disciplina é escolher entre o que você quer agora e o que você quer mais.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f16',text:'O sucesso é a soma de pequenos esforços repetidos dia após dia.',author:'Robert Collier',cat:'disciplina'},
+  {id:'f17',text:'Rotina não é prisão. É a estrutura que sustenta sua liberdade futura.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f18',text:'Fazer o básico bem feito, todos os dias, é o que separa quem evolui de quem estagna.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f19',text:'O que você faz quando não tem vontade define quem você se torna.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f20',text:'Hábitos pequenos, mantidos por muito tempo, vencem esforços grandes feitos uma vez.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f21',text:'A liberdade que você busca amanhã está sendo construída pela disciplina de hoje.',author:'Produtiv.me',cat:'disciplina'},
+  {id:'f22',text:'Termine o que começou. Sua palavra com você mesmo vale mais do que parece.',author:'Produtiv.me',cat:'disciplina'},
+  // ── Estudos ──
+  {id:'f23',text:'O que você sabe que precisa aprender, mas continua adiando, é o que mais vai te transformar.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f24',text:'Conhecimento que não vira prática é apenas informação guardada.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f25',text:'Estudar é investir em uma versão sua que ainda não existe.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f26',text:'Quem aprende a continuar já venceu metade da batalha.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f27',text:'A dúvida de hoje é o conhecimento de amanhã, se você não desistir dela.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f28',text:'Ninguém nasce sabendo. Todos que você admira só começaram antes.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f29',text:'Estudar todos os dias, mesmo pouco, constrói mais do que maratonas raras.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f30',text:'O esforço de entender é o que separa quem decora de quem realmente sabe.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f31',text:'Cada página lida hoje é um degrau que você não vai precisar subir de novo amanhã.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f32',text:'A curiosidade é o combustível; a disciplina é o motor.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f33',text:'Investir em si mesmo é o único investimento que ninguém pode tirar de você.',author:'Produtiv.me',cat:'estudos'},
+  // ── Trabalho ──
+  {id:'f34',text:'Toda grande transformação começa com uma decisão pequena.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f35',text:'Trabalhe em silêncio. Deixe seus resultados fazerem o barulho.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f36',text:'O progresso silencioso ainda é progresso.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f37',text:'Excelência não é um ato, é uma prática repetida com intenção.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f38',text:'Faça hoje o que seu eu do futuro vai agradecer.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f39',text:'O trabalho bem feito hoje é a reputação que te abre portas amanhã.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f40',text:'Produtividade não é fazer mais coisas, é fazer as coisas certas.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f41',text:'Organize sua semana como se ela fosse decidir seu ano — porque ela decide.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f42',text:'Quem entrega com constância é lembrado. Quem entrega uma vez só é esquecido.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f43',text:'Um dia produtivo não é o mais cheio, é o mais intencional.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f44',text:'Termine o dia sabendo que fez sua parte. O resto não está sob seu controle.',author:'Produtiv.me',cat:'trabalho'},
+  // ── Saúde ──
+  {id:'f45',text:'Cuidar do corpo é a base para sustentar todos os seus outros objetivos.',author:'Produtiv.me',cat:'saude'},
+  {id:'f46',text:'A maior riqueza é a saúde.',author:'Virgílio',cat:'saude'},
+  {id:'f47',text:'Descansar também é produtividade — é o que permite continuar amanhã.',author:'Produtiv.me',cat:'saude'},
+  {id:'f48',text:'Você só tem um corpo. Trate-o como o investimento de longo prazo que ele é.',author:'Produtiv.me',cat:'saude'},
+  {id:'f49',text:'Energia é um recurso finito. Proteja a sua com o mesmo cuidado que protege seu tempo.',author:'Produtiv.me',cat:'saude'},
+  {id:'f50',text:'Dormir bem hoje é decidir ter um dia melhor amanhã.',author:'Produtiv.me',cat:'saude'},
+  {id:'f51',text:'Nenhuma meta vale mais do que a saúde que você precisa para alcançá-la.',author:'Produtiv.me',cat:'saude'},
+  {id:'f52',text:'Cuidar de si mesmo não é luxo, é manutenção necessária.',author:'Produtiv.me',cat:'saude'},
+  {id:'f53',text:'Pequenos cuidados diários evitam grandes colapsos futuros.',author:'Produtiv.me',cat:'saude'},
+  {id:'f54',text:'Seu corpo escuta cada palavra que sua mente diz sobre ele.',author:'Produtiv.me',cat:'saude'},
+  // ── Mentalidade ──
+  {id:'f55',text:'Sua mente é um jardim. Seus pensamentos são as sementes.',author:'Desconhecido',cat:'mentalidade'},
+  {id:'f56',text:'A mudança é dolorosa. Mas nada é tão doloroso quanto estar preso onde não pertence.',author:'Mandy Hale',cat:'mentalidade'},
+  {id:'f57',text:'Você se torna aquilo que repete para si mesmo todos os dias.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f58',text:'Mude a pergunta de "por que isso aconteceu comigo" para "o que eu faço com isso agora".',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f59',text:'A forma como você fala consigo mesmo constrói ou destrói tudo o que você tenta fazer.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f60',text:'Não é a situação que te define, é a forma como você escolhe responder a ela.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f61',text:'Uma mente treinada para crescer encontra oportunidade onde outros veem obstáculo.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f62',text:'Você não controla tudo que acontece, mas controla o significado que dá a isso.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f63',text:'Trocar "eu não consigo" por "eu ainda não consigo" muda tudo.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f64',text:'A mentalidade certa transforma obstáculos em dados, não em desculpas.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f65',text:'Dinheiro é um amplificador de caráter.',author:'Warren Buffett',cat:'mentalidade'},
+  // ── Consistência ──
+  {id:'f66',text:'Pequenas ações repetidas todos os dias constroem resultados gigantes.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f67',text:'Seu eu de daqui a um ano está observando as decisões que você toma hoje.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f68',text:'Não é sobre intensidade, é sobre frequência.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f69',text:'O que você faz uma vez é sorte. O que você faz sempre é identidade.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f70',text:'Streaks não medem perfeição, medem compromisso.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f71',text:'A constância transforma esforço em resultado, e resultado em confiança.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f72',text:'Voltar depois de falhar um dia é mais importante do que nunca ter falhado.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f73',text:'Cada dia que você aparece é um voto para a pessoa que está se tornando.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f74',text:'A régua não é comparar com os outros. É não repetir o dia de ontem.',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f75',text:'Resultados extraordinários vêm de rotinas ordinárias mantidas com teimosia.',author:'Produtiv.me',cat:'consistencia'},
+  // ── Coragem ──
+  {id:'f76',text:'A coragem não é a ausência de medo, é agir apesar dele.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f77',text:'Em qual área da sua vida você está sendo covarde? Comece por ela.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f78',text:'A zona de conforto é confortável até você perceber quanto ela está te custando.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f79',text:'Toda conversa difícil adiada é um peso que você carrega em dobro.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f80',text:'Decidir é o ato mais corajoso que existe, porque fecha todas as outras portas.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f81',text:'Quem tem coragem de começar de novo nunca está realmente atrasado.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f82',text:'O medo de errar já é, sozinho, o maior erro possível: não tentar.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f83',text:'Ser visto tentando é mais corajoso do que parecer que nunca precisou tentar.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f84',text:'O que você faria se soubesse que não poderia falhar?',author:'Produtiv.me',cat:'coragem'},
+  {id:'f85',text:'Coragem é dar o próximo passo mesmo sem ver a escada inteira.',author:'Produtiv.me',cat:'coragem'},
+  // ── Reflexão ──
+  {id:'f86',text:'O que você está tolerando hoje que deveria mudar?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f87',text:'O que você precisa parar de adiar?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f88',text:'Qual decisão você está evitando tomar?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f89',text:'Se você não mudar hoje, como estará sua vida em 1 ano?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f90',text:'Qual é o próximo passo que você já sabe que precisa dar?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f91',text:'Qual hábito está sabotando seu crescimento?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f92',text:'Qual ação de hoje seria um presente para o seu eu de amanhã?',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f93',text:'A vida não é medida pelo número de respirações, mas pelos momentos que nos tiram o fôlego.',author:'Maya Angelou',cat:'reflexao'},
+  {id:'f94',text:'Nem todo dia precisa ser perfeito. Só precisa ser um dia em que você não desistiu.',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f95',text:'Pare por um minuto. Pergunte a si mesmo se está indo na direção que escolheu.',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f96',text:'Evolução não é um destino, é a soma de todas as vezes que você escolheu continuar.',author:'Produtiv.me',cat:'reflexao'},
+  {id:'f97',text:'Você não controla o resultado, mas controla o esforço. Comece por aí.',author:'Produtiv.me',cat:'motivacao'},
+  {id:'f98',text:'A melhor hora para começar já passou. A segunda melhor hora é agora.',author:'Provérbio chinês',cat:'disciplina'},
+  {id:'f99',text:'Aprender é o único hábito que se paga em todas as áreas da vida ao mesmo tempo.',author:'Produtiv.me',cat:'estudos'},
+  {id:'f100',text:'Feito é melhor que perfeito, quando perfeito significa nunca entregar.',author:'Produtiv.me',cat:'trabalho'},
+  {id:'f101',text:'Sua energia de hoje é o presente que você dá ao seu eu de amanhã.',author:'Produtiv.me',cat:'saude'},
+  {id:'f102',text:'Você não precisa acreditar em si mesmo o tempo todo. Precisa só agir como se acreditasse.',author:'Produtiv.me',cat:'mentalidade'},
+  {id:'f103',text:'A régua de hoje é simples: fez melhor do que ontem?',author:'Produtiv.me',cat:'consistencia'},
+  {id:'f104',text:'Coragem não elimina o medo. Ela só decide não deixá-lo dirigir.',author:'Produtiv.me',cat:'coragem'},
+  {id:'f105',text:'Antes de mudar o mundo, pergunte o que precisa mudar em você.',author:'Produtiv.me',cat:'reflexao'},
 ];
 function loadCustomFrases(){ try{ return JSON.parse(localStorage.getItem(FRASES_KEY)||'[]'); }catch(e){ return []; } }
 function saveCustomFrases(l){ localStorage.setItem(FRASES_KEY, JSON.stringify(l)); }
 function getAllFrases(){ return [...FRASES_DEFAULT,...loadCustomFrases()]; }
+
+// ── Favoritas ──
+const FRASE_FAV_KEY = 'pm18_frase_favs_v1';
+function loadFraseFavs(){ try{ return JSON.parse(localStorage.getItem(FRASE_FAV_KEY)||'[]'); }catch(e){ return []; } }
+function saveFraseFavs(l){ localStorage.setItem(FRASE_FAV_KEY, JSON.stringify(l)); }
+function toggleFraseFav(id){
+  const favs=loadFraseFavs();
+  const idx=favs.indexOf(id);
+  if(idx===-1) favs.push(id); else favs.splice(idx,1);
+  saveFraseFavs(favs);
+  return idx===-1; // true = acabou de favoritar
+}
+
+// ── Frase do dia (rotação determinística — muda todo dia, igual pra quem abrir no mesmo dia) ──
+function getFraseDoDia(){
+  const all=getAllFrases(); if(!all.length) return null;
+  const dayOfYear=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0).getTime())/86400000);
+  return all[dayOfYear % all.length];
+}
 
 
 const QUESTIONS = [
@@ -2132,6 +2313,8 @@ function _seededShuffle(arr, seed){
 // frequência e evitando repetir as mesmas perguntas de ontem. Domingo: todas ficam
 // disponíveis (tratado direto em renderQuestions).
 let _qShowAll=false;
+let _fraseCurCat='all';
+let _fraseHeroAtual=null;
 function getTodayQuestionSet(all){
   if(!all.length) return [];
   const log=loadReflexaoLog();
@@ -2630,48 +2813,66 @@ _isSyncing: false,
     if(!this.state.user||this.state.user.local) return;
     const {data,error}=await window.supabaseClient.from('tarefas').select('*').eq('user_id',this.state.user.id);
     if(error||!data) return;
-    // Rebuild routines sem duplicar
+    pruneTaskTombstones();
+    const tombstones=getTaskTombstones();
+
+    // Ponto de partida: o estado local atual (nunca joga fora tarefas locais
+    // que ainda não confirmaram sincronização remota — isso é o que causava
+    // duplicação: tarefa criada offline "sumia" da tela e a pessoa criava de novo).
+    const oldRoutines=this.state.data.routines||{};
+    const byId={};
+    Object.keys(oldRoutines).forEach(dk=>{
+      (oldRoutines[dk]||[]).forEach(t=>{ byId[t.id]={task:t,dateKey:dk}; });
+    });
+
+    const newRecMap={}; const newDoneMap={};
+    const remoteIds=new Set();
+
+    data.forEach(t=>{
+      remoteIds.add(t.id);
+      if(tombstones[t.id]) return; // exclusão local pendente/recente — ignora o que vier do servidor
+      const dk=t.date_key||todayKey();
+      const remoteTask={
+        id:t.id, title:t.title, description:t.description||'',
+        priority:t.priority||'media', focus:t.focus||'',
+        done:!!t.done, estimateMin:t.estimate_min||30,
+        linkedGoalId:t.goal_id||'',
+        alarmTime:t.alarm_time?String(t.alarm_time).slice(0,5):'',
+        created_at:t.created_at, updated_at:t.updated_at, _synced:true
+      };
+      const existing=byId[t.id];
+      // Só sobrescreve a versão local se ela já estava sincronizada antes (_synced)
+      // ou se a versão remota é mais nova — assim uma edição local recente nunca
+      // é perdida por uma leitura remota atrasada/desatualizada.
+      if(!existing || existing.task._synced!==false || new Date(t.updated_at)>=new Date(existing.task.updated_at||0)){
+        byId[t.id]={task:remoteTask,dateKey:dk};
+      }
+    });
+
+    // Tarefa que existia local, já estava confirmada sincronizada, e não veio
+    // mais do servidor = foi excluída em outro aparelho. Remove daqui também.
+    Object.keys(byId).forEach(id=>{
+      const entry=byId[id];
+      if(!remoteIds.has(id) && entry.task._synced===true) delete byId[id];
+      if(tombstones[id]) delete byId[id];
+    });
+
     const newRoutines={};
-    const newRecMap={};
-    const newDoneMap={};
-   data.forEach(t=>{
-  const dk = t.date_key || todayKey();
+    Object.values(byId).forEach(({task,dateKey})=>{
+      if(!newRoutines[dateKey]) newRoutines[dateKey]=[];
+      newRoutines[dateKey].push(task);
+    });
 
-  if(!newRoutines[dk]) newRoutines[dk] = [];
+    data.forEach(t=>{
+      if(tombstones[t.id]) return;
+      if(t.dias_semana && Array.isArray(t.dias_semana) && t.dias_semana.length){
+        newRecMap[t.id]={weekDays:t.dias_semana, startDate:t.data_inicio||(t.date_key||todayKey()), endDate:t.data_fim||''};
+      }
+      if(t.concluidas_recorrencia && typeof t.concluidas_recorrencia==='object'){
+        newDoneMap[t.id]=t.concluidas_recorrencia;
+      }
+    });
 
-  newRoutines[dk].push({
-    id: t.id,
-    title: t.title,
-    description: t.description || '',
-
-    priority: t.priority || 'media',
-
-    // ✅ STRING da categoria (ex: 'trabalho', 'pessoal')
-    focus: t.focus || '',
-
-    done: !!t.done,
-    estimateMin: t.estimate_min || 30,
-
-    linkedGoalId: t.goal_id || '',
-
-    // ✅ horário formatado
-    alarmTime: t.alarm_time
-      ? String(t.alarm_time).slice(0,5)
-      : '',
-
-    created_at: t.created_at,
-    updated_at: t.updated_at
-  });
-
-  // Recorrência (colunas opcionais — só existem se a migração SQL foi aplicada)
-  if(t.dias_semana && Array.isArray(t.dias_semana) && t.dias_semana.length){
-    newRecMap[t.id] = { weekDays: t.dias_semana, startDate: t.data_inicio || dk, endDate: t.data_fim || '' };
-  }
-  if(t.concluidas_recorrencia && typeof t.concluidas_recorrencia==='object'){
-    newDoneMap[t.id] = t.concluidas_recorrencia;
-  }
-});
-    // Substitui completamente pelo estado do banco (fonte da verdade)
     this.state.data.routines=newRoutines;
     saveRecurrenceMap(newRecMap);
     saveRecurringDoneMap(newDoneMap);
@@ -2690,52 +2891,54 @@ _isSyncing: false,
 
   async saveTaskRemote(task, dateKey){
     if(!this.state.user||this.state.user.local) return;
-    const now=new Date().toISOString();
     let alarmIso=null;
     if(task.alarmTime){ alarmIso=task.alarmTime.slice(0,5); } // salva só HH:MM
-const prioridadeMap = {
-  baixa: 1,
-  media: 2,
-  alta: 3
-};
 
-const rec=getTaskRecurrence(task.id);
+    const rec=getTaskRecurrence(task.id);
+    const nowIso=new Date().toISOString();
 
-const payload = {
-  id: task.id || crypto.randomUUID(),
-  user_id: this.state.user.id,
+    const payload = {
+      id: task.id || crypto.randomUUID(),
+      user_id: this.state.user.id,
+      title: task.title || 'Sem título',
+      description: task.description || null,
+      priority: task.priority || 'media',
+      focus: task.focus || 'trabalho',
+      done: !!task.done,
+      estimate_min: Number(task.estimateMin) || 30,
+      goal_id: task.linkedGoalId || null,
+      alarm_time: alarmIso,
+      date_key: dateKey || new Date().toISOString().split('T')[0],
+      created_at: task.created_at || nowIso,
+      updated_at: task.updated_at || nowIso,
+    };
 
-  title: task.title || 'Sem título',
-  description: task.description || null,
-
-  // ✅ STRING (igual UI)
-  priority: task.priority || 'media',
-
-  // ✅ STRING (igual UI)
-  focus: task.focus || 'trabalho',
-
-  done: !!task.done,
-
-  estimate_min: Number(task.estimateMin) || 30,
-  goal_id: task.linkedGoalId || null,
-
-  alarm_time: alarmIso,
-
-
-  // ✅ corrigido (date real, sem shift UTC)
-  date_key: dateKey || new Date().toISOString().split('T')[0],
-
-  created_at: task.created_at || new Date().toISOString(),
-  updated_at: new Date().toISOString()
-};
-    if(!_isOnline){ offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload}); return; }
-    await upsertTaskWithRecurrence(payload, rec);
+    if(!_isOnline){
+      offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
+      setSyncStatus('offline');
+      return;
+    }
+    setSyncStatus('syncing');
+    const ok = await upsertTaskWithRecurrence(payload, rec);
+    if(ok){
+      task._synced = true; // confirmado no servidor — agora pode ser sobrescrito por leituras remotas mais novas
+      setSyncStatus('online');
+    } else {
+      setSyncStatus('error'); // fica na fila offline e tenta de novo sozinho
+    }
   },
 
   async deleteTaskRemote(id){
     if(!this.state.user||this.state.user.local) return;
-    if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); return; }
-    await window.supabaseClient.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
+    if(!_isOnline){ offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id}); setSyncStatus('offline'); return; }
+    setSyncStatus('syncing');
+    const {error}=await window.supabaseClient.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
+    if(error){
+      offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id});
+      setSyncStatus('error');
+    } else {
+      setSyncStatus('online');
+    }
   },
 
   async saveGoalRemote(goal){
@@ -3017,7 +3220,7 @@ const payload = {
     const task=tasks.find(t=>t.id===id);
     if(!task) return;
     const wasDone = task.done;
-    task.done=!task.done; task.updated_at=new Date().toISOString();
+    task.done=!task.done; task.updated_at=new Date().toISOString(); task._synced=false;
     this.saveLocal();
     this.saveTaskRemote(task, today);
 
@@ -3117,7 +3320,7 @@ const payload = {
         task.title=title; task.description=q('task-description').value.trim();
         task.priority=q('task-priority').value;
         task.focus=q('task-focus').value; task.linkedGoalId=q('task-goal').value;
-        task.alarmTime=q('task-alarm').value; task.updated_at=now;
+        task.alarmTime=q('task-alarm').value; task.updated_at=now; task._synced=false;
         if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
         this.saveLocal(); this.saveTaskRemote(task,found.dateKey);
         showToast('Tarefa atualizada ✏️','success');
@@ -3127,7 +3330,7 @@ const payload = {
         id:crypto.randomUUID(), title, description:q('task-description').value.trim(),
         priority:q('task-priority').value,
         focus:q('task-focus').value, linkedGoalId:q('task-goal').value,
-        alarmTime:q('task-alarm').value, done:false, created_at:now, updated_at:now
+        alarmTime:q('task-alarm').value, done:false, created_at:now, updated_at:now, _synced:false
       };
       savedId=task.id;
       if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
@@ -3142,6 +3345,7 @@ const payload = {
 
   deleteTask(id){
     if(!confirm('Excluir esta tarefa?')) return;
+    addTaskTombstone(id); // primeiro a lápide — nenhuma sincronização concorrente traz essa tarefa de volta
     const found=findTaskAnyDate(this, id);
     if(found && this.state.data.routines[found.dateKey]){
       this.state.data.routines[found.dateKey]=this.state.data.routines[found.dateKey].filter(t=>t.id!==id);
@@ -4005,28 +4209,86 @@ const payload = {
      FRASES
   ══════════════════════════════════════ */
   renderFrases(cat){
+    _fraseCurCat = cat || _fraseCurCat || 'all';
+    this.renderFraseHero();
     const all=getAllFrases();
-    const filtered=(cat&&cat!=='all')?all.filter(f=>f.cat===cat):all;
+    const favs=loadFraseFavs();
+    const term=(q('frase-search')?.value||'').trim().toLowerCase();
+    let filtered = _fraseCurCat==='fav' ? all.filter(f=>favs.includes(f.id))
+                 : _fraseCurCat!=='all' ? all.filter(f=>f.cat===_fraseCurCat)
+                 : all;
+    if(term) filtered = filtered.filter(f=>f.text.toLowerCase().includes(term) || (f.author||'').toLowerCase().includes(term));
     const list=q('frases-list'); if(!list) return;
     if(!filtered.length){
-      list.innerHTML='<div class="empty-state"><i class="fas fa-quote-left"></i><p>Nenhuma frase nesta categoria</p></div>';
+      list.innerHTML='<div class="empty-state"><i class="fas fa-quote-left"></i><p>Nenhuma frase encontrada</p></div>';
       return;
     }
-    const catColors={produtividade:'var(--primary)',mentalidade:'var(--accent)',financas:'var(--green)',vida:'var(--gold)'};
+    const catMap={}; FRASE_CATS.forEach(c=>catMap[c.id]=c);
     list.innerHTML=filtered.map(f=>{
       const isCustom=!FRASES_DEFAULT.find(fd=>fd.id===f.id);
-      const col=catColors[f.cat]||'var(--primary)';
-      return `<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:1rem 1.1rem;margin-bottom:.5rem;border:1px solid var(--border);transition:all var(--t);border-left:3px solid ${col}">
+      const c=catMap[f.cat]||{label:f.cat,icon:'💬'};
+      const isFav=favs.includes(f.id);
+      return `<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:1rem 1.1rem;margin-bottom:.5rem;border:1px solid var(--border);transition:all var(--t)">
         <div style="font-size:.92rem;font-style:italic;line-height:1.55;color:var(--text);margin-bottom:.35rem">"${esc(f.text)}"</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:.78rem;font-weight:700;color:${col}">— ${esc(f.author||'Desconhecido')}</div>
+          <div style="font-size:.78rem;font-weight:700;color:var(--primary)">— ${esc(f.author||'Desconhecido')}</div>
           <div style="display:flex;align-items:center;gap:.4rem">
-            <span style="font-size:.65rem;font-weight:700;color:var(--text-3);padding:.1rem .4rem;background:var(--surface4);border-radius:20px">${f.cat||''}</span>
+            <span style="font-size:.65rem;font-weight:700;color:var(--text-3);padding:.1rem .4rem;background:var(--surface4);border-radius:20px">${c.icon} ${c.label}</span>
+            <button class="frase-card-fav-btn ${isFav?'faved':''}" onclick="app.toggleFraseFavItem('${f.id}')"><i class="${isFav?'fas':'far'} fa-heart"></i></button>
+            <button class="btn btn-icon btn-sm" onclick="app.shareFrase('${f.id}')" title="Compartilhar"><i class="fas fa-paper-plane"></i></button>
             ${isCustom?`<button class="btn btn-icon btn-sm" style="color:var(--danger)" onclick="app.deleteFrase('${f.id}')"><i class="fas fa-trash"></i></button>`:''}
           </div>
         </div>
       </div>`;
     }).join('');
+  },
+
+  // Card grande "Frase do Dia" no topo — muda todo dia, ou manualmente com o dado
+  renderFraseHero(){
+    if(!_fraseHeroAtual) _fraseHeroAtual = getFraseDoDia();
+    const f=_fraseHeroAtual; if(!f) return;
+    const catMap={}; FRASE_CATS.forEach(c=>catMap[c.id]=c);
+    const c=catMap[f.cat]||{label:f.cat,icon:'💬'};
+    if(q('frase-hero-cat')) q('frase-hero-cat').textContent=c.icon+' '+c.label;
+    const txt=q('frase-hero-text');
+    if(txt){ txt.style.animation='none'; void txt.offsetWidth; txt.style.animation='fraseIn .35s ease'; txt.textContent='"'+f.text+'"'; }
+    if(q('frase-hero-author')) q('frase-hero-author').textContent=f.author||'Desconhecido';
+    const favBtn=q('btn-frase-fav');
+    if(favBtn){
+      const isFav=loadFraseFavs().includes(f.id);
+      favBtn.classList.toggle('faved', isFav);
+      favBtn.innerHTML=`<i class="${isFav?'fas':'far'} fa-heart"></i>`;
+    }
+  },
+
+  toggleHeroFraseFav(){
+    if(!_fraseHeroAtual) return;
+    const nowFav=toggleFraseFav(_fraseHeroAtual.id);
+    this.renderFraseHero();
+    this.renderFrases();
+    showToast(nowFav?'❤️ Frase favoritada':'Removida dos favoritos','default');
+  },
+
+  toggleFraseFavItem(id){
+    toggleFraseFav(id);
+    this.renderFrases();
+    if(_fraseHeroAtual && _fraseHeroAtual.id===id) this.renderFraseHero();
+  },
+
+  novaFraseAleatoria(){
+    const all=getAllFrases(); if(all.length<2){ this.renderFraseHero(); return; }
+    let next;
+    do{ next=all[Math.floor(Math.random()*all.length)]; }while(_fraseHeroAtual && next.id===_fraseHeroAtual.id);
+    _fraseHeroAtual=next;
+    this.renderFraseHero();
+  },
+
+  shareFrase(id){
+    const all=getAllFrases();
+    const f=id?all.find(x=>x.id===id):_fraseHeroAtual;
+    if(!f) return;
+    window._shareFraseData=f;
+    openShareModal('frase');
   },
 
   deleteFrase(id){
@@ -4165,6 +4427,7 @@ document.querySelectorAll('.frase-filter').forEach(btn=>{
     app.renderFrases(btn.dataset.cat);
   });
 });
+if(q('frase-search')) q('frase-search').addEventListener('input', debounce(()=>app.renderFrases(),250));
 
 
 document.querySelectorAll('.mood-btn').forEach(btn=>{
@@ -5986,6 +6249,7 @@ function closeShareModal(){
   document.getElementById('share-modal').classList.remove('active');
   window._shareTaskData=null;
   window._shareMedalData=null;
+  window._shareFraseData=null;
 }
 
 function renderShareTypeButtons(){
@@ -5996,6 +6260,7 @@ function renderShareTypeButtons(){
     {id:'liga', label:'👑 Liga'},
     {id:'tarefa', label:'✅ Tarefa'},
     {id:'medalha', label:'🏅 Medalha'},
+    {id:'frase', label:'💭 Frase'},
     {id:'semanal', label:'📊 Semanal'},
     {id:'comp_semanal', label:'📅 Comparação Semanal'},
     {id:'comp_mensal', label:'📆 Comparação Mensal'},
@@ -6190,6 +6455,15 @@ function sm_buildContent(type){
       {icon:'📅',label:'Data',val:new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})},
       {icon:'⚡',label:'XP',val:g.totalXp||0},
     ],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type};
+  }
+  if(type==='frase'){
+    let fr=window._shareFraseData;
+    if(!fr){
+      fr=typeof getFraseDoDia==='function'?getFraseDoDia():{text:frase,author:'Produtiv.me',cat:'motivacao'};
+    }
+    const catMap={}; (typeof FRASE_CATS!=='undefined'?FRASE_CATS:[]).forEach(c=>catMap[c.id]=c);
+    const c=catMap[fr.cat]||{label:'Inspiração',icon:'💭'};
+    return {kind:'hero',icon:c.icon,headline:c.label,unit:'',badge:`— ${fr.author||'Desconhecido'}`,sub:'',stats:[],frase:fr.text,type};
   }
   return {kind:'hero',icon:'🔥',headline:streak,unit:'dias',badge:'',sub:'',stats:[],frase,type};
 }
