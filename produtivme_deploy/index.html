@@ -713,8 +713,8 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .jshare-cell-badge{position:absolute;bottom:.25rem;right:.3rem;font-size:.62rem;background:rgba(0,0,0,.55);color:#fff;padding:.05rem .3rem;border-radius:5px;backdrop-filter:blur(2px)}
 .jshare-load-more{width:100%;padding:.7rem;margin-top:.6rem;border-radius:var(--radius-sm);background:var(--surface3);border:1px solid var(--border);color:var(--text-2);font-weight:700;font-size:.82rem;cursor:pointer}
 .jshare-load-more:hover{background:var(--surface4)}
-.jshare-cell-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;border:1.5px dashed rgba(167,139,250,.4);background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));color:var(--primary);font-weight:700;font-size:.62rem;text-align:center;padding:.3rem}
-.jshare-cell-add i{font-size:1.15rem}
+.jshare-add-row{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.jshare-add-row .btn{flex:1;min-width:0;white-space:nowrap}
 /* Posts do usuário ganham destaque visual na timeline — maiores que eventos automáticos */
 .jtl-item-post{padding:1rem 1.05rem;background:linear-gradient(135deg,rgba(244,114,182,.05),rgba(167,139,250,.04));border:1px solid rgba(167,139,250,.22)}
 .jtl-item-post .jtl-title{font-size:1.02rem;font-family:var(--font-display);font-weight:800}
@@ -8047,11 +8047,12 @@ async function _renderJornadaShares(){
   const posts=loadJornada().filter(e=>e.isPost).map(e=>({...e,_kind:'post'}));
   const all=[...shares,...posts].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   const cnt=document.getElementById('jornada-shares-count'); if(cnt) cnt.textContent=all.length;
-  const addCells=`
-    <div class="jshare-cell jshare-cell-add" onclick="postEdAbrir()"><i class="fas fa-pen-fancy"></i><span>Criar Post</span></div>
-    <div class="jshare-cell jshare-cell-add" onclick="adAbrirModal()"><i class="fas fa-arrows-rotate"></i><span>Antes e Depois</span></div>`;
+  const addBtns=`<div class="jshare-add-row">
+    <button class="btn btn-ghost btn-sm" onclick="postEdAbrir()"><i class="fas fa-pen-fancy"></i> Criar Post</button>
+    <button class="btn btn-ghost btn-sm" onclick="adAbrirModal()"><i class="fas fa-arrows-rotate"></i> Antes e Depois</button>
+  </div>`;
   if(!all.length){
-    el.innerHTML=`<div class="jshare-grid">${addCells}</div><div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1rem 0">Nenhum compartilhamento salvo ainda.<br><span style="font-size:.74rem;opacity:.6">Após compartilhar ou criar um post, ele aparece aqui.</span></div>`;
+    el.innerHTML=`${addBtns}<div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1rem 0">Nenhum compartilhamento salvo ainda.<br><span style="font-size:.74rem;opacity:.6">Após compartilhar ou criar um post, ele aparece aqui.</span></div>`;
     return;
   }
   const visible=all.slice(0, _jSharePage*J_SHARE_PAGE_SIZE);
@@ -8072,7 +8073,7 @@ async function _renderJornadaShares(){
     </div>`;
   }));
   const hasMore=all.length>visible.length;
-  el.innerHTML=`<div class="jshare-grid">${addCells}${cells.join('')}</div>${hasMore?`<button class="jshare-load-more" onclick="_jShareLoadMore()"><i class="fas fa-chevron-down"></i> Carregar mais (${all.length-visible.length})</button>`:''}`;
+  el.innerHTML=`${addBtns}<div class="jshare-grid">${cells.join('')}</div>${hasMore?`<button class="jshare-load-more" onclick="_jShareLoadMore()"><i class="fas fa-chevron-down"></i> Carregar mais (${all.length-visible.length})</button>`:''}`;
 }
 window._renderJornadaShares=_renderJornadaShares;
 function _jShareLoadMore(){ _jSharePage++; _renderJornadaShares(); }
