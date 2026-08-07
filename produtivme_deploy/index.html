@@ -713,6 +713,31 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .jshare-cell-badge{position:absolute;bottom:.25rem;right:.3rem;font-size:.62rem;background:rgba(0,0,0,.55);color:#fff;padding:.05rem .3rem;border-radius:5px;backdrop-filter:blur(2px)}
 .jshare-load-more{width:100%;padding:.7rem;margin-top:.6rem;border-radius:var(--radius-sm);background:var(--surface3);border:1px solid var(--border);color:var(--text-2);font-weight:700;font-size:.82rem;cursor:pointer}
 .jshare-load-more:hover{background:var(--surface4)}
+.jshare-cell-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;border:1.5px dashed rgba(167,139,250,.4);background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(167,139,250,.06));color:var(--primary);font-weight:700;font-size:.62rem;text-align:center;padding:.3rem}
+.jshare-cell-add i{font-size:1.15rem}
+/* Posts do usuário ganham destaque visual na timeline — maiores que eventos automáticos */
+.jtl-item-post{padding:1rem 1.05rem;background:linear-gradient(135deg,rgba(244,114,182,.05),rgba(167,139,250,.04));border:1px solid rgba(167,139,250,.22)}
+.jtl-item-post .jtl-title{font-size:1.02rem;font-family:var(--font-display);font-weight:800}
+.jtl-item-post .jtl-caption{font-size:.85rem;color:var(--text-2);margin-top:.35rem;line-height:1.5;white-space:pre-wrap}
+.jtl-photo-lg{width:100%;max-height:320px;object-fit:cover;border-radius:10px;margin-top:.6rem;display:block;cursor:pointer}
+.jtl-ad-pair{display:flex;gap:.5rem;margin-top:.6rem}
+.jtl-ad-pair>div{flex:1;text-align:center}
+.jtl-ad-pair img{width:100%;height:150px;object-fit:cover;border-radius:8px;display:block}
+.jtl-ad-pair span{display:block;font-size:.68rem;color:var(--text-3);margin-top:.25rem;font-weight:700}
+.jtl-video{width:100%;max-height:320px;border-radius:10px;margin-top:.6rem;display:block;background:#000}
+.memoria-card{display:flex;gap:.7rem;align-items:center;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.7rem .8rem;margin-bottom:.6rem;cursor:pointer}
+.memoria-card img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.memoria-card-icon{width:52px;height:52px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:var(--surface4)}
+.memoria-badge{font-size:.66rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.02em}
+.capsula-card{background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.8rem .9rem;margin-bottom:.6rem}
+.capsula-card.locked{opacity:.85}
+.capsula-card-head{display:flex;align-items:center;justify-content:between;gap:.5rem}
+.mood-picker{display:flex;gap:.4rem;justify-content:space-between;margin-top:.35rem}
+.mood-picker span{flex:1;text-align:center;font-size:1.4rem;padding:.4rem 0;border-radius:8px;cursor:pointer;border:1.5px solid transparent;background:var(--surface3)}
+.mood-picker span.active{border-color:var(--primary);background:var(--primary-glow)}
+.cat-picker{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem}
+.cat-picker span{font-size:.74rem;font-weight:700;padding:.32rem .65rem;border-radius:20px;cursor:pointer;border:1.5px solid var(--border);color:var(--text-2)}
+.cat-picker span.active{border-color:var(--primary);background:var(--primary-glow);color:var(--primary)}
 
 /* ── Metadados do post (visualização completa) ── */
 .jpm-meta{padding:1rem 1.1rem 1.2rem;background:var(--surface2)}
@@ -1209,20 +1234,34 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div id="jornada-hero-stats" class="jornada-hero-stats"></div>
         </div>
 
+        <div class="card" id="jornada-memorias-card" style="margin-bottom:.875rem;display:none">
+          <div class="card-title"><i class="fas fa-clock-rotate-left"></i>Memórias</div>
+          <div id="jornada-memorias"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+            <div class="card-title" style="margin:0"><i class="fas fa-hourglass-half"></i>Cápsula do Tempo</div>
+            <button class="btn btn-primary btn-sm" onclick="capsulaAbrirModal()"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="jornada-capsulas"></div>
+        </div>
+
         <div class="card" style="margin-bottom:.875rem">
           <div class="card-title"><i class="fas fa-share-alt"></i>Compartilhamentos<span class="badge-pill" id="jornada-shares-count">0</span></div>
           <div id="jornada-shares"></div>
         </div>
 
         <div class="card" style="margin-bottom:.875rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-wrap:wrap;gap:.5rem">
             <div class="card-title" style="margin:0"><i class="fas fa-history"></i>Linha do Tempo</div>
             <div style="display:flex;gap:.4rem;align-items:center">
               <select id="jornada-mes-sel" style="padding:.3rem .55rem;font-size:.78rem;border-radius:8px;width:auto"></select>
               <button class="btn btn-primary btn-sm" onclick="jornadaAbrirModal()"><i class="fas fa-plus"></i></button>
             </div>
           </div>
-          <div id="jornada-timeline"></div>
+          <button class="btn btn-ghost btn-sm btn-block" id="jornada-timeline-toggle" onclick="jornadaToggleTimeline()"><i class="fas fa-chevron-down"></i> Abrir linha do tempo</button>
+          <div id="jornada-timeline" style="display:none;margin-top:.7rem"></div>
         </div>
 
         <div class="card" id="jornada-momentos-card" style="margin-bottom:.875rem">
@@ -1302,11 +1341,116 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   </div>
 </div>
 
+<!-- ══ MODAL: CRIAR POST (Jornada) ══ -->
+<div id="post-editor-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-pen-fancy" style="color:var(--primary);margin-right:.4rem"></i>Criar Post</h3>
+      <button class="btn btn-icon" onclick="closeModal('post-editor-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <img id="post-ed-preview" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:.7rem;display:none" alt="preview">
+    <video id="post-ed-video-preview" controls style="width:100%;max-height:220px;border-radius:10px;margin-bottom:.7rem;display:none;background:#000"></video>
+    <div class="form-group">
+      <label>Mídia (opcional)</label>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="postEdPickPhoto()"><i class="fas fa-image"></i> Foto</button>
+        <button class="btn btn-ghost btn-sm" onclick="postEdPickVideo()"><i class="fas fa-video"></i> Vídeo</button>
+        <button class="btn btn-ghost btn-sm" id="post-ed-remove-media" style="display:none;color:var(--danger)" onclick="postEdRemoveMedia()"><i class="fas fa-trash"></i></button>
+      </div>
+      <input type="file" id="post-ed-file-photo" accept="image/*" style="display:none" onchange="postEdOnPhoto(event)">
+      <input type="file" id="post-ed-file-video" accept="video/*" style="display:none" onchange="postEdOnVideo(event)">
+    </div>
+    <div class="form-group"><label>Título (opcional)</label><input id="post-ed-title" placeholder="Dê um título para o momento" maxlength="80"></div>
+    <div class="form-group"><label>Legenda</label><textarea id="post-ed-caption" rows="3" placeholder="O que você quer registrar?"></textarea></div>
+    <div class="form-group">
+      <label>Categoria</label>
+      <div class="cat-picker" id="post-ed-cat-picker">
+        <span data-v="estudos" onclick="postEdSetCat('estudos',this)">📚 Estudos</span>
+        <span data-v="trabalho" onclick="postEdSetCat('trabalho',this)">💼 Trabalho</span>
+        <span data-v="academia" onclick="postEdSetCat('academia',this)">🏋️ Academia</span>
+        <span data-v="vida" onclick="postEdSetCat('vida',this)">🏠 Vida</span>
+        <span data-v="financeiro" onclick="postEdSetCat('financeiro',this)">💰 Financeiro</span>
+        <span data-v="outro" class="active" onclick="postEdSetCat('outro',this)">✨ Outro</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Humor (opcional)</label>
+      <div class="mood-picker" id="post-ed-mood-picker">
+        <span data-v="pessimo" onclick="postEdSetMood('pessimo',this)">😞</span>
+        <span data-v="mal" onclick="postEdSetMood('mal',this)">😕</span>
+        <span data-v="ok" onclick="postEdSetMood('ok',this)">😐</span>
+        <span data-v="bem" onclick="postEdSetMood('bem',this)">🙂</span>
+        <span data-v="otimo" onclick="postEdSetMood('otimo',this)">😄</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.6rem">
+      <button class="btn btn-primary btn-block" onclick="postEdFinalizar('both')"><i class="fas fa-bolt"></i> Salvar e Compartilhar</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost btn-block" onclick="postEdFinalizar('save')"><i class="fas fa-save"></i> Salvar na Jornada</button>
+        <button class="btn btn-ghost btn-block" onclick="postEdFinalizar('share')"><i class="fas fa-share-alt"></i> Compartilhar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: ANTES E DEPOIS ══ -->
+<div id="antes-depois-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-arrows-rotate" style="color:var(--primary);margin-right:.4rem"></i>Antes e Depois</h3>
+      <button class="btn btn-icon" onclick="closeModal('antes-depois-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex;gap:.6rem">
+      <div style="flex:1;text-align:center">
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-3);margin-bottom:.35rem">ANTES</div>
+        <img id="ad-preview-antes" style="width:100%;height:140px;object-fit:cover;border-radius:10px;background:var(--surface3);display:none">
+        <div id="ad-placeholder-antes" style="width:100%;height:140px;border-radius:10px;background:var(--surface3);display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:1.4rem">📷</div>
+        <input type="file" id="ad-file-antes" accept="image/*" style="display:none" onchange="adOnFile(event,'antes')">
+        <button class="btn btn-ghost btn-sm" style="margin-top:.4rem;width:100%" onclick="document.getElementById('ad-file-antes').click()">Escolher</button>
+        <input type="date" id="ad-date-antes" style="margin-top:.35rem;font-size:.72rem">
+      </div>
+      <div style="flex:1;text-align:center">
+        <div style="font-size:.72rem;font-weight:700;color:var(--text-3);margin-bottom:.35rem">DEPOIS</div>
+        <img id="ad-preview-depois" style="width:100%;height:140px;object-fit:cover;border-radius:10px;background:var(--surface3);display:none">
+        <div id="ad-placeholder-depois" style="width:100%;height:140px;border-radius:10px;background:var(--surface3);display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:1.4rem">📷</div>
+        <input type="file" id="ad-file-depois" accept="image/*" style="display:none" onchange="adOnFile(event,'depois')">
+        <button class="btn btn-ghost btn-sm" style="margin-top:.4rem;width:100%" onclick="document.getElementById('ad-file-depois').click()">Escolher</button>
+        <input type="date" id="ad-date-depois" style="margin-top:.35rem;font-size:.72rem">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:.7rem"><label>Legenda (opcional)</label><input id="ad-caption" placeholder="Ex: 3 meses de treino" maxlength="80"></div>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.4rem">
+      <button class="btn btn-primary btn-block" onclick="adFinalizar('both')"><i class="fas fa-bolt"></i> Salvar e Compartilhar</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost btn-block" onclick="adFinalizar('save')"><i class="fas fa-save"></i> Salvar na Jornada</button>
+        <button class="btn btn-ghost btn-block" onclick="adFinalizar('share')"><i class="fas fa-share-alt"></i> Compartilhar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CÁPSULA DO TEMPO ══ -->
+<div id="capsula-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-hourglass-half" style="color:var(--primary);margin-right:.4rem"></i>Nova Cápsula do Tempo</h3>
+      <button class="btn btn-icon" onclick="closeModal('capsula-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-group"><label>Mensagem para o futuro</label><textarea id="capsula-msg" rows="5" placeholder="Escreva algo para o seu eu do futuro..."></textarea></div>
+    <div class="form-group"><label>Data de abertura</label><input type="date" id="capsula-data"></div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem">
+      <button class="btn btn-ghost" onclick="closeModal('capsula-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="capsulaCriar()"><i class="fas fa-lock"></i> Lacrar Cápsula</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL FOTO EXPANDIDA / POST DA JORNADA ══ -->
 <div id="jornada-photo-modal" class="modal" onclick="if(event.target===this) closeJornadaPhoto()" style="align-items:center;justify-content:center;padding:1rem">
   <div style="width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:var(--radius-lg);position:relative">
     <button onclick="closeJornadaPhoto()" title="Fechar" style="position:sticky;top:.6rem;left:calc(100% - 2.4rem);width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:.95rem;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5"><i class="fas fa-times"></i></button>
     <img id="jornada-photo-full" style="width:100%;max-height:70vh;margin-top:-2.4rem;border-radius:var(--radius-lg) var(--radius-lg) 0 0;object-fit:contain;background:#000;display:block">
+    <video id="jornada-photo-video" controls style="width:100%;max-height:70vh;margin-top:-2.4rem;border-radius:var(--radius-lg) var(--radius-lg) 0 0;background:#000;display:none"></video>
     <div id="jornada-photo-meta"></div>
   </div>
 </div>
@@ -1320,47 +1464,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     </div>
     <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Ganhe Pontos de Consistência completando tarefas e hábitos todos os dias para subir de patente.</div>
     <div class="ligas-ladder" id="ligas-ladder"></div>
-  </div>
-</div>
-
-<!-- ══ MODAL JORNADA — REGISTRAR MOMENTO ══ -->
-<div id="jornada-modal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3><i class="fas fa-camera" style="color:var(--primary)"></i> Registrar Momento</h3>
-      <button class="btn btn-icon" onclick="closeModal('jornada-modal')"><i class="fas fa-times"></i></button>
-    </div>
-    <img id="jornada-ev-preview" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:.75rem;display:none" alt="preview">
-    <div class="form-group">
-      <label>Tipo</label>
-      <select id="jornada-ev-type">
-        <option value="conquista">🏆 Conquista</option>
-        <option value="meta">🎯 Meta Concluída</option>
-        <option value="habito">💪 Hábito</option>
-        <option value="tarefa">✅ Tarefa</option>
-        <option value="dia_perfeito">🌟 Dia Perfeito</option>
-        <option value="marco">🔥 Marco Pessoal</option>
-        <option value="reflexao">💭 Reflexão</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Descrição *</label>
-      <input id="jornada-ev-desc" placeholder="O que você conquistou?" maxlength="120">
-    </div>
-    <div class="form-group">
-      <label>Foto (opcional)</label>
-      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="jornadaFoto('camera')"><i class="fas fa-camera"></i> Câmera</button>
-        <button class="btn btn-ghost btn-sm" onclick="jornadaFoto('gallery')"><i class="fas fa-image"></i> Galeria</button>
-        <button class="btn btn-ghost btn-sm" id="jornada-ev-remove" style="display:none;color:var(--danger)" onclick="jornadaRemoverFoto()"><i class="fas fa-trash"></i></button>
-      </div>
-      <input type="file" id="jornada-file-gallery" accept="image/*" style="display:none" onchange="jornadaOnFile(event)">
-      <input type="file" id="jornada-file-camera" accept="image/*" capture="environment" style="display:none" onchange="jornadaOnFile(event)">
-    </div>
-    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem">
-      <button class="btn btn-ghost" onclick="closeModal('jornada-modal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="jornadaSalvarEvento()"><i class="fas fa-check"></i> Salvar</button>
-    </div>
   </div>
 </div>
 
@@ -1619,7 +1722,12 @@ const FINANCE_KEY   = 'pm18_finance_v1';
 ══════════════════════════════════════ */
 const q = id => document.getElementById(id);
 window.closeModal = id => { const m=q(id); if(m) m.classList.remove('active'); };
-function closeJornadaPhoto(){ closeModal('jornada-photo-modal'); }
+function closeJornadaPhoto(){
+  const v=document.getElementById('jornada-photo-video');
+  if(v){ v.pause(); v.src=''; v.style.display='none'; }
+  const img=document.getElementById('jornada-photo-full'); if(img) img.style.display='block';
+  closeModal('jornada-photo-modal');
+}
 window.closeJornadaPhoto=closeJornadaPhoto;
 
 function esc(t){ if(!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2397,6 +2505,7 @@ _isSyncing: false,
       this.renderAll();
       hideLoading();
       this.carryOverTasks();
+      if(typeof checkCapsulasProntas==='function') checkCapsulasProntas();
     }
     await updateOnlineStatus();
   },
@@ -3801,7 +3910,7 @@ _isSyncing: false,
     const shown=(_qShowAll||isSunday)?all:getTodayQuestionSet(all);
     const qasFull=shown.filter(it=>saved[it.id]&&saved[it.id].trim()).map(it=>({id:it.id,icon:it.icon,text:it.text,answer:saved[it.id]}));
     if(!qasFull.length){ showToast('Responda pelo menos uma pergunta antes de finalizar','error'); return; }
-    const isNew=jornadaRegistrarReflexao(qasFull.map(({id,...rest})=>rest));
+    const isNew=jornadaRegistrarReflexao(qasFull);
     logReflexaoAnswers(qasFull);
     addXp(8);
     showToast(isNew?'🧠 Reflexão registrada na Jornada! +8 XP':'Reflexão de hoje atualizada','success');
@@ -6250,6 +6359,7 @@ function closeShareModal(){
   window._shareTaskData=null;
   window._shareMedalData=null;
   window._shareFraseData=null;
+  window._sharePostData=null;
 }
 
 function renderShareTypeButtons(){
@@ -6328,6 +6438,23 @@ function sm_onFile(e){
 window.sm_onFile=sm_onFile;
 
 function sm_removePhoto(){ _smImg=null; _smPan={x:0,y:0,scale:1}; document.getElementById('sm-photo-status').textContent='Sem foto'; const rm=document.getElementById('sm-rm-photo'); if(rm) rm.style.display='none'; const ed=document.getElementById('sm-editor'); if(ed) ed.style.display='none'; sm_render(); }
+// Carrega uma imagem já pronta (base64) no Studio sem passar pelo seletor de arquivo —
+// usado pelo Criar Post e Antes e Depois, que já têm a foto em mãos.
+function sm_setImageFromB64(b64){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      _smImg=img; _smPan={x:0,y:0,scale:1}; sm_fitPhoto();
+      const st=document.getElementById('sm-photo-status'); if(st) st.textContent='✅ Foto';
+      const rm=document.getElementById('sm-rm-photo'); if(rm) rm.style.display='';
+      const ed=document.getElementById('sm-editor'); if(ed) ed.style.display='';
+      sm_renderEditor(); sm_render();
+      resolve();
+    };
+    img.src=b64;
+  });
+}
+window.sm_setImageFromB64=sm_setImageFromB64;
 window.sm_removePhoto=sm_removePhoto;
 
 function sm_fitPhoto(){ if(!_smImg) return; const ratio=Math.max(SM_W/_smImg.width,600/_smImg.height); _smPan.scale=ratio; _smPan.x=(SM_W-_smImg.width*ratio)/2; _smPan.y=(600-_smImg.height*ratio)/2; }
@@ -6464,6 +6591,21 @@ function sm_buildContent(type){
     const catMap={}; (typeof FRASE_CATS!=='undefined'?FRASE_CATS:[]).forEach(c=>catMap[c.id]=c);
     const c=catMap[fr.cat]||{label:'Inspiração',icon:'💭'};
     return {kind:'hero',icon:c.icon,headline:c.label,unit:'',badge:`— ${fr.author||'Desconhecido'}`,sub:'',stats:[],frase:fr.text,type};
+  }
+  if(type==='post'){
+    const p=window._sharePostData||{};
+    const catMap={estudos:'📚 Estudos',trabalho:'💼 Trabalho',academia:'🏋️ Academia',vida:'🏠 Vida',financeiro:'💰 Financeiro',outro:'✨ Outro'};
+    const moodMap={pessimo:'😞 Péssimo',mal:'😕 Mal',ok:'😐 Neutro',bem:'🙂 Bem',otimo:'😄 Ótimo'};
+    return {kind:'stats',title:p.title||'Meu momento',icon:'📝',rows:[
+      {icon:'📁',label:'Categoria',val:catMap[p.category]||'✨ Outro'},
+      {icon:'📅',label:'Data',val:new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})},
+    ],badge:p.mood?moodMap[p.mood]:'',frase:p.caption||'',type};
+  }
+  if(type==='antes_depois'){
+    const p=window._sharePostData||{};
+    return {kind:'stats',title:'Antes e Depois',icon:'🔄',rows:[
+      {icon:'📅',label:'Dias entre as fotos',val:p.diasEntre!=null?`${p.diasEntre} dias`:'—'},
+    ],badge:'',frase:p.caption||'',type};
   }
   return {kind:'hero',icon:'🔥',headline:streak,unit:'dias',badge:'',sub:'',stats:[],frase,type};
 }
@@ -6933,6 +7075,9 @@ const JEV_TYPES={
   marco:       {icon:'🔥',color:'#fb923c',bg:'rgba(251,146,60,.12)',  dot:'#fb923c',label:'Marco'},
   reflexao:    {icon:'💭',color:'#b0a8d4',bg:'rgba(176,168,212,.12)', dot:'#b0a8d4',label:'Reflexão'},
   patente:     {icon:'👑',color:'#fbbf24',bg:'rgba(251,191,36,.14)',  dot:'#fbbf24',label:'Patente'},
+  post:        {icon:'📝',color:'#f472b6',bg:'rgba(244,114,182,.14)', dot:'#f472b6',label:'Post'},
+  antes_depois:{icon:'🔄',color:'#22d3ee',bg:'rgba(34,211,238,.14)',  dot:'#22d3ee',label:'Antes e Depois'},
+  capsula:     {icon:'⏳',color:'#fbbf24',bg:'rgba(251,191,36,.14)',  dot:'#fbbf24',label:'Cápsula do Tempo'},
   auto:        {icon:'⚡',color:'#a78bfa',bg:'rgba(167,139,250,.10)', dot:'#a78bfa',label:'Auto'},
 };
 
@@ -7070,7 +7215,10 @@ async function saveJornadaEventRemote(ev){
     const {error}=await window.supabaseClient.from('jornada_eventos').upsert([{
       id:ev.id, user_id:user.id, type:ev.type, descricao:ev.desc, ts:ev.ts,
       streak:ev.streak??null, liga:ev.liga||null, xp:ev.xp??null,
-      has_photo:!!ev.hasPhoto, auto:!!ev.auto
+      has_photo:!!ev.hasPhoto, auto:!!ev.auto,
+      is_post:!!ev.isPost, title:ev.title||null, caption:ev.caption||null,
+      category:ev.category||null, mood:ev.mood||null, has_video:!!ev.hasVideo,
+      dias_entre:ev.diasEntre??null, capsula_aberta:ev.capsulaAberta??null
     }],{onConflict:'id'});
     if(error) throw error;
   }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
@@ -7140,11 +7288,16 @@ window.jornadaRegistrarReflexao=jornadaRegistrarReflexao;
 function jornadaVerReflexao(id){
   const qas=_loadReflexaoPayloads()[id];
   if(!qas || !qas.length){ showToast('Detalhes dessa reflexão não estão disponíveis neste aparelho','default'); return; }
-  const html=qas.map(item=>`
-    <div class="task-sheet-row" style="display:block">
+  const log=typeof loadReflexaoLog==='function'?loadReflexaoLog():[];
+  const html=qas.map(item=>{
+    const nEntries=item.id?log.filter(e=>e.questionId===item.id).length:0;
+    const evoLink=nEntries>1?`<div style="margin-top:.35rem"><span style="font-size:.72rem;color:var(--primary);font-weight:700;cursor:pointer" onclick="jornadaVerEvolucaoPergunta('${_jEsc(item.id)}')"><i class="fas fa-chart-line"></i> Ver evolução desta pergunta (${nEntries} respostas)</span></div>`:'';
+    return `<div class="task-sheet-row" style="display:block">
       <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.3rem">${item.icon} ${_jEsc(item.text)}</div>
       <div class="task-sheet-row-val" style="color:var(--text-2)">${_jEsc(item.answer)}</div>
-    </div>`).join('');
+      ${evoLink}
+    </div>`;
+  }).join('');
   q('task-sheet-content').innerHTML=`
     <div class="task-sheet-handle"></div>
     <div class="task-sheet-title">🧠 Reflexão</div>
@@ -7152,6 +7305,27 @@ function jornadaVerReflexao(id){
   q('task-sheet-overlay').classList.add('active');
 }
 window.jornadaVerReflexao=jornadaVerReflexao;
+
+// Mostra todas as respostas de uma mesma pergunta em ordem cronológica
+// (ex.: Resposta de 2026 → 2027 → 2028), evidenciando a evolução do pensamento.
+function jornadaVerEvolucaoPergunta(questionId){
+  if(typeof loadReflexaoLog!=='function') return;
+  const entries=loadReflexaoLog().filter(e=>e.questionId===questionId).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!entries.length) return;
+  const html=entries.map((e,i)=>`
+    <div style="margin-bottom:.4rem">
+      <div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.02em">Resposta de ${e.date.slice(0,4)} <span style="font-weight:400;text-transform:none">(${fmtDate(e.date)})</span></div>
+      <div style="font-size:.85rem;color:var(--text-2);margin-top:.2rem;white-space:pre-wrap">${_jEsc(e.answer)}</div>
+      ${i<entries.length-1?'<div style="text-align:center;color:var(--text-3);font-size:.85rem;margin:.35rem 0">↓</div>':''}
+    </div>`).join('');
+  q('task-sheet-content').innerHTML=`
+    <div class="task-sheet-handle"></div>
+    <div class="task-sheet-title">${entries[0].icon||'💭'} ${_jEsc(entries[0].text)}</div>
+    <div style="font-size:.72rem;color:var(--text-3);margin:.15rem 0 .8rem">Evolução ao longo do tempo</div>
+    ${html}`;
+  q('task-sheet-overlay').classList.add('active');
+}
+window.jornadaVerEvolucaoPergunta=jornadaVerEvolucaoPergunta;
 
 function jornadaRegistrarShare(type,desc,thumb){
   const s=loadJShares();
@@ -7242,18 +7416,27 @@ async function jornadaSalvarEvento(){
 window.jornadaSalvarEvento=jornadaSalvarEvento;
 
 async function jornadaDeletarEvento(id){
-  saveJornada(loadJornada().filter(e=>e.id!==id));
+  const evs=loadJornada();
+  const ev=evs.find(e=>e.id===id);
+  saveJornada(evs.filter(e=>e.id!==id));
   await JDB.del(id).catch(()=>{});
+  await JDB.del(id+'_video').catch(()=>{});
+  await JDB.del(id+'_antes').catch(()=>{});
+  await JDB.del(id+'_depois').catch(()=>{});
   const user=window.app?.state?.user;
   if(user&&!user.local){ window.supabaseClient.from('jornada_eventos').delete().eq('id',id).eq('user_id',user.id).then(()=>{}); }
+  closeModal('jornada-photo-modal');
   const el=document.getElementById('jtl-'+id);
   if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);}
+  if(ev&&ev.isPost) _renderJornadaShares();
+  showToast('Removido','default');
 }
 window.jornadaDeletarEvento=jornadaDeletarEvento;
 
 async function jornadaVerFoto(id){
   const p=await JDB.get(id).catch(()=>null); if(!p) return;
-  const img=document.getElementById('jornada-photo-full'); if(img) img.src=p;
+  const img=document.getElementById('jornada-photo-full'); if(img){ img.src=p; img.style.display='block'; }
+  const v=document.getElementById('jornada-photo-video'); if(v){ v.pause(); v.style.display='none'; }
   const meta=document.getElementById('jornada-photo-meta'); if(meta) meta.innerHTML='';
   const m=document.getElementById('jornada-photo-modal'); if(m) m.classList.add('active');
 }
@@ -7266,15 +7449,457 @@ function jornadaAddFotoEvento(id){
 }
 window.jornadaAddFotoEvento=jornadaAddFotoEvento;
 
+/* ══════════════════════════════════════════════════
+   CRIAR POST — posts pessoais na Jornada, com prioridade
+   visual sobre os eventos automáticos
+══════════════════════════════════════════════════ */
+let _postEdPhoto=null, _postEdVideo=null, _postEdCat='outro', _postEdMood='';
+
+function postEdAbrir(){
+  _postEdPhoto=null; _postEdVideo=null; _postEdCat='outro'; _postEdMood='';
+  q('post-ed-preview').style.display='none'; q('post-ed-preview').src='';
+  q('post-ed-video-preview').style.display='none'; q('post-ed-video-preview').src='';
+  q('post-ed-remove-media').style.display='none';
+  q('post-ed-title').value=''; q('post-ed-caption').value='';
+  document.querySelectorAll('#post-ed-cat-picker span').forEach(s=>s.classList.toggle('active', s.dataset.v==='outro'));
+  document.querySelectorAll('#post-ed-mood-picker span').forEach(s=>s.classList.remove('active'));
+  q('post-editor-modal').classList.add('active');
+}
+window.postEdAbrir=postEdAbrir;
+
+function postEdPickPhoto(){ q('post-ed-file-photo').click(); }
+window.postEdPickPhoto=postEdPickPhoto;
+function postEdPickVideo(){ q('post-ed-file-video').click(); }
+window.postEdPickVideo=postEdPickVideo;
+
+async function postEdOnPhoto(e){
+  const f=e.target.files[0]; if(!f) return;
+  const b=await _jFile2B64(f); const r=await _jResize(b,1080,1080);
+  _postEdPhoto=r; _postEdVideo=null;
+  q('post-ed-preview').src=r; q('post-ed-preview').style.display='block';
+  q('post-ed-video-preview').style.display='none';
+  q('post-ed-remove-media').style.display='';
+  e.target.value='';
+}
+window.postEdOnPhoto=postEdOnPhoto;
+
+async function postEdOnVideo(e){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>25*1024*1024){ showToast('Vídeo muito grande (máx. 25MB)','error'); e.target.value=''; return; }
+  const b=await _jFile2B64(f);
+  _postEdVideo=b; _postEdPhoto=null;
+  q('post-ed-video-preview').src=b; q('post-ed-video-preview').style.display='block';
+  q('post-ed-preview').style.display='none';
+  q('post-ed-remove-media').style.display='';
+  e.target.value='';
+}
+window.postEdOnVideo=postEdOnVideo;
+
+function postEdRemoveMedia(){
+  _postEdPhoto=null; _postEdVideo=null;
+  q('post-ed-preview').style.display='none'; q('post-ed-preview').src='';
+  q('post-ed-video-preview').style.display='none'; q('post-ed-video-preview').src='';
+  q('post-ed-remove-media').style.display='none';
+}
+window.postEdRemoveMedia=postEdRemoveMedia;
+
+function postEdSetCat(v,el){ _postEdCat=v; document.querySelectorAll('#post-ed-cat-picker span').forEach(s=>s.classList.remove('active')); el.classList.add('active'); }
+window.postEdSetCat=postEdSetCat;
+function postEdSetMood(v,el){ _postEdMood=(_postEdMood===v)?'':v; document.querySelectorAll('#post-ed-mood-picker span').forEach(s=>s.classList.remove('active')); if(_postEdMood) el.classList.add('active'); }
+window.postEdSetMood=postEdSetMood;
+
+async function postEdFinalizar(action){
+  const title=(q('post-ed-title').value||'').trim();
+  const caption=(q('post-ed-caption').value||'').trim();
+  if(!caption && !title && !_postEdPhoto && !_postEdVideo){ showToast('Escreva algo ou adicione uma mídia','error'); return; }
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const ev={id,type:'post',desc:title||caption.slice(0,60)||'Novo post',ts:new Date().toISOString(),
+    streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,
+    hasPhoto:!!_postEdPhoto,hasVideo:!!_postEdVideo,isPost:true,
+    title,caption,category:_postEdCat,mood:_postEdMood,auto:false};
+  if(action!=='share'){
+    const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
+    saveJornadaEventRemote(ev);
+    if(_postEdPhoto) await JDB.set(id,_postEdPhoto).catch(()=>{});
+    if(_postEdVideo) await JDB.set(id+'_video',_postEdVideo).catch(()=>{});
+    showToast('Post salvo na Jornada! 📝','success');
+    renderJornada();
+  }
+  if(action==='share'||action==='both'){
+    window._sharePostData={title,caption,category:_postEdCat,mood:_postEdMood};
+    closeModal('post-editor-modal');
+    if(_postEdPhoto) await sm_setImageFromB64(_postEdPhoto); else sm_removePhoto();
+    openShareModal('post');
+    return;
+  }
+  closeModal('post-editor-modal');
+}
+window.postEdFinalizar=postEdFinalizar;
+
+/* ══════════════════════════════════════════════════
+   ANTES E DEPOIS
+══════════════════════════════════════════════════ */
+let _adAntes=null, _adDepois=null;
+
+function adAbrirModal(){
+  _adAntes=null; _adDepois=null;
+  q('ad-preview-antes').style.display='none'; q('ad-placeholder-antes').style.display='flex';
+  q('ad-preview-depois').style.display='none'; q('ad-placeholder-depois').style.display='flex';
+  q('ad-caption').value=''; q('ad-date-antes').value=''; q('ad-date-depois').value='';
+  q('antes-depois-modal').classList.add('active');
+}
+window.adAbrirModal=adAbrirModal;
+
+async function adOnFile(e,slot){
+  const f=e.target.files[0]; if(!f) return;
+  const b=await _jFile2B64(f); const r=await _jResize(b,900,900);
+  if(slot==='antes'){ _adAntes=r; q('ad-preview-antes').src=r; q('ad-preview-antes').style.display='block'; q('ad-placeholder-antes').style.display='none'; }
+  else { _adDepois=r; q('ad-preview-depois').src=r; q('ad-preview-depois').style.display='block'; q('ad-placeholder-depois').style.display='none'; }
+  e.target.value='';
+}
+window.adOnFile=adOnFile;
+
+function _adDiasEntre(){
+  const da=q('ad-date-antes').value, dd=q('ad-date-depois').value;
+  if(!da||!dd) return null;
+  const diff=Math.round((new Date(dd)-new Date(da))/86400000);
+  return isNaN(diff)?null:Math.abs(diff);
+}
+
+// Monta uma imagem única lado a lado (antes|depois) para o Studio de compartilhamento,
+// já que os templates de canvas trabalham com uma única foto de fundo.
+function _buildSideBySide(b64A,b64B){
+  return new Promise(resolve=>{
+    const imgA=new Image(), imgB=new Image();
+    let loaded=0;
+    const done=()=>{
+      loaded++;
+      if(loaded<2) return;
+      const c=document.createElement('canvas'); c.width=1080; c.height=760;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#0d0a17'; ctx.fillRect(0,0,c.width,c.height);
+      const w=c.width/2-6;
+      ctx.drawImage(imgA,0,0,w,c.height);
+      ctx.drawImage(imgB,c.width/2+6,0,w,c.height);
+      resolve(c.toDataURL('image/jpeg',.85));
+    };
+    imgA.onload=done; imgB.onload=done;
+    imgA.src=b64A; imgB.src=b64B;
+  });
+}
+function _adBuildComposite(){ return _buildSideBySide(_adAntes,_adDepois); }
+
+async function adFinalizar(action){
+  if(!_adAntes||!_adDepois){ showToast('Escolha as duas fotos (antes e depois)','error'); return; }
+  const caption=(q('ad-caption').value||'').trim();
+  const diasEntre=_adDiasEntre();
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const ev={id,type:'antes_depois',desc:caption||'Antes e Depois',ts:new Date().toISOString(),
+    streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,
+    isPost:true,caption,diasEntre,auto:false};
+  if(action!=='share'){
+    const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
+    saveJornadaEventRemote(ev);
+    await JDB.set(id+'_antes',_adAntes).catch(()=>{});
+    await JDB.set(id+'_depois',_adDepois).catch(()=>{});
+    showToast('Antes e Depois salvo na Jornada! 🔄','success');
+    renderJornada();
+  }
+  if(action==='share'||action==='both'){
+    window._sharePostData={caption,diasEntre};
+    const composite=await _adBuildComposite();
+    closeModal('antes-depois-modal');
+    await sm_setImageFromB64(composite);
+    openShareModal('antes_depois');
+    return;
+  }
+  closeModal('antes-depois-modal');
+}
+window.adFinalizar=adFinalizar;
+
+/* ══════════════════════════════════════════════════
+   CÁPSULA DO TEMPO
+══════════════════════════════════════════════════ */
+const CAPSULAS_KEY='pm18_capsulas_v1';
+function loadCapsulas(){ try{ return JSON.parse(localStorage.getItem(CAPSULAS_KEY)||'[]'); }catch(e){ return []; } }
+function saveCapsulas(l){ localStorage.setItem(CAPSULAS_KEY, JSON.stringify(l)); }
+
+function capsulaAbrirModal(){
+  q('capsula-msg').value='';
+  const min=new Date(); min.setDate(min.getDate()+1);
+  q('capsula-data').min=min.toISOString().slice(0,10);
+  q('capsula-data').value='';
+  q('capsula-modal').classList.add('active');
+}
+window.capsulaAbrirModal=capsulaAbrirModal;
+
+async function saveCapsulaRemote(cap){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  try{
+    const {error}=await window.supabaseClient.from('jornada_capsulas').upsert([{
+      id:cap.id, user_id:user.id, message:cap.message, created_at:cap.createdAt,
+      open_at:cap.openAt, opened:!!cap.opened
+    }],{onConflict:'id'});
+    if(error) throw error;
+  }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
+}
+window.saveCapsulaRemote=saveCapsulaRemote;
+
+function capsulaCriar(){
+  const msg=(q('capsula-msg').value||'').trim();
+  const data=q('capsula-data').value;
+  if(!msg){ showToast('Escreva uma mensagem para o futuro','error'); return; }
+  if(!data){ showToast('Escolha a data de abertura','error'); return; }
+  const id='cap_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const cap={id,message:msg,createdAt:new Date().toISOString(),openAt:data,opened:false,notified:false};
+  const list=loadCapsulas(); list.unshift(cap); saveCapsulas(list);
+  saveCapsulaRemote(cap);
+  closeModal('capsula-modal');
+  showToast('Cápsula lacrada! Ela abre em '+fmtDate(data)+' 🔒','success');
+  _renderCapsulas();
+}
+window.capsulaCriar=capsulaCriar;
+
+function _capsulaDiasRestantes(cap){
+  return Math.ceil((new Date(cap.openAt+'T00:00:00')-new Date(todayKey()+'T00:00:00'))/86400000);
+}
+
+function _renderCapsulas(){
+  const el=q('jornada-capsulas'); if(!el) return;
+  const pendentes=loadCapsulas().filter(c=>!c.opened);
+  if(!pendentes.length){ el.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:.8rem;padding:.6rem 0">Nenhuma cápsula lacrada ainda.<br><span style="font-size:.72rem;opacity:.7">Escreva uma mensagem para o seu eu do futuro.</span></div>'; return; }
+  el.innerHTML=pendentes.map(cap=>{
+    const dias=_capsulaDiasRestantes(cap), pronta=dias<=0;
+    return `<div class="capsula-card ${pronta?'':'locked'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
+        <div style="font-size:.85rem;font-weight:700;color:${pronta?'var(--primary)':'var(--text-2)'}">${pronta?'🎉 Pronta para abrir!':'🔒 Lacrada'}</div>
+        <div style="font-size:.72rem;color:var(--text-3)">${pronta?fmtDate(cap.openAt):'Abre em '+Math.max(dias,0)+' dia'+(dias===1?'':'s')}</div>
+      </div>
+      ${pronta?`<button class="btn btn-primary btn-sm btn-block" style="margin-top:.5rem" onclick="capsulaAbrir('${cap.id}')"><i class="fas fa-box-open"></i> Abrir Cápsula</button>`:''}
+    </div>`;
+  }).join('');
+}
+window._renderCapsulas=_renderCapsulas;
+
+function capsulaAbrir(id){
+  const list=loadCapsulas();
+  const cap=list.find(c=>c.id===id); if(!cap) return;
+  cap.opened=true; cap.openedAt=new Date().toISOString();
+  saveCapsulas(list);
+  saveCapsulaRemote(cap);
+  const g=typeof loadGamify==='function'?loadGamify():{};
+  const pc=typeof loadPC==='function'?loadPC():{};
+  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const evId='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  const ev={id:evId,type:'capsula',desc:'⏳ Cápsula do Tempo aberta',ts:new Date().toISOString(),
+    streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,capsulaAberta:true,auto:true,
+    caption:cap.message,title:'Lacrada em '+fmtDate(cap.createdAt.slice(0,10))};
+  const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
+  saveJornadaEventRemote(ev);
+  showToast('Cápsula aberta! ✨','success');
+  renderJornada();
+}
+window.capsulaAbrir=capsulaAbrir;
+
+function jornadaVerCapsula(id){
+  const ev=loadJornada().find(e=>e.id===id); if(!ev) return;
+  q('task-sheet-content').innerHTML=`
+    <div class="task-sheet-handle"></div>
+    <div class="task-sheet-title">⏳ Cápsula do Tempo</div>
+    <div style="font-size:.72rem;color:var(--text-3);margin-top:.3rem">${_jEsc(ev.title||'')}</div>
+    <div style="margin-top:.7rem;font-size:.9rem;color:var(--text-2);white-space:pre-wrap;line-height:1.55">${_jEsc(ev.caption||'')}</div>`;
+  q('task-sheet-overlay').classList.add('active');
+}
+window.jornadaVerCapsula=jornadaVerCapsula;
+
+// Verifica cápsulas prontas para abrir e avisa o usuário sem culpa, uma única vez.
+function checkCapsulasProntas(){
+  const list=loadCapsulas();
+  let changed=false;
+  list.forEach(cap=>{
+    if(cap.opened||cap.notified) return;
+    if(_capsulaDiasRestantes(cap)<=0){
+      cap.notified=true; changed=true;
+      showToast('🎉 Sua Cápsula do Tempo está pronta para ser aberta!','success');
+      if(window.Notification && Notification.permission==='granted'){
+        try{ new Notification('Produtiv.me', {body:'Sua Cápsula do Tempo está pronta para ser aberta! ⏳'}); }catch(e){}
+      }
+    }
+  });
+  if(changed) saveCapsulas(list);
+}
+window.checkCapsulasProntas=checkCapsulasProntas;
+setInterval(()=>{ if(typeof checkCapsulasProntas==='function') checkCapsulasProntas(); }, 60*60*1000);
+
+/* ══════════════════════════════════════════════════
+   MEMÓRIAS — "Há exatamente X anos..."
+══════════════════════════════════════════════════ */
+function _renderJornadaMemorias(){
+  const card=q('jornada-memorias-card'), el=q('jornada-memorias');
+  if(!card||!el) return;
+  const evs=loadJornada();
+  const reflexLog=typeof loadReflexaoLog==='function'?loadReflexaoLog():[];
+  const hoje=new Date();
+  const mm=String(hoje.getMonth()+1).padStart(2,'0'), dd=String(hoje.getDate()).padStart(2,'0');
+  const anoAtual=hoje.getFullYear();
+  const memorias=[];
+  evs.forEach(ev=>{
+    const d=new Date(ev.ts);
+    if(String(d.getMonth()+1).padStart(2,'0')===mm && String(d.getDate()).padStart(2,'0')===dd && d.getFullYear()<anoAtual){
+      memorias.push({ts:ev.ts, anos:anoAtual-d.getFullYear(), kind:'evento', ev});
+    }
+  });
+  const reflexPorDia={};
+  reflexLog.forEach(r=>{
+    const d=new Date(r.date+'T00:00:00');
+    if(String(d.getMonth()+1).padStart(2,'0')===mm && String(d.getDate()).padStart(2,'0')===dd && d.getFullYear()<anoAtual){
+      (reflexPorDia[r.date]=reflexPorDia[r.date]||[]).push(r);
+    }
+  });
+  Object.entries(reflexPorDia).forEach(([date,items])=>{
+    memorias.push({ts:date+'T12:00:00', anos:anoAtual-Number(date.slice(0,4)), kind:'reflexao', items});
+  });
+  memorias.sort((a,b)=>a.anos-b.anos);
+  if(!memorias.length){ card.style.display='none'; return; }
+  card.style.display='';
+  window._jMemoriasCache=memorias;
+  el.innerHTML=memorias.slice(0,8).map((m,i)=>{
+    const label=`Há exatamente ${m.anos} ano${m.anos>1?'s':''}...`;
+    if(m.kind==='reflexao'){
+      const first=m.items[0];
+      return `<div class="memoria-card" onclick="jornadaVerMemoriaReflexao(${i})">
+        <div class="memoria-card-icon">🧠</div>
+        <div style="flex:1;min-width:0">
+          <div class="memoria-badge">${label}</div>
+          <div style="font-size:.82rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_jEsc(first.text)}</div>
+        </div>
+        <i class="fas fa-chevron-right" style="color:var(--text-3);flex-shrink:0"></i>
+      </div>`;
+    }
+    const ev=m.ev, t=JEV_TYPES[ev.type]||JEV_TYPES.auto;
+    const click=ev.hasPhoto?`jornadaVerFoto('${_jEsc(ev.id)}')`:(ev.hasReflexao?`jornadaVerReflexao('${_jEsc(ev.id)}')`:'');
+    return `<div class="memoria-card" ${click?`onclick="${click}"`:''}>
+      <div class="memoria-card-icon">${t.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="memoria-badge">${label}</div>
+        <div style="font-size:.82rem;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_jEsc(ev.title||ev.desc)}</div>
+      </div>
+      ${click?'<i class="fas fa-chevron-right" style="color:var(--text-3);flex-shrink:0"></i>':''}
+    </div>`;
+  }).join('');
+}
+window._renderJornadaMemorias=_renderJornadaMemorias;
+
+function jornadaVerMemoriaReflexao(idx){
+  const m=(window._jMemoriasCache||[])[idx]; if(!m||m.kind!=='reflexao') return;
+  const html=m.items.map(item=>`
+    <div class="task-sheet-row" style="display:block">
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.3rem">${item.icon||'💭'} ${_jEsc(item.text)}</div>
+      <div class="task-sheet-row-val" style="color:var(--text-2)">${_jEsc(item.answer)}</div>
+    </div>`).join('');
+  q('task-sheet-content').innerHTML=`
+    <div class="task-sheet-handle"></div>
+    <div class="task-sheet-title">🧠 Reflexão de ${fmtDate(m.items[0].date)}</div>
+    <div style="margin-top:.6rem">${html}</div>`;
+  q('task-sheet-overlay').classList.add('active');
+}
+window.jornadaVerMemoriaReflexao=jornadaVerMemoriaReflexao;
+
+/* ══════════════════════════════════════════════════
+   VISUALIZAÇÃO COMPLETA DE UM POST — reaproveita o mesmo
+   modal de foto/compartilhamento da Jornada
+══════════════════════════════════════════════════ */
+async function jornadaVerPostFull(id){
+  const ev=loadJornada().find(e=>e.id===id); if(!ev) return;
+  const img=document.getElementById('jornada-photo-full');
+  const vid=document.getElementById('jornada-photo-video');
+  if(ev.type==='antes_depois'){
+    const [pa,pd]=await Promise.all([JDB.get(id+'_antes').catch(()=>null), JDB.get(id+'_depois').catch(()=>null)]);
+    if(pa&&pd){ const composite=await _buildSideBySide(pa,pd); if(img){ img.src=composite; img.style.display='block'; } }
+    if(vid){ vid.pause(); vid.style.display='none'; }
+  } else if(ev.hasVideo){
+    const v=await JDB.get(id+'_video').catch(()=>null);
+    if(vid){ vid.src=v||''; vid.style.display=v?'block':'none'; }
+    if(img) img.style.display='none';
+  } else if(ev.hasPhoto){
+    const p=await JDB.get(id).catch(()=>null);
+    if(img){ img.src=p||''; img.style.display=p?'block':'none'; }
+    if(vid){ vid.pause(); vid.style.display='none'; }
+  } else {
+    if(img) img.style.display='none';
+    if(vid){ vid.pause(); vid.style.display='none'; }
+  }
+  const catLabel={estudos:'📚 Estudos',trabalho:'💼 Trabalho',academia:'🏋️ Academia',vida:'🏠 Vida',financeiro:'💰 Financeiro',outro:'✨ Outro'}[ev.category]||'';
+  const moodIcon={pessimo:'😞',mal:'😕',ok:'😐',bem:'🙂',otimo:'😄'}[ev.mood]||'';
+  const diasTxt=ev.type==='antes_depois'&&ev.diasEntre!=null?`${ev.diasEntre} dias entre as fotos`:'';
+  const meta=document.getElementById('jornada-photo-meta');
+  if(meta) meta.innerHTML=`
+    <div class="jpm-meta">
+      ${(ev.title||ev.caption)?`<div class="jpm-caption">${ev.title?`${_jEsc(ev.title)}<br>`:''}<span style="font-weight:400;color:var(--text-2)">${_jEsc(ev.caption||'')}</span></div>`:''}
+      <div class="jpm-date">${_jFmtDate(ev.ts)} · ${_jFmtTime(ev.ts)}</div>
+      <div class="jpm-badges" style="margin-bottom:.8rem">
+        ${catLabel?`<span class="badge" style="background:var(--surface3)">${catLabel}</span>`:''}
+        ${moodIcon?`<span class="badge" style="background:var(--surface3)">${moodIcon}</span>`:''}
+        ${diasTxt?`<span class="badge" style="background:var(--surface3)">${diasTxt}</span>`:''}
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost btn-sm btn-block" onclick="jornadaCompartilharPost('${_jEsc(ev.id)}')"><i class="fas fa-share-alt"></i> Compartilhar</button>
+        <button class="btn btn-ghost btn-sm btn-block" style="color:var(--danger)" onclick="jornadaDeletarEvento('${_jEsc(ev.id)}')"><i class="fas fa-trash"></i> Excluir</button>
+      </div>
+    </div>`;
+  const m=document.getElementById('jornada-photo-modal'); if(m) m.classList.add('active');
+}
+window.jornadaVerPostFull=jornadaVerPostFull;
+
+// Reabre o Studio de compartilhamento para um post já salvo (recompartilhar).
+async function jornadaCompartilharPost(id){
+  const ev=loadJornada().find(e=>e.id===id); if(!ev) return;
+  if(ev.type==='antes_depois'){
+    const [pa,pd]=await Promise.all([JDB.get(id+'_antes').catch(()=>null), JDB.get(id+'_depois').catch(()=>null)]);
+    window._sharePostData={caption:ev.caption,diasEntre:ev.diasEntre};
+    if(pa&&pd) await sm_setImageFromB64(await _buildSideBySide(pa,pd)); else sm_removePhoto();
+    openShareModal('antes_depois');
+    return;
+  }
+  window._sharePostData={title:ev.title,caption:ev.caption,category:ev.category,mood:ev.mood};
+  if(ev.hasPhoto){ const p=await JDB.get(id).catch(()=>null); if(p) await sm_setImageFromB64(p); else sm_removePhoto(); }
+  else sm_removePhoto();
+  openShareModal('post');
+}
+window.jornadaCompartilharPost=jornadaCompartilharPost;
+
+/* ══════════════════════════════════════════════════
+   LINHA DO TEMPO — fica fechada por padrão (a lista de
+   eventos automáticos pode ficar grande com o tempo)
+══════════════════════════════════════════════════ */
+let _jTimelineOpen=false;
+function jornadaToggleTimeline(){
+  _jTimelineOpen=!_jTimelineOpen;
+  const box=q('jornada-timeline'), btn=q('jornada-timeline-toggle');
+  if(box) box.style.display=_jTimelineOpen?'':'none';
+  if(btn) btn.innerHTML=_jTimelineOpen?'<i class="fas fa-chevron-up"></i> Fechar linha do tempo':'<i class="fas fa-chevron-down"></i> Abrir linha do tempo';
+  if(_jTimelineOpen) _renderJornadaTimeline();
+}
+window.jornadaToggleTimeline=jornadaToggleTimeline;
+
 /* ══ RENDER PRINCIPAL ══ */
 async function renderJornada(){
   _renderJornadaHero();
   _renderJornadaMural();
   _renderJornadaResumo();
   _renderJornadaMomentos();
-  await _renderJornadaTimeline();
+  if(_jTimelineOpen) await _renderJornadaTimeline();
   _renderJornadaShares();
   _renderJornadaMeses();
+  _renderJornadaMemorias();
+  _renderCapsulas();
   jornadaCarregarAvatar();
 }
 window.renderJornada=renderJornada;
@@ -7363,7 +7988,7 @@ function _renderJornadaMomentos(){
 
 async function _renderJornadaTimeline(filtroMes='all'){
   const el=document.getElementById('jornada-timeline'); if(!el) return;
-  let evs=loadJornada();
+  let evs=loadJornada().filter(e=>!e.isPost); // posts vivem no feed de Compartilhamentos, não aqui
   if(filtroMes&&filtroMes!=='all') evs=evs.filter(e=>e.ts.startsWith(filtroMes));
   if(!evs.length){
     el.innerHTML=`<div style="text-align:center;color:var(--text-3);font-size:.85rem;padding:2rem 0">Nenhum momento ainda.<br><br><button class="btn btn-primary btn-sm" onclick="jornadaAbrirModal()"><i class="fas fa-plus"></i> Registrar primeiro momento</button></div>`;
@@ -7372,8 +7997,18 @@ async function _renderJornadaTimeline(filtroMes='all'){
   const html=[];
   for(const ev of evs.slice(0,80)){
     const t=JEV_TYPES[ev.type]||JEV_TYPES.auto;
-    let photoHtml='';
-    if(ev.hasPhoto){ const p=await JDB.get(ev.id).catch(()=>null); if(p) photoHtml=`<img src="${p}" class="jtl-photo" loading="lazy" onclick="jornadaVerFoto('${_jEsc(ev.id)}')" alt="foto">`; }
+    let mediaHtml='';
+    if(ev.hasPhoto){
+      const p=await JDB.get(ev.id).catch(()=>null);
+      if(p) mediaHtml=`<img src="${p}" class="jtl-photo" loading="lazy" onclick="jornadaVerFoto('${_jEsc(ev.id)}')" alt="foto">`;
+    }
+    let bodyHtml;
+    if(ev.type==='capsula'){
+      const aberta=!!ev.capsulaAberta;
+      bodyHtml=`<div class="jtl-title" ${aberta?`style="cursor:pointer;color:var(--primary)" onclick="jornadaVerCapsula('${_jEsc(ev.id)}')"`:''}>${_jEsc(ev.desc)}${aberta?' <i class="fas fa-chevron-right" style="font-size:.7rem"></i>':''}</div>`;
+    } else {
+      bodyHtml=`<div class="jtl-title" ${ev.hasReflexao?`style="cursor:pointer;color:var(--primary)" onclick="jornadaVerReflexao('${_jEsc(ev.id)}')"`:''}>${_jEsc(ev.desc)}${ev.hasReflexao?' <i class="fas fa-chevron-right" style="font-size:.7rem"></i>':''}</div>`;
+    }
     html.push(`<div class="jtl-item" id="jtl-${_jEsc(ev.id)}">
       <div class="jtl-dot" style="background:${t.dot}"></div>
       <div class="jtl-date">
@@ -7381,15 +8016,15 @@ async function _renderJornadaTimeline(filtroMes='all'){
         ${_jFmtDate(ev.ts)} · ${_jFmtTime(ev.ts)}
         ${ev.auto?'<span style="font-size:.62rem;color:var(--text-3);background:var(--surface4);padding:.05rem .35rem;border-radius:4px">auto</span>':''}
       </div>
-      <div class="jtl-title" ${ev.hasReflexao?`style="cursor:pointer;color:var(--primary)" onclick="jornadaVerReflexao('${_jEsc(ev.id)}')"`:''}>${_jEsc(ev.desc)}${ev.hasReflexao?' <i class="fas fa-chevron-right" style="font-size:.7rem"></i>':''}</div>
+      ${bodyHtml}
       <div class="jtl-meta">
         ${ev.streak?`<span class="badge" style="background:rgba(251,146,60,.1);color:var(--orange)">🔥 ${ev.streak} dias</span>`:''}
         ${ev.liga?`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">${_jEsc(ev.liga)}</span>`:''}
         ${ev.xp?`<span class="badge" style="background:rgba(251,191,36,.1);color:var(--gold)">⚡ ${ev.xp} XP</span>`:''}
       </div>
-      ${photoHtml}
+      ${mediaHtml}
       <div class="jtl-actions">
-        ${!ev.hasPhoto?`<button class="btn btn-ghost btn-xs" onclick="jornadaAddFotoEvento('${_jEsc(ev.id)}')" title="Adicionar foto"><i class="fas fa-camera"></i></button>`:''}
+        ${(ev.type!=='capsula'&&!ev.hasPhoto)?`<button class="btn btn-ghost btn-xs" onclick="jornadaAddFotoEvento('${_jEsc(ev.id)}')" title="Adicionar foto"><i class="fas fa-camera"></i></button>`:''}
         <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="jornadaDeletarEvento('${_jEsc(ev.id)}')" title="Excluir"><i class="fas fa-trash"></i></button>
       </div>
     </div>`);
@@ -7406,24 +8041,43 @@ function _renderJornadaMeses(){
 
 let _jSharePage=1;
 const J_SHARE_PAGE_SIZE=12;
-function _renderJornadaShares(){
+async function _renderJornadaShares(){
   const el=document.getElementById('jornada-shares'); if(!el) return;
-  const shares=loadJShares();
-  const cnt=document.getElementById('jornada-shares-count'); if(cnt) cnt.textContent=shares.length;
-  if(!shares.length){ el.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1.2rem 0">Nenhum compartilhamento salvo ainda.<br><span style="font-size:.74rem;opacity:.6">Após compartilhar, você poderá salvar aqui.</span></div>'; return; }
-  const visible=shares.slice(0, _jSharePage*J_SHARE_PAGE_SIZE);
-  const cells=visible.map(s=>`
-    <div class="jshare-cell" onclick="jornadaVerShareFull('${s.id}')">
-      ${s.thumb
-        ? `<img src="${s.thumb}" loading="lazy" alt="${_jEsc(s.desc||s.type)}">`
-        : `<div class="jshare-cell-empty">📱</div>`}
-      <span class="jshare-cell-badge">${JEV_TYPES[s.type]?.icon||'📱'}</span>
-    </div>`).join('');
-  const hasMore=shares.length>visible.length;
-  el.innerHTML=`<div class="jshare-grid">${cells}</div>${hasMore?`<button class="jshare-load-more" onclick="_jShareLoadMore()"><i class="fas fa-chevron-down"></i> Carregar mais (${shares.length-visible.length})</button>`:''}`;
+  const shares=loadJShares().map(s=>({...s,_kind:'share'}));
+  const posts=loadJornada().filter(e=>e.isPost).map(e=>({...e,_kind:'post'}));
+  const all=[...shares,...posts].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const cnt=document.getElementById('jornada-shares-count'); if(cnt) cnt.textContent=all.length;
+  const addCells=`
+    <div class="jshare-cell jshare-cell-add" onclick="postEdAbrir()"><i class="fas fa-pen-fancy"></i><span>Criar Post</span></div>
+    <div class="jshare-cell jshare-cell-add" onclick="adAbrirModal()"><i class="fas fa-arrows-rotate"></i><span>Antes e Depois</span></div>`;
+  if(!all.length){
+    el.innerHTML=`<div class="jshare-grid">${addCells}</div><div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1rem 0">Nenhum compartilhamento salvo ainda.<br><span style="font-size:.74rem;opacity:.6">Após compartilhar ou criar um post, ele aparece aqui.</span></div>`;
+    return;
+  }
+  const visible=all.slice(0, _jSharePage*J_SHARE_PAGE_SIZE);
+  const cells=await Promise.all(visible.map(async item=>{
+    if(item._kind==='share'){
+      return `<div class="jshare-cell" onclick="jornadaVerShareFull('${item.id}')">
+        ${item.thumb ? `<img src="${item.thumb}" loading="lazy" alt="${_jEsc(item.desc||item.type)}">` : `<div class="jshare-cell-empty">📱</div>`}
+        <span class="jshare-cell-badge">${JEV_TYPES[item.type]?.icon||'📱'}</span>
+      </div>`;
+    }
+    let thumb=null;
+    if(item.type==='antes_depois') thumb=await JDB.get(item.id+'_depois').catch(()=>null);
+    else if(item.hasPhoto) thumb=await JDB.get(item.id).catch(()=>null);
+    const icon=item.type==='antes_depois'?'🔄':(item.hasVideo?'🎬':'📝');
+    return `<div class="jshare-cell" onclick="jornadaVerPostFull('${_jEsc(item.id)}')">
+      ${thumb ? `<img src="${thumb}" loading="lazy" alt="${_jEsc(item.title||item.caption||'post')}">` : `<div class="jshare-cell-empty">${icon}</div>`}
+      <span class="jshare-cell-badge">${icon}</span>
+    </div>`;
+  }));
+  const hasMore=all.length>visible.length;
+  el.innerHTML=`<div class="jshare-grid">${addCells}${cells.join('')}</div>${hasMore?`<button class="jshare-load-more" onclick="_jShareLoadMore()"><i class="fas fa-chevron-down"></i> Carregar mais (${all.length-visible.length})</button>`:''}`;
 }
+window._renderJornadaShares=_renderJornadaShares;
 function _jShareLoadMore(){ _jSharePage++; _renderJornadaShares(); }
 window._jShareLoadMore=_jShareLoadMore;
+
 
 async function jornadaDeletarShare(id){
   const shares=loadJShares().filter(s=>s.id!==id); saveJShares(shares);
