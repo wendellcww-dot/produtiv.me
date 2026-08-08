@@ -1981,6 +1981,19 @@ const offlineQueue = {
 
   push(action){
     const list=this.load();
+    if(action.type==='delete_task'){
+      // Uma exclusão sempre vence — remove qualquer "salvar" pendente da mesma
+      // tarefa, senão ele pode rodar DEPOIS da exclusão ao voltar a conexão
+      // e recriar a tarefa no banco (era o bug de "tarefa apagada volta sozinha").
+      const filtered=list.filter(a=>!(a.type==='upsert_task' && a.id===action.id));
+      const idx=filtered.findIndex(a=>a.type===action.type && a.id===action.id);
+      if(idx!==-1) filtered[idx]=action; else filtered.push(action);
+      this.save(filtered);
+      return;
+    }
+    if(action.type==='upsert_task' && list.some(a=>a.type==='delete_task' && a.id===action.id)){
+      return; // já existe uma exclusão pendente para essa tarefa — ignora o salvar
+    }
     const idx=list.findIndex(a=>a.type===action.type && a.id===action.id);
     if(idx!==-1) list[idx]=action; else list.push(action);
     this.save(list);
@@ -2813,7 +2826,15 @@ _isSyncing: false,
     if(error||!data) return;
     const local=loadJornada();
     const byId={}; local.forEach(e=>byId[e.id]=e);
-    data.forEach(r=>{ byId[r.id]={id:r.id,type:r.type,desc:r.descricao,ts:r.ts,streak:r.streak,liga:r.liga,xp:r.xp,hasPhoto:r.has_photo,auto:r.auto}; });
+    data.forEach(r=>{ byId[r.id]={
+      id:r.id,type:r.type,desc:r.descricao,ts:r.ts,streak:r.streak,liga:r.liga,xp:r.xp,
+      hasPhoto:r.has_photo,auto:r.auto,hasReflexao:r.type==='reflexao',
+      isPost:r.is_post,title:r.title,caption:r.caption,category:r.category,mood:r.mood,
+      hasVideo:r.has_video,diasEntre:r.dias_entre,capsulaAberta:r.capsula_aberta,
+      photoPath:r.photo_path,photoThumbPath:r.photo_thumb_path,videoPath:r.video_path,
+      antesPath:r.antes_path,antesThumbPath:r.antes_thumb_path,
+      depoisPath:r.depois_path,depoisThumbPath:r.depois_thumb_path
+    }; });
     const merged=Object.values(byId).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     saveJornada(merged);
   },
@@ -3029,6 +3050,12 @@ _isSyncing: false,
     }
     setSyncStatus('syncing');
     const ok = await upsertTaskWithRecurrence(payload, rec);
+    // Se a tarefa foi excluída enquanto este salvamento estava em andamento
+    // (ex: usuário marcou e apagou rápido), desfaz para não recriá-la no banco.
+    if(ok && getTaskTombstones()[task.id]){
+      window.supabaseClient.from('tarefas').delete().eq('id',task.id).eq('user_id',this.state.user.id).then(()=>{});
+      return;
+    }
     if(ok){
       task._synced = true; // confirmado no servidor — agora pode ser sobrescrito por leituras remotas mais novas
       setSyncStatus('online');
@@ -3107,9 +3134,11 @@ _isSyncing: false,
 
     // Gera novos IDs para evitar conflito com tarefas do dia anterior no banco
     const todayTitles=new Set(r[today].map(t=>t.title));
+    const tombstones=getTaskTombstones();
     let added=0;
 
     lastTasks.forEach(t=>{
+      if(tombstones[t.id]) return; // tarefa excluída — nunca reaparece via carry-over
       // Não duplica se já existe tarefa com mesmo título hoje
       if(!todayTitles.has(t.title)){
         const novoId=crypto.randomUUID();
@@ -5093,6 +5122,12 @@ const RealtimeManager = (() => {
         if(app?.state?.user) {
           localStorage.removeItem('pm18_carry_done'); // força rodar hoje
           app.carryOverTasks();
+          // Sempre re-renderiza, mesmo quando não há nada para copiar —
+          // senão a tela fica presa no dia anterior (checkboxes de tarefas
+          // que não existem mais em routines[hoje] não respondem ao clique
+          // até recarregar a página).
+          app.renderDashboard();
+          if(typeof app.renderAll==='function') app.renderAll();
         }
       }
     }, 60000); // checa a cada 1 minuto
@@ -7065,6 +7100,179 @@ const JDB=(()=>{
   };
 })();
 
+/* ══════════════════════════════════════════════════════════════
+   JPhoto — fotos da Jornada no Supabase Storage (raiz do problema
+   de qualidade: antes as fotos nunca saíam do IndexedDB do próprio
+   aparelho, então o outro dispositivo simplesmente não as recebia).
+
+   Estratégia:
+   - Corrige orientação EXIF na decodificação (createImageBitmap com
+     imageOrientation:'from-image'), sem precisar de lib externa.
+   - Só recomprime se a foto passar do limite de tamanho — fotos que
+     já vêm dentro do limite sobem com os bytes originais, sem perda
+     adicional nenhuma.
+   - Gera uma miniatura leve separada só para as grades (carregamento
+     rápido) — o original/versão cheia nunca é substituído por ela.
+   - Cada upload usa um caminho novo e único (id + timestamp +
+     aleatório), então nunca sobrescreve nada e nunca fica em cache
+     desatualizado — trocar a foto de um evento é sempre uma URL nova.
+   - Cache local em IndexedDB por caminho (não por evento), então
+     reabrir a mesma foto no mesmo aparelho é instantâneo.
+══════════════════════════════════════════════════════════════ */
+const JPHOTO_BUCKET='jornada-fotos';
+const JPHOTO_MAX_EDGE=2400;    // maior lado da versão completa
+const JPHOTO_THUMB_EDGE=480;   // maior lado da miniatura (grades)
+const JPHOTO_Q_FULL=0.92;
+const JPHOTO_Q_THUMB=0.78;
+const JPHOTO_MAX_BYTES=20*1024*1024; // 20MB
+const JPHOTO_ALLOWED=['image/jpeg','image/jpg','image/png','image/webp'];
+
+function jphValidate(file){
+  if(!file || !JPHOTO_ALLOWED.includes(file.type)){
+    throw new Error('Formato não suportado. Use JPG, PNG ou WebP.');
+  }
+  if(file.size>JPHOTO_MAX_BYTES){
+    throw new Error('Arquivo muito grande (máx. 20MB).');
+  }
+}
+
+// Decodifica respeitando a orientação EXIF do celular — sem isso, fotos
+// verticais tiradas com o celular de lado aparecem giradas no PC.
+async function jphDecode(file){
+  if('createImageBitmap' in window){
+    try{ return await createImageBitmap(file,{imageOrientation:'from-image'}); }
+    catch(e){ /* alguns navegadores antigos não suportam a opção — cai no fallback */ }
+  }
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=reject;
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+function jphOutMime(file){
+  if(file.type==='image/png') return 'image/png';   // preserva transparência
+  if(file.type==='image/webp') return 'image/webp';
+  return 'image/jpeg';
+}
+function jphExt(mime){ return mime==='image/png'?'png':(mime==='image/webp'?'webp':'jpg'); }
+
+// Gera uma variante em canvas mantendo a proporção original — nunca
+// aumenta a imagem, só reduz quando ultrapassa o limite pedido.
+function jphRenderVariant(bitmap,maxEdge,quality,mime){
+  const w=bitmap.width||bitmap.naturalWidth, h=bitmap.height||bitmap.naturalHeight;
+  const ratio=Math.min(maxEdge/Math.max(w,h),1);
+  const outW=Math.max(1,Math.round(w*ratio)), outH=Math.max(1,Math.round(h*ratio));
+  const c=document.createElement('canvas'); c.width=outW; c.height=outH;
+  const ctx=c.getContext('2d');
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.drawImage(bitmap,0,0,outW,outH);
+  return new Promise(resolve=>c.toBlob(b=>resolve(b), mime, quality));
+}
+
+function jphBlobToB64(blob){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+// Envia uma foto para o Storage (versão completa + miniatura), preservando
+// o máximo de qualidade. Retorna os caminhos salvos — é isso que fica
+// gravado no evento e sincronizado entre os dispositivos.
+async function jphUploadPhoto(file, userId, eventId, kind){
+  jphValidate(file);
+  const bitmap=await jphDecode(file);
+  const mime=jphOutMime(file);
+  const w=bitmap.width||bitmap.naturalWidth, h=bitmap.height||bitmap.naturalHeight;
+  const needsResize=Math.max(w,h)>JPHOTO_MAX_EDGE;
+  const rand=Math.random().toString(36).slice(2,8);
+  const base=`${userId}/${eventId}/${kind}_${Date.now()}_${rand}`;
+  const ext=jphExt(mime);
+  const path=`${base}.${ext}`;
+  const thumbPath=`${base}_thumb.${ext}`;
+
+  // Se não precisa reduzir e o formato de saída é igual ao original, sobe
+  // os bytes originais direto — zero recompressão adicional.
+  const fullBlob=(!needsResize && mime===file.type) ? file : await jphRenderVariant(bitmap,JPHOTO_MAX_EDGE,JPHOTO_Q_FULL,mime);
+  const thumbBlob=await jphRenderVariant(bitmap,JPHOTO_THUMB_EDGE,JPHOTO_Q_THUMB,mime);
+
+  const storage=window.supabaseClient.storage.from(JPHOTO_BUCKET);
+  const [r1,r2]=await Promise.all([
+    storage.upload(path, fullBlob, {contentType:mime, upsert:false, cacheControl:'31536000'}),
+    storage.upload(thumbPath, thumbBlob, {contentType:mime, upsert:false, cacheControl:'31536000'}),
+  ]);
+  if(r1.error) throw r1.error;
+  if(r2.error) throw r2.error;
+
+  // Cache local — abre instantâneo neste aparelho sem esperar a rede.
+  JDB.set('sp_'+path, await jphBlobToB64(fullBlob)).catch(()=>{});
+  JDB.set('sp_'+thumbPath, await jphBlobToB64(thumbBlob)).catch(()=>{});
+
+  return {path, thumbPath};
+}
+
+// Envia um vídeo para o Storage (sem gerar variantes — usado como está).
+async function jphUploadVideo(file, userId, eventId){
+  if(file.size>JPHOTO_MAX_BYTES){ throw new Error('Arquivo muito grande (máx. 20MB).'); }
+  const rand=Math.random().toString(36).slice(2,8);
+  const ext=(file.name.split('.').pop()||'mp4').toLowerCase().slice(0,4);
+  const path=`${userId}/${eventId}/video_${Date.now()}_${rand}.${ext}`;
+  const storage=window.supabaseClient.storage.from(JPHOTO_BUCKET);
+  const {error}=await storage.upload(path, file, {contentType:file.type||'video/mp4', upsert:false, cacheControl:'31536000'});
+  if(error) throw error;
+  JDB.set('sp_'+path, await jphBlobToB64(file)).catch(()=>{});
+  return {path};
+}
+
+// Busca uma foto/vídeo pelo caminho salvo no evento — primeiro no cache
+// local (instantâneo), senão baixa do Storage (a MESMA imagem em
+// qualquer aparelho, já que o bucket é privado e o acesso é validado
+// pela sessão do usuário, não por uma URL pública).
+async function jphGet(path){
+  if(!path) return null;
+  const cached=await JDB.get('sp_'+path).catch(()=>null);
+  if(cached) return cached;
+  try{
+    const {data,error}=await window.supabaseClient.storage.from(JPHOTO_BUCKET).download(path);
+    if(error||!data) return null;
+    const b64=await jphBlobToB64(data);
+    JDB.set('sp_'+path,b64).catch(()=>{});
+    return b64;
+  }catch(e){ return null; }
+}
+
+async function jphDelete(...paths){
+  const valid=paths.filter(Boolean);
+  if(!valid.length) return;
+  try{ await window.supabaseClient.storage.from(JPHOTO_BUCKET).remove(valid); }catch(e){}
+  valid.forEach(p=>JDB.del('sp_'+p).catch(()=>{}));
+}
+
+// Ponto único usado pelos formulários da Jornada: tenta subir pro Storage
+// (sincroniza entre aparelhos); se o usuário for local (sem conta) ou o
+// upload falhar, cai para o cache local antigo, do mesmo jeito de sempre,
+// para nunca perder a foto que a pessoa acabou de tirar.
+async function jphSavePhotoForEvent(file, eventId, kind){
+  const user=window.app?.state?.user;
+  if(user && !user.local){
+    try{ return await jphUploadPhoto(file, user.id, eventId, kind); }
+    catch(e){ console.error('[JPhoto] upload falhou, usando cache local:', e); }
+  }
+  return null;
+}
+async function jphSaveVideoForEvent(file, eventId){
+  const user=window.app?.state?.user;
+  if(user && !user.local){
+    try{ return await jphUploadVideo(file, user.id, eventId); }
+    catch(e){ console.error('[JPhoto] upload de vídeo falhou, usando cache local:', e); }
+  }
+  return null;
+}
+
 /* ── Tipos de evento ── */
 const JEV_TYPES={
   conquista:   {icon:'🏆',color:'#fbbf24',bg:'rgba(251,191,36,.12)',  dot:'#fbbf24',label:'Conquista'},
@@ -7218,7 +7426,11 @@ async function saveJornadaEventRemote(ev){
       has_photo:!!ev.hasPhoto, auto:!!ev.auto,
       is_post:!!ev.isPost, title:ev.title||null, caption:ev.caption||null,
       category:ev.category||null, mood:ev.mood||null, has_video:!!ev.hasVideo,
-      dias_entre:ev.diasEntre??null, capsula_aberta:ev.capsulaAberta??null
+      dias_entre:ev.diasEntre??null, capsula_aberta:ev.capsulaAberta??null,
+      photo_path:ev.photoPath||null, photo_thumb_path:ev.photoThumbPath||null,
+      video_path:ev.videoPath||null,
+      antes_path:ev.antesPath||null, antes_thumb_path:ev.antesThumbPath||null,
+      depois_path:ev.depoisPath||null, depois_thumb_path:ev.depoisThumbPath||null
     }],{onConflict:'id'});
     if(error) throw error;
   }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
@@ -7357,9 +7569,9 @@ window.saveJShareRemote=saveJShareRemote;
 /* ── Hook openShareModal removido — agora o usuário é perguntado após compartilhar ── */
 
 /* ── Modal ── */
-let _jevPhoto=null;
+let _jevPhoto=null, _jevPhotoFile=null;
 function jornadaAbrirModal(opts={}){
-  _jevPhoto=null;
+  _jevPhoto=null; _jevPhotoFile=null;
   const preview=document.getElementById('jornada-ev-preview');
   const rm=document.getElementById('jornada-ev-remove');
   if(preview){preview.src='';preview.style.display='none';}
@@ -7381,6 +7593,7 @@ window.jornadaFoto=jornadaFoto;
 
 async function jornadaOnFile(e){
   const f=e.target.files[0]; if(!f) return;
+  _jevPhotoFile=f;
   const b=await _jFile2B64(f); const r=await _jResize(b,960,960); _jevPhoto=r;
   const preview=document.getElementById('jornada-ev-preview');
   const rm=document.getElementById('jornada-ev-remove');
@@ -7390,7 +7603,7 @@ async function jornadaOnFile(e){
 window.jornadaOnFile=jornadaOnFile;
 
 function jornadaRemoverFoto(){
-  _jevPhoto=null;
+  _jevPhoto=null; _jevPhotoFile=null;
   const preview=document.getElementById('jornada-ev-preview');
   const rm=document.getElementById('jornada-ev-remove');
   if(preview){preview.src='';preview.style.display='none';} if(rm) rm.style.display='none';
@@ -7406,9 +7619,13 @@ async function jornadaSalvarEvento(){
   const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:!!_jevPhoto,auto:false};
+  if(_jevPhotoFile){
+    const up=await jphSavePhotoForEvent(_jevPhotoFile,id,'foto');
+    if(up){ ev.photoPath=up.path; ev.photoThumbPath=up.thumbPath; }
+  }
   const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
   saveJornadaEventRemote(ev);
-  if(_jevPhoto) await JDB.set(id,_jevPhoto).catch(()=>{});
+  if(_jevPhoto && !ev.photoPath) await JDB.set(id,_jevPhoto).catch(()=>{}); // fallback local (sem conta ou upload falhou)
   closeModal('jornada-modal');
   showToast('Momento registrado! 📸','success');
   renderJornada();
@@ -7423,6 +7640,9 @@ async function jornadaDeletarEvento(id){
   await JDB.del(id+'_video').catch(()=>{});
   await JDB.del(id+'_antes').catch(()=>{});
   await JDB.del(id+'_depois').catch(()=>{});
+  if(ev){
+    await jphDelete(ev.photoPath, ev.photoThumbPath, ev.videoPath, ev.antesPath, ev.antesThumbPath, ev.depoisPath, ev.depoisThumbPath).catch(()=>{});
+  }
   const user=window.app?.state?.user;
   if(user&&!user.local){ window.supabaseClient.from('jornada_eventos').delete().eq('id',id).eq('user_id',user.id).then(()=>{}); }
   closeModal('jornada-photo-modal');
@@ -7434,7 +7654,9 @@ async function jornadaDeletarEvento(id){
 window.jornadaDeletarEvento=jornadaDeletarEvento;
 
 async function jornadaVerFoto(id){
-  const p=await JDB.get(id).catch(()=>null); if(!p) return;
+  const ev=loadJornada().find(e=>e.id===id);
+  const p = ev?.photoPath ? await jphGet(ev.photoPath) : await JDB.get(id).catch(()=>null);
+  if(!p) return;
   const img=document.getElementById('jornada-photo-full'); if(img){ img.src=p; img.style.display='block'; }
   const v=document.getElementById('jornada-photo-video'); if(v){ v.pause(); v.style.display='none'; }
   const meta=document.getElementById('jornada-photo-meta'); if(meta) meta.innerHTML='';
@@ -7444,7 +7666,23 @@ window.jornadaVerFoto=jornadaVerFoto;
 
 function jornadaAddFotoEvento(id){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-  inp.onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const b=await _jFile2B64(f); const r=await _jResize(b,960,960); await JDB.set(id,r).catch(()=>{}); const evs=loadJornada(); const ev=evs.find(e=>e.id===id); if(ev){ev.hasPhoto=true;saveJornada(evs);} showToast('Foto adicionada! 📸','success'); renderJornada(); };
+  inp.onchange=async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const evs=loadJornada(); const ev=evs.find(e=>e.id===id);
+    const up=await jphSavePhotoForEvent(f,id,'foto');
+    if(!up){
+      const b=await _jFile2B64(f); const r=await _jResize(b,960,960);
+      await JDB.set(id,r).catch(()=>{});
+    }
+    if(ev){
+      ev.hasPhoto=true;
+      if(up){ ev.photoPath=up.path; ev.photoThumbPath=up.thumbPath; }
+      saveJornada(evs);
+      saveJornadaEventRemote(ev);
+    }
+    showToast('Foto adicionada! 📸','success');
+    renderJornada();
+  };
   inp.click();
 }
 window.jornadaAddFotoEvento=jornadaAddFotoEvento;
@@ -7453,10 +7691,10 @@ window.jornadaAddFotoEvento=jornadaAddFotoEvento;
    CRIAR POST — posts pessoais na Jornada, com prioridade
    visual sobre os eventos automáticos
 ══════════════════════════════════════════════════ */
-let _postEdPhoto=null, _postEdVideo=null, _postEdCat='outro', _postEdMood='';
+let _postEdPhoto=null, _postEdPhotoFile=null, _postEdVideo=null, _postEdVideoFile=null, _postEdCat='outro', _postEdMood='';
 
 function postEdAbrir(){
-  _postEdPhoto=null; _postEdVideo=null; _postEdCat='outro'; _postEdMood='';
+  _postEdPhoto=null; _postEdPhotoFile=null; _postEdVideo=null; _postEdVideoFile=null; _postEdCat='outro'; _postEdMood='';
   q('post-ed-preview').style.display='none'; q('post-ed-preview').src='';
   q('post-ed-video-preview').style.display='none'; q('post-ed-video-preview').src='';
   q('post-ed-remove-media').style.display='none';
@@ -7474,8 +7712,9 @@ window.postEdPickVideo=postEdPickVideo;
 
 async function postEdOnPhoto(e){
   const f=e.target.files[0]; if(!f) return;
+  _postEdPhotoFile=f;
   const b=await _jFile2B64(f); const r=await _jResize(b,1080,1080);
-  _postEdPhoto=r; _postEdVideo=null;
+  _postEdPhoto=r; _postEdVideo=null; _postEdVideoFile=null;
   q('post-ed-preview').src=r; q('post-ed-preview').style.display='block';
   q('post-ed-video-preview').style.display='none';
   q('post-ed-remove-media').style.display='';
@@ -7486,8 +7725,9 @@ window.postEdOnPhoto=postEdOnPhoto;
 async function postEdOnVideo(e){
   const f=e.target.files[0]; if(!f) return;
   if(f.size>25*1024*1024){ showToast('Vídeo muito grande (máx. 25MB)','error'); e.target.value=''; return; }
+  _postEdVideoFile=f;
   const b=await _jFile2B64(f);
-  _postEdVideo=b; _postEdPhoto=null;
+  _postEdVideo=b; _postEdPhoto=null; _postEdPhotoFile=null;
   q('post-ed-video-preview').src=b; q('post-ed-video-preview').style.display='block';
   q('post-ed-preview').style.display='none';
   q('post-ed-remove-media').style.display='';
@@ -7496,7 +7736,7 @@ async function postEdOnVideo(e){
 window.postEdOnVideo=postEdOnVideo;
 
 function postEdRemoveMedia(){
-  _postEdPhoto=null; _postEdVideo=null;
+  _postEdPhoto=null; _postEdPhotoFile=null; _postEdVideo=null; _postEdVideoFile=null;
   q('post-ed-preview').style.display='none'; q('post-ed-preview').src='';
   q('post-ed-video-preview').style.display='none'; q('post-ed-video-preview').src='';
   q('post-ed-remove-media').style.display='none';
@@ -7521,10 +7761,18 @@ async function postEdFinalizar(action){
     hasPhoto:!!_postEdPhoto,hasVideo:!!_postEdVideo,isPost:true,
     title,caption,category:_postEdCat,mood:_postEdMood,auto:false};
   if(action!=='share'){
+    if(_postEdPhotoFile){
+      const up=await jphSavePhotoForEvent(_postEdPhotoFile,id,'foto');
+      if(up){ ev.photoPath=up.path; ev.photoThumbPath=up.thumbPath; }
+    }
+    if(_postEdVideoFile){
+      const up=await jphSaveVideoForEvent(_postEdVideoFile,id);
+      if(up){ ev.videoPath=up.path; }
+    }
     const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
     saveJornadaEventRemote(ev);
-    if(_postEdPhoto) await JDB.set(id,_postEdPhoto).catch(()=>{});
-    if(_postEdVideo) await JDB.set(id+'_video',_postEdVideo).catch(()=>{});
+    if(_postEdPhoto && !ev.photoPath) await JDB.set(id,_postEdPhoto).catch(()=>{});
+    if(_postEdVideo && !ev.videoPath) await JDB.set(id+'_video',_postEdVideo).catch(()=>{});
     showToast('Post salvo na Jornada! 📝','success');
     renderJornada();
   }
@@ -7542,10 +7790,10 @@ window.postEdFinalizar=postEdFinalizar;
 /* ══════════════════════════════════════════════════
    ANTES E DEPOIS
 ══════════════════════════════════════════════════ */
-let _adAntes=null, _adDepois=null;
+let _adAntes=null, _adAntesFile=null, _adDepois=null, _adDepoisFile=null;
 
 function adAbrirModal(){
-  _adAntes=null; _adDepois=null;
+  _adAntes=null; _adAntesFile=null; _adDepois=null; _adDepoisFile=null;
   q('ad-preview-antes').style.display='none'; q('ad-placeholder-antes').style.display='flex';
   q('ad-preview-depois').style.display='none'; q('ad-placeholder-depois').style.display='flex';
   q('ad-caption').value=''; q('ad-date-antes').value=''; q('ad-date-depois').value='';
@@ -7556,8 +7804,8 @@ window.adAbrirModal=adAbrirModal;
 async function adOnFile(e,slot){
   const f=e.target.files[0]; if(!f) return;
   const b=await _jFile2B64(f); const r=await _jResize(b,900,900);
-  if(slot==='antes'){ _adAntes=r; q('ad-preview-antes').src=r; q('ad-preview-antes').style.display='block'; q('ad-placeholder-antes').style.display='none'; }
-  else { _adDepois=r; q('ad-preview-depois').src=r; q('ad-preview-depois').style.display='block'; q('ad-placeholder-depois').style.display='none'; }
+  if(slot==='antes'){ _adAntes=r; _adAntesFile=f; q('ad-preview-antes').src=r; q('ad-preview-antes').style.display='block'; q('ad-placeholder-antes').style.display='none'; }
+  else { _adDepois=r; _adDepoisFile=f; q('ad-preview-depois').src=r; q('ad-preview-depois').style.display='block'; q('ad-placeholder-depois').style.display='none'; }
   e.target.value='';
 }
 window.adOnFile=adOnFile;
@@ -7604,10 +7852,18 @@ async function adFinalizar(action){
     streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,
     isPost:true,caption,diasEntre,auto:false};
   if(action!=='share'){
+    if(_adAntesFile){
+      const up=await jphSavePhotoForEvent(_adAntesFile,id,'antes');
+      if(up){ ev.antesPath=up.path; ev.antesThumbPath=up.thumbPath; }
+    }
+    if(_adDepoisFile){
+      const up=await jphSavePhotoForEvent(_adDepoisFile,id,'depois');
+      if(up){ ev.depoisPath=up.path; ev.depoisThumbPath=up.thumbPath; }
+    }
     const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
     saveJornadaEventRemote(ev);
-    await JDB.set(id+'_antes',_adAntes).catch(()=>{});
-    await JDB.set(id+'_depois',_adDepois).catch(()=>{});
+    if(!ev.antesPath) await JDB.set(id+'_antes',_adAntes).catch(()=>{});
+    if(!ev.depoisPath) await JDB.set(id+'_depois',_adDepois).catch(()=>{});
     showToast('Antes e Depois salvo na Jornada! 🔄','success');
     renderJornada();
   }
@@ -7821,15 +8077,18 @@ async function jornadaVerPostFull(id){
   const img=document.getElementById('jornada-photo-full');
   const vid=document.getElementById('jornada-photo-video');
   if(ev.type==='antes_depois'){
-    const [pa,pd]=await Promise.all([JDB.get(id+'_antes').catch(()=>null), JDB.get(id+'_depois').catch(()=>null)]);
+    const [pa,pd]=await Promise.all([
+      ev.antesPath?jphGet(ev.antesPath):JDB.get(id+'_antes').catch(()=>null),
+      ev.depoisPath?jphGet(ev.depoisPath):JDB.get(id+'_depois').catch(()=>null)
+    ]);
     if(pa&&pd){ const composite=await _buildSideBySide(pa,pd); if(img){ img.src=composite; img.style.display='block'; } }
     if(vid){ vid.pause(); vid.style.display='none'; }
   } else if(ev.hasVideo){
-    const v=await JDB.get(id+'_video').catch(()=>null);
+    const v = ev.videoPath ? await jphGet(ev.videoPath) : await JDB.get(id+'_video').catch(()=>null);
     if(vid){ vid.src=v||''; vid.style.display=v?'block':'none'; }
     if(img) img.style.display='none';
   } else if(ev.hasPhoto){
-    const p=await JDB.get(id).catch(()=>null);
+    const p = ev.photoPath ? await jphGet(ev.photoPath) : await JDB.get(id).catch(()=>null);
     if(img){ img.src=p||''; img.style.display=p?'block':'none'; }
     if(vid){ vid.pause(); vid.style.display='none'; }
   } else {
@@ -7862,14 +8121,20 @@ window.jornadaVerPostFull=jornadaVerPostFull;
 async function jornadaCompartilharPost(id){
   const ev=loadJornada().find(e=>e.id===id); if(!ev) return;
   if(ev.type==='antes_depois'){
-    const [pa,pd]=await Promise.all([JDB.get(id+'_antes').catch(()=>null), JDB.get(id+'_depois').catch(()=>null)]);
+    const [pa,pd]=await Promise.all([
+      ev.antesPath?jphGet(ev.antesPath):JDB.get(id+'_antes').catch(()=>null),
+      ev.depoisPath?jphGet(ev.depoisPath):JDB.get(id+'_depois').catch(()=>null)
+    ]);
     window._sharePostData={caption:ev.caption,diasEntre:ev.diasEntre};
     if(pa&&pd) await sm_setImageFromB64(await _buildSideBySide(pa,pd)); else sm_removePhoto();
     openShareModal('antes_depois');
     return;
   }
   window._sharePostData={title:ev.title,caption:ev.caption,category:ev.category,mood:ev.mood};
-  if(ev.hasPhoto){ const p=await JDB.get(id).catch(()=>null); if(p) await sm_setImageFromB64(p); else sm_removePhoto(); }
+  if(ev.hasPhoto){
+    const p = ev.photoPath ? await jphGet(ev.photoPath) : await JDB.get(id).catch(()=>null);
+    if(p) await sm_setImageFromB64(p); else sm_removePhoto();
+  }
   else sm_removePhoto();
   openShareModal('post');
 }
@@ -7999,7 +8264,7 @@ async function _renderJornadaTimeline(filtroMes='all'){
     const t=JEV_TYPES[ev.type]||JEV_TYPES.auto;
     let mediaHtml='';
     if(ev.hasPhoto){
-      const p=await JDB.get(ev.id).catch(()=>null);
+      const p = ev.photoThumbPath ? await jphGet(ev.photoThumbPath) : (ev.photoPath ? await jphGet(ev.photoPath) : await JDB.get(ev.id).catch(()=>null));
       if(p) mediaHtml=`<img src="${p}" class="jtl-photo" loading="lazy" onclick="jornadaVerFoto('${_jEsc(ev.id)}')" alt="foto">`;
     }
     let bodyHtml;
@@ -8064,8 +8329,8 @@ async function _renderJornadaShares(){
       </div>`;
     }
     let thumb=null;
-    if(item.type==='antes_depois') thumb=await JDB.get(item.id+'_depois').catch(()=>null);
-    else if(item.hasPhoto) thumb=await JDB.get(item.id).catch(()=>null);
+    if(item.type==='antes_depois') thumb = item.depoisThumbPath ? await jphGet(item.depoisThumbPath) : (item.depoisPath ? await jphGet(item.depoisPath) : await JDB.get(item.id+'_depois').catch(()=>null));
+    else if(item.hasPhoto) thumb = item.photoThumbPath ? await jphGet(item.photoThumbPath) : (item.photoPath ? await jphGet(item.photoPath) : await JDB.get(item.id).catch(()=>null));
     const icon=item.type==='antes_depois'?'🔄':(item.hasVideo?'🎬':'📝');
     return `<div class="jshare-cell" onclick="jornadaVerPostFull('${_jEsc(item.id)}')">
       ${thumb ? `<img src="${thumb}" loading="lazy" alt="${_jEsc(item.title||item.caption||'post')}">` : `<div class="jshare-cell-empty">${icon}</div>`}
