@@ -925,6 +925,9 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div id="insight-container"></div>
+        <div class="card" style="cursor:pointer" onclick="navTo('jornada')">
+          <div class="season-widget"></div>
+        </div>
         <div id="desafio-widget"></div>
 
         <div class="card">
@@ -1232,6 +1235,16 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
             </div>
           </div>
           <div id="jornada-hero-stats" class="jornada-hero-stats"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-flag-checkered"></i>Temporada</div>
+          <div class="season-widget"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
+          <div class="card-title"><i class="fas fa-chart-simple"></i>Evolução das Temporadas</div>
+          <div id="evolucao-temporadas"></div>
         </div>
 
         <div class="card" id="jornada-memorias-card" style="margin-bottom:.875rem;display:none">
@@ -2170,12 +2183,12 @@ function showXpFloat(amount, el){
   setTimeout(()=>div.remove(),1000);
 }
 
-function addXp(amount, sourceEl){
+function addXp(amount, sourceEl, refId){
   const g=loadGamify();
   const oldXp = g.totalXp||0;
   g.totalXp=oldXp+amount;
   // PC por tarefa concluída
-  if(amount>=10 && typeof addPC==='function') addPC(5,'tarefa_concluida');
+  if(amount>=10 && typeof addPC==='function') addPC(5,'tarefa_concluida',refId);
   if(amount>=10) g.totalDone=(g.totalDone||0)+1;
   saveGamify(g);
   syncGamifyRemote(g);
@@ -2519,6 +2532,7 @@ _isSyncing: false,
       hideLoading();
       this.carryOverTasks();
       if(typeof checkCapsulasProntas==='function') checkCapsulasProntas();
+      if(typeof checkSeasonRollover==='function') checkSeasonRollover();
     }
     await updateOnlineStatus();
   },
@@ -3195,6 +3209,7 @@ _isSyncing: false,
      DASHBOARD
   ══════════════════════════════════════ */
   renderDashboard(){
+    if(typeof renderSeasonWidgets==='function') renderSeasonWidgets();
     const today=todayKey();
     const tasks=getTodayEffectiveTasks(this);
     // Tarefas recorrentes bloqueadas hoje (outro dia da semana) não contam
@@ -3343,7 +3358,7 @@ _isSyncing: false,
       doneMap[id][today]=!wasDone;
       saveRecurringDoneMap(doneMap);
       syncRecurringDoneRemote(id);
-      if(!wasDone){ addXp(10); showToast('✅ Tarefa concluída! +10 XP','success'); if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto(); }
+      if(!wasDone){ addXp(10, null, id); showToast('✅ Tarefa concluída! +10 XP','success'); if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto(); }
       else {
         const g=loadGamify();
         g.totalXp=Math.max(0,(g.totalXp||0)-10);
@@ -3362,21 +3377,39 @@ _isSyncing: false,
     this.saveLocal();
     this.saveTaskRemote(task, today);
 
-    // Atualiza só o elemento da tarefa — sem re-render completo (evita piscar)
-    const el=q('task-'+id);
-    if(el){
-      const cb = el.querySelector('input[type="checkbox"]');
-      if(cb) cb.checked = task.done;
+    // Regenera só a marcação desta tarefa (não a lista inteira) e a move para
+    // a seção certa — antes ela só trocava de classe no lugar (com o nome de
+    // classe errado, então nem o estilo "concluída" aplicava) e ficava presa
+    // na seção de pendentes até a página ser recarregada.
+    const list=q('routine-tasks-list');
+    const oldEl=q('task-'+id);
+    let newEl=oldEl;
+    if(list && oldEl){
+      const wrapper=document.createElement('div');
+      wrapper.innerHTML=this.taskHTML(task).trim();
+      newEl=wrapper.firstElementChild;
+      oldEl.replaceWith(newEl);
+      newEl.classList.add('just-done');
+      setTimeout(()=>newEl.classList.remove('just-done'),350);
+
+      let label=list.querySelector('.section-label');
       if(task.done){
-        el.classList.add('done','just-done');
-        setTimeout(()=>el.classList.remove('just-done'),350);
-      } else {
-        el.classList.remove('done');
+        if(!label){
+          label=document.createElement('div');
+          label.className='section-label';
+          label.textContent='Concluídas';
+          list.appendChild(label);
+        }
+        list.appendChild(newEl); // vai para o fim, dentro do grupo "Concluídas"
+      } else if(label){
+        list.insertBefore(newEl, label); // volta para o grupo de pendentes
+        const aindaTemConcluida=Array.from(list.children).some(c=>c!==label && c.classList.contains('task-done'));
+        if(!aindaTemConcluida) label.remove();
       }
     }
 
     if(task.done){
-      addXp(10, el); showToast('✅ Tarefa concluída! +10 XP','success');
+      addXp(10, newEl, id); showToast('✅ Tarefa concluída! +10 XP','success');
       if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
       if(tasks.every(t=>t.done)&&tasks.length>0) window._verificarParabens?.();
     } else if(wasDone) {
@@ -3650,7 +3683,10 @@ _isSyncing: false,
         g.title=title; g.desc=q('goal-desc').value.trim(); g.type=q('goal-type').value; g.priority=q('goal-priority').value; g.start=q('goal-start').value; g.end=q('goal-end').value; g.progress=Number(q('goal-progress').value)||0;
         if(!wasComplete && g.progress>=100) g.completedAt=now;
         this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g); showToast('Meta atualizada','success');
-        if(!wasComplete && g.progress>=100 && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+        if(!wasComplete && g.progress>=100){
+          if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+          if(typeof addPC==='function') addPC(20,'meta_concluida',g.id);
+        }
       }
     } else {
       const g={id:crypto.randomUUID(),title,desc:q('goal-desc').value.trim(),type:q('goal-type').value,priority:q('goal-priority').value,start:q('goal-start').value,end:q('goal-end').value,progress:Number(q('goal-progress').value)||0,completed:false,created_at:now};
@@ -3658,7 +3694,10 @@ _isSyncing: false,
       this.state.data.goals.push(g); this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g);
       showToast('Meta criada 🎯','success');
       if(isFirstGoal && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta','🎯 Primeira meta criada');
-      if(g.progress>=100 && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+      if(g.progress>=100){
+        if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+        if(typeof addPC==='function') addPC(20,'meta_concluida',g.id);
+      }
     }
     closeModal('goal-modal');
   },
@@ -3708,7 +3747,7 @@ _isSyncing: false,
     // Salva local e renderiza imediatamente (feedback rápido)
     saveHabits(habits); this.renderHabits();
     if(marcando){
-      addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido'); showToast('Hábito marcado! +5 XP','success');
+      addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido',habitId+'_'+day); showToast('Hábito marcado! +5 XP','success');
       if(habits.length>0 && habits.every(x=>(x.days||[]).includes(day)) && day===todayKey() && typeof jornadaAutoRegistrar==='function'){
         jornadaAutoRegistrar('habito','💪 Todos os hábitos do dia concluídos');
       }
@@ -5128,6 +5167,8 @@ const RealtimeManager = (() => {
           // até recarregar a página).
           app.renderDashboard();
           if(typeof app.renderAll==='function') app.renderAll();
+          if(typeof checkSeasonRollover==='function') checkSeasonRollover();
+          if(typeof checkCapsulasProntas==='function') checkCapsulasProntas();
         }
       }
     }, 60000); // checa a cada 1 minuto
@@ -5463,7 +5504,7 @@ function renderDeStep() {
   const prog = getProgressoRecente();
   const proximo = getProximoObjetivo();
   const diaPerfeito = getDiaPerfeito();
-  const steps = ['streak', 'msg', 'checkin', 'progress', 'perfect'];
+  const steps = ['streak', 'msg', 'checkin', 'progress', 'season', 'perfect'];
   _deTotal = steps.length;
   const step = steps[_deStep];
 
@@ -5524,6 +5565,18 @@ function renderDeStep() {
       ${proximo.length ? `<div style="width:100%;max-width:320px;margin-top:1rem">${proximo.map(p=>`<div class="de-next-item"><span class="de-next-icon">${p.icon}</span><span class="de-next-text">${p.text}</span></div>`).join('')}</div>` : ''}
       <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
     `;
+  } else if (step === 'season') {
+    const ch = typeof generateDailyChallenge==='function' ? generateDailyChallenge() : null;
+    html = `
+      <div class="de-title">Sua temporada</div>
+      <div class="de-sub" style="margin-bottom:1.1rem">Acompanhe sua evolução nestes 60 dias</div>
+      <div class="season-widget" style="width:100%;max-width:320px;background:rgba(255,255,255,.06);border-radius:14px;padding:1rem;color:#fff"></div>
+      ${ch?`<div style="width:100%;max-width:320px;margin-top:.9rem;background:rgba(255,255,255,.06);border-radius:14px;padding:.9rem 1rem">
+        <div style="font-size:.72rem;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:.35rem">🎯 SEU DESAFIO DE HOJE</div>
+        <div style="font-size:.85rem;color:#fff">${ch.icon} ${ch.label}</div>
+      </div>`:''}
+      <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
+    `;
   } else if (step === 'perfect') {
     const allDone = diaPerfeito.every(d => d.done);
     html = `
@@ -5547,6 +5600,7 @@ function renderDeStep() {
     <div class="de-dot-nav">${dots}</div>
     <button class="de-skip" onclick="deConcluir()">Pular</button>
   `;
+  if(step==='season' && typeof renderSeasonWidgets==='function') renderSeasonWidgets();
 }
 
 function deSelectHumor(humor, el) {
@@ -5572,7 +5626,7 @@ function deConfirmHumor() {
     }], { onConflict: 'user_id,date' }).then(() => {});
   }
   addXp(5);
-  if(typeof addPC==='function') addPC(3,'humor_registrado');
+  if(typeof addPC==='function') addPC(3,'humor_registrado',todayKey());
   if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
   deNext();
 }
@@ -5659,12 +5713,48 @@ function getNextLiga(pc){
   return LIGAS.find(l => l.min > pc) || null;
 }
 
-function addPC(amount, reason=''){
+// Confirma os pontos no servidor via função com SECURITY DEFINER — o cliente
+// nunca manda o valor, só o motivo e a referência (id da tarefa/hábito/meta,
+// ou a data pros rituais diários). O servidor decide o valor, confere se a
+// ação realmente aconteceu e nunca paga a mesma referência duas vezes.
+// Ao responder, reconcilia o total local com o total real do servidor —
+// isso corrige sozinho qualquer coisa que tenha sido adulterada no console
+// ou no localStorage, sem precisar de nenhuma ação do usuário.
+async function awardPointsRemote(reason, refId, localAmount){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return; // sem conta: não tem servidor pra validar, fica só no otimista local
+  try{
+    const {data,error}=await window.supabaseClient.rpc('award_points',{p_reason:reason, p_ref_id:String(refId??todayKey())});
+    if(error){
+      // Servidor rejeitou (referência inválida, não pertence ao usuário, motivo
+      // desconhecido) — desfaz o ganho otimista pra não sobrar pontos fantasma.
+      const d=loadPC(); d.total=Math.max(0,(d.total||0)-localAmount); savePC(d); renderPCWidget();
+      const s=loadSeason(); if(s){ s.points=Math.max(0,s.points-localAmount); saveSeason(s); renderSeasonWidgets(); }
+      console.error('[Pontos] Ação rejeitada pelo servidor:', error.message);
+      return;
+    }
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row) return;
+    // Verdade do servidor substitui o otimista (cobre inclusive o caso de já
+    // ter sido pago antes — o servidor devolve o total sem somar de novo).
+    const d=loadPC(); d.total=row.total_pc; savePC(d); renderPCWidget();
+    const s=loadSeason();
+    if(s && s.number===row.season_number){ s.points=row.season_points; saveSeason(s); renderSeasonWidgets(); }
+  }catch(e){
+    // Falha de rede — mantém o valor otimista (não pune uso offline);
+    // a próxima ação tenta validar de novo.
+    console.error('[Pontos] Não foi possível validar no servidor agora:', e.message||e);
+  }
+}
+window.awardPointsRemote=awardPointsRemote;
+
+function addPC(amount, reason='', refId){
   const d = loadPC();
   d.total = Math.max(0, (d.total || 0) + amount);
   d.history = d.history || [];
   d.history.push({ amount, reason, date: todayKey(), ts: Date.now() });
   if(d.history.length > 100) d.history = d.history.slice(-100);
+  if(typeof addSeasonPoints==='function') addSeasonPoints(amount, reason);
   // Verifica escudo a cada 15 dias de streak
   const streak = window.app?.computeStreak?.() || 0;
   if(streak > 0 && streak % 15 === 0){
@@ -5676,11 +5766,11 @@ function addPC(amount, reason=''){
     }
   }
   savePC(d);
-  // Sincroniza PC com remoto após cada mudança
-  if(window.app?.state?.user?.id && !window.app?.state?.user?.local){
-    const g = typeof loadGamify === 'function' ? loadGamify() : {};
-    syncGamifyRemote(g);
-  }
+  // Valida e confirma os pontos no servidor (função com SECURITY DEFINER —
+  // o valor em si nunca é enviado pelo cliente, só o motivo + referência).
+  // O que foi somado aqui é só otimista pra tela responder na hora; a resposta
+  // do servidor abaixo é quem manda de verdade e corrige qualquer divergência.
+  if(amount>0 && typeof awardPointsRemote==='function') awardPointsRemote(reason, refId, amount);
   // Verifica mudança de liga
   const ligaAntes = getLiga((d.total||0) - amount);
   const ligaAgora = getLiga(d.total||0);
@@ -5775,11 +5865,25 @@ function _chBuildContext(){
   const entradaDiariaFeita = localStorage.getItem('pm18_daily_btn_v1') === hoje;
   const shares = typeof loadJShares === 'function' ? loadJShares() : [];
   const diasDesdeUltimoShare = shares.length ? Math.floor((Date.now()-new Date(shares[0].ts).getTime())/86400000) : 999;
-  const jornadaHoje = (typeof loadJornada === 'function' ? loadJornada() : []).filter(e=>e.ts.startsWith(hoje));
+  const jornadaTudo = typeof loadJornada === 'function' ? loadJornada() : [];
+  const jornadaHoje = jornadaTudo.filter(e=>e.ts.startsWith(hoje));
   const reflexaoFeita = jornadaHoje.some(e=>e.type==='reflexao');
   const medalhaHoje = jornadaHoje.find(e=>e.type==='conquista'||e.type==='patente');
   const metaProxima = [...goals].filter(gl=>(gl.progress||0)>=60 && (gl.progress||0)<100).sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
-  return {hoje,tarefasHoje,habs,habsHoje,ci,goals,g,streak,maxStreak,entradaDiariaFeita,shares,diasDesdeUltimoShare,reflexaoFeita,medalhaHoje,metaProxima};
+  const ultimoPost = jornadaTudo.find(e=>e.isPost);
+  const diasDesdeUltimoPost = ultimoPost ? Math.floor((Date.now()-new Date(ultimoPost.ts).getTime())/86400000) : 999;
+  const reflexLog = typeof loadReflexaoLog === 'function' ? loadReflexaoLog() : [];
+  const diasDesdeUltimaReflexao = reflexLog.length ? Math.floor((Date.now()-new Date(reflexLog[0].date+'T00:00:00').getTime())/86400000) : 999;
+  // Temporada — usado pelos desafios que reagem ao momento do ciclo de 60 dias
+  const season = typeof ensureSeason==='function' ? ensureSeason() : null;
+  const seasonDiasRestantes = season ? SEASON_LENGTH_DAYS - Math.min(_seasonDaysElapsed(season),SEASON_LENGTH_DAYS) : 99;
+  const seasonNextRank = season ? getNextSeasonRank(season.points) : null;
+  const seasonPontosProxima = seasonNextRank ? seasonNextRank.min - season.points : null;
+  const seasonRecorde = typeof _seasonRecordePessoal==='function' ? _seasonRecordePessoal() : 0;
+  const seasonPontosRecorde = (season && seasonRecorde>0) ? seasonRecorde - season.points : null;
+  return {hoje,tarefasHoje,habs,habsHoje,ci,goals,g,streak,maxStreak,entradaDiariaFeita,shares,diasDesdeUltimoShare,
+    reflexaoFeita,medalhaHoje,metaProxima,jornadaHoje,diasDesdeUltimoPost,diasDesdeUltimaReflexao,
+    season,seasonDiasRestantes,seasonNextRank,seasonPontosProxima,seasonRecorde,seasonPontosRecorde};
 }
 
 // Cada entrada: condição (quando esse desafio faz sentido) + construção (texto/meta usando dados reais)
@@ -5829,6 +5933,21 @@ const CHALLENGE_BANK = [
   { type:'comparacao_semanal', icon:'📊',
     when:c=>new Date().getDay()===1,
     build:()=>({label:'Veja como foi sua evolução nesta semana', meta:1}) },
+  { type:'registrar_momento', icon:'📸',
+    when:c=>c.diasDesdeUltimoPost>=5,
+    build:()=>({label:'Registre um momento que você gostaria de lembrar daqui a um ano', meta:1}) },
+  { type:'usar_refletir', icon:'🧠',
+    when:c=>c.diasDesdeUltimaReflexao>=3,
+    build:()=>({label:'Responda uma pergunta no Refletir', meta:1}) },
+  { type:'temporada_reta_final', icon:'🏁',
+    when:c=>c.season && c.seasonDiasRestantes<=10 && c.seasonDiasRestantes>0 && c.seasonPontosProxima>0 && c.seasonPontosProxima<=500,
+    build:c=>({label:`Últimos ${c.seasonDiasRestantes} dias da temporada. Você está a ${c.seasonPontosProxima} pontos da próxima patente — ainda dá tempo.`, meta:1}) },
+  { type:'temporada_recorde', icon:'⭐',
+    when:c=>c.seasonPontosRecorde!==null && c.seasonPontosRecorde>0 && c.seasonPontosRecorde<=200,
+    build:c=>({label:`Novo recorde ao alcance! Faltam apenas ${c.seasonPontosRecorde} pontos para sua maior pontuação em uma temporada.`, meta:1}) },
+  { type:'temporada_proxima_patente', icon:'⭐',
+    when:c=>c.season && c.seasonNextRank && c.seasonPontosProxima>0 && c.seasonPontosProxima<=150,
+    build:c=>({label:`Você está a ${c.seasonPontosProxima} pontos da patente ${c.seasonNextRank.icon} ${c.seasonNextRank.name}. Complete uma ação e continue sua evolução.`, meta:1}) },
   { type:'ver_patentes', icon:'👑',
     when:c=>c.g.totalXp>0,
     build:()=>({label:'Confira quantos pontos faltam para sua próxima patente', meta:1}) },
@@ -5840,12 +5959,21 @@ function generateDailyChallenge(){
   if(ch.date === hoje) return ch; // já gerado hoje
   const ctx = _chBuildContext();
   const applicable = CHALLENGE_BANK.filter(c=>{ try{ return c.when(ctx); }catch(e){ return false; } });
-  const pool = (applicable.length>1 ? applicable.filter(c=>c.type!==ch.type) : applicable); // evita repetir o de ontem se der
-  const escolhido = (pool.length?pool:applicable)[Math.floor(Math.random()*(pool.length?pool.length:applicable.length))]
-                    || CHALLENGE_BANK[0];
+  // Evita repetir qualquer desafio mostrado nos últimos 5 dias, não só o de ontem —
+  // só volta a permitir repetição se isso esvaziar demais as opções disponíveis.
+  const recentes = (ctx.season?.recentChallengeTypes)||[];
+  let pool = applicable.filter(c=>!recentes.includes(c.type));
+  if(pool.length===0) pool = applicable.filter(c=>c.type!==ch.type);
+  if(pool.length===0) pool = applicable;
+  const escolhido = pool[Math.floor(Math.random()*pool.length)] || CHALLENGE_BANK[0];
   const built = escolhido.build(ctx);
   const novo = { date: hoje, type: escolhido.type, icon: escolhido.icon, label: built.label, meta: built.meta, metaId: built.metaId||null, progress: 0, done: false };
   saveChallenge(novo);
+  if(ctx.season){
+    const s=ctx.season;
+    s.recentChallengeTypes=[escolhido.type, ...(s.recentChallengeTypes||[])].slice(0,5);
+    saveSeason(s);
+  }
   return novo;
 }
 
@@ -5886,6 +6014,12 @@ function updateDailyChallenge(){
       break; }
     case 'ver_jornada': case 'atualizar_meta': case 'comparacao_semanal': case 'ver_patentes':
       progress = ch.progress; break; // marcados manualmente ao abrir a tela (ver marcarDesafioVisual)
+    case 'registrar_momento':
+      progress = ctx.jornadaHoje.some(e=>e.isPost) ? 1 : 0; break;
+    case 'usar_refletir':
+      progress = ctx.reflexaoFeita ? 1 : 0; break;
+    case 'temporada_reta_final': case 'temporada_recorde': case 'temporada_proxima_patente':
+      progress = (ctx.season && (ctx.season.activeDays||[]).includes(hoje)) ? 1 : 0; break;
     default:
       progress = ch.progress;
   }
@@ -5893,7 +6027,7 @@ function updateDailyChallenge(){
   if(ch.progress >= ch.meta && !ch.done){
     ch.done = true;
     saveChallenge(ch);
-    addPC(15, 'Desafio diário concluído');
+    addPC(15, 'Desafio diário concluído', hoje);
     setTimeout(()=>showToast('🎯 Desafio concluído! +15 PC','gold',4000), 500);
   } else {
     saveChallenge(ch);
@@ -5969,8 +6103,305 @@ function addPCAccess(){
   const d = loadPC();
   const hist = d.history || [];
   if(hist.some(h => h.date === hoje && h.reason === 'acesso_diario')) return;
-  addPC(2, 'acesso_diario');
+  addPC(2, 'acesso_diario', hoje);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   TEMPORADAS DE 60 DIAS
+   ────────────────────────────────────────────────────────────
+   O sistema de Ligas acima (LIGAS/PC) é permanente e cumulativo —
+   isso continua existindo exatamente como antes (histórico
+   vitalício do usuário, nunca reseta). As Temporadas são uma
+   camada NOVA por cima: usam os MESMOS Pontos de Consistência
+   (cada addPC já alimenta a temporada atual automaticamente),
+   mas contam só os pontos dos últimos 60 dias, resetando a cada
+   ciclo. XP não é tocado — continua sendo usado só pro sistema
+   de nível/conquistas que já existia.
+
+   Como cheguei nos valores de PATENTE DA TEMPORADA (não é a
+   mesma tabela das Ligas vitalícias): mapeei tudo que já concede
+   addPC() hoje — acesso diário (+2), Entrada Diária (+2), humor
+   (+3), desafio do dia (+15), cada tarefa (+5), cada hábito (+5),
+   e agora cada meta concluída (+20, novo). Um dia com só os
+   rituais garante ~22 pontos; um dia bem ativo (tarefas + hábitos)
+   fica na faixa de 40-70. Num ciclo de 60 dias isso dá de ~1300
+   (uso leve/médio) a ~3000-4200 (uso muito consistente) pontos
+   possíveis. As faixas abaixo refletem isso: a patente inicial
+   sai em poucos dias, as intermediárias pedem semanas de
+   consistência real, e a última só sai pra quem manteve uma
+   média alta o ciclo INTEIRO — não é automática.
+══════════════════════════════════════════════════════════════ */
+const SEASON_KEY='pm18_season_v1';
+const SEASON_HISTORY_KEY='pm18_seasons_history_v1';
+const SEASON_LENGTH_DAYS=60;
+
+const SEASON_RANKS=[
+  {id:'iniciante',   icon:'🌱', name:'Iniciante',    min:0},
+  {id:'evolucao',    icon:'📈', name:'Em Evolução',  min:100},
+  {id:'consistente', icon:'🔥', name:'Consistente',  min:280},
+  {id:'disciplinado',icon:'🏆', name:'Disciplinado', min:550},
+  {id:'avancado',    icon:'⚡', name:'Avançado',     min:950},
+  {id:'elite',       icon:'💎', name:'Elite',        min:1500},
+  {id:'mestre',      icon:'👑', name:'Mestre',       min:2200},
+  {id:'lendario',    icon:'🌟', name:'Lendário',     min:3200},
+];
+function getSeasonRank(pts){ let r=SEASON_RANKS[0]; for(const x of SEASON_RANKS){ if(pts>=x.min) r=x; else break; } return r; }
+function getNextSeasonRank(pts){ return SEASON_RANKS.find(x=>x.min>pts) || null; }
+
+function loadSeason(){ try{ return JSON.parse(localStorage.getItem(SEASON_KEY)||'null'); }catch(e){ return null; } }
+function saveSeason(s){ localStorage.setItem(SEASON_KEY, JSON.stringify(s)); }
+function loadSeasonsHistory(){ try{ return JSON.parse(localStorage.getItem(SEASON_HISTORY_KEY)||'[]'); }catch(e){ return []; } }
+function saveSeasonsHistory(l){ localStorage.setItem(SEASON_HISTORY_KEY, JSON.stringify(l)); }
+
+function _newSeason(number, startedAt){
+  return {
+    number, startedAt, points:0,
+    activeDays:[], tasksCompleted:0, habitsCompleted:0, goalsCompleted:0, challengesCompleted:0,
+    recentChallengeTypes:[] // últimos tipos de desafio mostrados, pra evitar repetição
+  };
+}
+
+// Garante que existe uma temporada ativa; cria a Temporada 01 no primeiro uso.
+function ensureSeason(){
+  let s=loadSeason();
+  if(!s){
+    s=_newSeason(1, todayKey());
+    saveSeason(s);
+  }
+  const user=window.app?.state?.user;
+  if(user && !user.local && !s._remoteChecked){
+    s._remoteChecked=true; saveSeason(s); // evita disparar de novo a cada render antes da resposta voltar
+    ensureSeasonRemote();
+  }
+  return s;
+}
+
+// Garante a temporada no servidor (idempotente — cria a Temporada 01 na
+// primeira vez) e reconcilia o estado local com o que o servidor realmente
+// tem. É o servidor quem decide o número da temporada e os pontos; o
+// cliente só espelha isso pra tela responder rápido.
+async function ensureSeasonRemote(){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  try{
+    const {data,error}=await window.supabaseClient.rpc('ensure_season');
+    if(error) throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row) return;
+    const local=loadSeason();
+    const base=(local && local.number===row.season_number) ? local : _newSeason(row.season_number,row.started_at);
+    base.number=row.season_number; base.startedAt=row.started_at; base.points=row.final_points;
+    base._remoteChecked=true;
+    saveSeason(base);
+    renderSeasonWidgets();
+  }catch(e){ console.error('[Temporada] Falha ao sincronizar com o servidor:', e.message||e); }
+}
+
+function _seasonDaysElapsed(s){
+  return Math.floor((new Date(todayKey()+'T00:00:00') - new Date(s.startedAt+'T00:00:00'))/86400000) + 1;
+}
+function _seasonEndDate(s){
+  const d=new Date(s.startedAt+'T00:00:00'); d.setDate(d.getDate()+SEASON_LENGTH_DAYS-1);
+  return d.toISOString().slice(0,10);
+}
+
+// Chamado a cada addPC — soma pontos na temporada atual (otimista, pra tela
+// responder na hora) e mantém as estatísticas locais. Para quem tem conta,
+// isso é só um espelho: awardPointsRemote() (chamado de dentro de addPC)
+// confirma no servidor e corrige aqui se algo divergir.
+function addSeasonPoints(amount, reason){
+  const s=ensureSeason();
+  s.points=Math.max(0, s.points+amount);
+  const hoje=todayKey();
+  if(amount>0 && !s.activeDays.includes(hoje)) s.activeDays.push(hoje);
+  if(reason==='tarefa_concluida') s.tasksCompleted=(s.tasksCompleted||0)+1;
+  if(reason==='habito_concluido') s.habitsCompleted=(s.habitsCompleted||0)+1;
+  if(reason==='meta_concluida') s.goalsCompleted=(s.goalsCompleted||0)+1;
+  if(reason==='Desafio diário concluído') s.challengesCompleted=(s.challengesCompleted||0)+1;
+  saveSeason(s);
+  renderSeasonWidgets();
+}
+
+// Encerra a temporada atual, guarda a retrospectiva no histórico permanente,
+// registra o marco na Jornada e começa a próxima do zero (só pontos/patente).
+// Para quem tem conta, quem decide que os 60 dias realmente passaram e quais
+// foram os números finais é o SERVIDOR (função end_current_season) — o
+// cliente não fecha a temporada sozinho nem escreve o resultado final.
+async function endSeason(){
+  const user=window.app?.state?.user;
+  const s=loadSeason(); if(!s) return null;
+
+  if(user && !user.local){
+    try{
+      const {data,error}=await window.supabaseClient.rpc('end_current_season');
+      if(error) throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      if(!row) return null;
+      const rank=SEASON_RANKS.find(r=>r.id===row.final_rank)||SEASON_RANKS[0];
+      const finished={
+        number:row.season_number, startedAt:row.started_at, endedAt:row.ended_at,
+        finalPoints:row.final_points, finalRank:rank.id, finalRankName:rank.name, finalRankIcon:rank.icon,
+        activeDays:row.active_days, tasksCompleted:row.tasks_completed, habitsCompleted:row.habits_completed,
+        goalsCompleted:row.goals_completed, challengesCompleted:row.challenges_completed,
+        maiorSequencia: typeof window.app?.computeStreak==='function' ? window.app.computeStreak() : 0
+      };
+      const hist=loadSeasonsHistory(); hist.unshift(finished); saveSeasonsHistory(hist);
+      if(typeof jornadaAutoRegistrar==='function'){
+        jornadaAutoRegistrar('temporada',
+          `🏁 Temporada ${String(finished.number).padStart(2,'0')} concluída — ${finished.finalRankIcon} ${finished.finalRankName}`,
+          {title:String(finished.number)});
+      }
+      await ensureSeasonRemote(); // busca a nova temporada que o servidor já criou e reconcilia local
+      return finished;
+    }catch(e){
+      console.error('[Temporada] Falha ao encerrar no servidor:', e.message||e);
+      return null; // não fecha localmente sem confirmação — evita duplicar ou perder a temporada
+    }
+  }
+
+  // Sem conta (uso local, sem servidor pra validar): mantém o comportamento local de sempre.
+  const rank=getSeasonRank(s.points);
+  const finished={
+    number:s.number, startedAt:s.startedAt, endedAt:todayKey(),
+    finalPoints:s.points, finalRank:rank.id, finalRankName:rank.name, finalRankIcon:rank.icon,
+    activeDays:(s.activeDays||[]).length, tasksCompleted:s.tasksCompleted||0,
+    habitsCompleted:s.habitsCompleted||0, goalsCompleted:s.goalsCompleted||0,
+    challengesCompleted:s.challengesCompleted||0,
+    maiorSequencia: typeof window.app?.computeStreak==='function' ? window.app.computeStreak() : 0
+  };
+  const hist=loadSeasonsHistory(); hist.unshift(finished); saveSeasonsHistory(hist);
+  if(typeof jornadaAutoRegistrar==='function'){
+    jornadaAutoRegistrar('temporada',
+      `🏁 Temporada ${String(s.number).padStart(2,'0')} concluída — ${rank.icon} ${rank.name}`,
+      {title:String(s.number)});
+  }
+  const novo=_newSeason(s.number+1, todayKey());
+  saveSeason(novo);
+  return finished;
+}
+
+// Roda a cada carregamento do app / virada de dia: se os 60 dias já passaram,
+// encerra e mostra a retrospectiva antes de seguir em frente.
+async function checkSeasonRollover(){
+  const s=ensureSeason();
+  if(_seasonDaysElapsed(s) > SEASON_LENGTH_DAYS){
+    const finished=await endSeason();
+    if(finished) setTimeout(()=>showSeasonRetrospectiva(finished), 900);
+  }
+  renderSeasonWidgets();
+}
+
+function _seasonRecordePessoal(){
+  const hist=loadSeasonsHistory();
+  return hist.reduce((max,s)=>Math.max(max,s.finalPoints||0), 0);
+}
+function _seasonMaiorPatente(){
+  const hist=loadSeasonsHistory();
+  let best=null, bestMin=-1;
+  hist.forEach(s=>{ const r=SEASON_RANKS.find(x=>x.id===s.finalRank); if(r && r.min>bestMin){ bestMin=r.min; best=r; } });
+  return best;
+}
+
+/* ── Widget de progresso da temporada — usado na Entrada Diária e no dashboard ── */
+function renderSeasonWidgets(){
+  const s=ensureSeason();
+  const rank=getSeasonRank(s.points), next=getNextSeasonRank(s.points);
+  const dia=Math.min(_seasonDaysElapsed(s), SEASON_LENGTH_DAYS);
+  const prevMin=(SEASON_RANKS[SEASON_RANKS.indexOf(rank)-1]||{min:0}).min;
+  const nextMin=next?next.min:rank.min+500;
+  const pct=Math.min(100, Math.round(((s.points-prevMin)/(nextMin-prevMin))*100));
+
+  document.querySelectorAll('.season-widget').forEach(el=>{
+    el.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:.95rem">Temporada ${String(s.number).padStart(2,'0')}</div>
+        <div style="font-size:.72rem;color:var(--text-3)">Dia ${dia} de ${SEASON_LENGTH_DAYS}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
+        <span class="liga-badge" style="padding:.25rem .6rem;font-size:.78rem;background:var(--primary-glow);color:var(--primary)">${rank.icon} ${rank.name}</span>
+        <span style="font-family:var(--font-display);font-weight:800;color:var(--primary)">⭐ ${s.points.toLocaleString('pt-BR')} pts</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      ${next?`<div style="font-size:.74rem;color:var(--text-3);margin-top:.4rem">Próxima patente: <b style="color:var(--text-2)">${next.icon} ${next.name}</b> — faltam <b style="color:var(--primary)">${(next.min-s.points).toLocaleString('pt-BR')}</b> pontos</div>`
+            :`<div style="font-size:.74rem;color:var(--gold);margin-top:.4rem">🌟 Patente máxima da temporada alcançada!</div>`}
+    `;
+  });
+}
+window.renderSeasonWidgets=renderSeasonWidgets;
+
+/* ── Retrospectiva ao final da temporada ── */
+function showSeasonRetrospectiva(finished){
+  let modal=document.getElementById('season-retro-modal');
+  if(!modal){
+    modal=document.createElement('div'); modal.id='season-retro-modal'; modal.className='modal';
+    document.body.appendChild(modal);
+  }
+  const destaque = finished.maiorSequencia>=3
+    ? `Você manteve uma sequência de ${finished.maiorSequencia} dias.`
+    : (finished.tasksCompleted>0 ? `Você concluiu ${finished.tasksCompleted} tarefas nesta temporada.` : 'Você deu o primeiro passo — a próxima temporada começa agora.');
+  modal.innerHTML=`
+    <div class="modal-content" style="text-align:center;padding:1.6rem 1.3rem">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.15rem;margin-bottom:.2rem">Temporada ${String(finished.number).padStart(2,'0')} concluída</div>
+      <div style="font-size:.82rem;color:var(--text-3);margin-bottom:1.1rem">Você chegou até aqui.</div>
+      <div style="font-size:2.4rem;margin-bottom:.3rem">${finished.finalRankIcon}</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin-bottom:.9rem">${finished.finalRankName}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
+        <div class="jpm-stat"><div class="jpm-stat-val">⭐ ${finished.finalPoints.toLocaleString('pt-BR')}</div><div class="jpm-stat-lbl">Pontos</div></div>
+        <div class="jpm-stat"><div class="jpm-stat-val">🔥 ${finished.activeDays}</div><div class="jpm-stat-lbl">Dias ativos</div></div>
+        <div class="jpm-stat"><div class="jpm-stat-val">🎯 ${finished.goalsCompleted}</div><div class="jpm-stat-lbl">Metas</div></div>
+        <div class="jpm-stat"><div class="jpm-stat-val">✅ ${finished.tasksCompleted}</div><div class="jpm-stat-lbl">Tarefas</div></div>
+      </div>
+      <div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:.25rem">Seu maior destaque</div>
+      <div style="font-size:.86rem;color:var(--text-2);margin-bottom:1.2rem">${destaque}</div>
+      <div style="background:var(--surface3);border-radius:var(--radius-sm);padding:.9rem;margin-bottom:1rem">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1rem">Temporada ${String(finished.number+1).padStart(2,'0')}</div>
+        <div style="font-size:.8rem;color:var(--text-3)">${SEASON_LENGTH_DAYS} dias para superar sua própria evolução.</div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="closeModal('season-retro-modal')">Começar a nova temporada</button>
+    </div>`;
+  modal.classList.add('active');
+}
+window.showSeasonRetrospectiva=showSeasonRetrospectiva;
+
+// Reabre a retrospectiva de uma temporada já encerrada (a partir da Jornada ou da comparação).
+function verRetrospectivaTemporada(number){
+  const hist=loadSeasonsHistory();
+  const s=hist.find(x=>x.number===number);
+  if(s) showSeasonRetrospectiva(s);
+}
+window.verRetrospectivaTemporada=verRetrospectivaTemporada;
+
+/* ── Evolução das Temporadas — comparação com você mesmo ── */
+function renderEvolucaoTemporadas(){
+  const el=document.getElementById('evolucao-temporadas'); if(!el) return;
+  const hist=loadSeasonsHistory(); // mais recentes primeiro
+  const atual=ensureSeason();
+  if(!hist.length){
+    el.innerHTML='<div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:1rem 0">Sua primeira temporada ainda está em andamento.<br><span style="font-size:.74rem;opacity:.7">A comparação aparece aqui quando ela terminar.</span></div>';
+    return;
+  }
+  const recorde=_seasonRecordePessoal();
+  const maiorPatente=_seasonMaiorPatente();
+  const cards=hist.map((s,i)=>{
+    const anterior=hist[i+1];
+    const diff=anterior ? s.finalPoints-anterior.finalPoints : null;
+    return `<div class="capsula-card" style="cursor:pointer" onclick="verRetrospectivaTemporada(${s.number})">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:.88rem">Temporada ${String(s.number).padStart(2,'0')}</div>
+        <span class="liga-badge" style="padding:.2rem .5rem;font-size:.68rem;background:var(--primary-glow);color:var(--primary)">${s.finalRankIcon} ${s.finalRankName}</span>
+      </div>
+      <div style="font-size:.8rem;color:var(--text-2);margin-top:.35rem">⭐ ${s.finalPoints.toLocaleString('pt-BR')} pontos · 🔥 ${s.activeDays} dias ativos · 🎯 ${s.goalsCompleted} metas</div>
+      ${diff!==null?`<div style="font-size:.74rem;font-weight:700;margin-top:.3rem;color:${diff>=0?'var(--green)':'var(--danger)'}">${diff>=0?'+':''}${diff.toLocaleString('pt-BR')} pontos em relação à temporada anterior</div>`:''}
+    </div>`;
+  }).join('');
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.9rem">
+      <div class="jpm-stat"><div class="jpm-stat-val">${maiorPatente?maiorPatente.icon+' '+maiorPatente.name:'—'}</div><div class="jpm-stat-lbl">Sua maior patente</div></div>
+      <div class="jpm-stat"><div class="jpm-stat-val">⭐ ${recorde.toLocaleString('pt-BR')}</div><div class="jpm-stat-lbl">Maior pontuação</div></div>
+    </div>
+    ${cards}`;
+}
+window.renderEvolucaoTemporadas=renderEvolucaoTemporadas;
 
 /* ══════════════════════════════════════════════════
    SISTEMA DE CHECK-IN DIÁRIO E STREAK DE PRESENÇA
@@ -7286,6 +7717,7 @@ const JEV_TYPES={
   post:        {icon:'📝',color:'#f472b6',bg:'rgba(244,114,182,.14)', dot:'#f472b6',label:'Post'},
   antes_depois:{icon:'🔄',color:'#22d3ee',bg:'rgba(34,211,238,.14)',  dot:'#22d3ee',label:'Antes e Depois'},
   capsula:     {icon:'⏳',color:'#fbbf24',bg:'rgba(251,191,36,.14)',  dot:'#fbbf24',label:'Cápsula do Tempo'},
+  temporada:   {icon:'🏁',color:'#a78bfa',bg:'rgba(167,139,250,.16)', dot:'#a78bfa',label:'Temporada'},
   auto:        {icon:'⚡',color:'#a78bfa',bg:'rgba(167,139,250,.10)', dot:'#a78bfa',label:'Auto'},
 };
 
@@ -7394,7 +7826,8 @@ function jornadaAutoRegistrar(type,desc,opts={}){
   const pc=typeof loadPC==='function'?loadPC():{};
   const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,auto:true};
+  const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,auto:true,
+    title:opts.title||undefined};
   evs.unshift(ev);
   saveJornada(evs);
   saveJornadaEventRemote(ev);
@@ -8165,6 +8598,8 @@ async function renderJornada(){
   _renderJornadaMeses();
   _renderJornadaMemorias();
   _renderCapsulas();
+  if(typeof renderSeasonWidgets==='function') renderSeasonWidgets();
+  if(typeof renderEvolucaoTemporadas==='function') renderEvolucaoTemporadas();
   jornadaCarregarAvatar();
 }
 window.renderJornada=renderJornada;
@@ -8271,6 +8706,8 @@ async function _renderJornadaTimeline(filtroMes='all'){
     if(ev.type==='capsula'){
       const aberta=!!ev.capsulaAberta;
       bodyHtml=`<div class="jtl-title" ${aberta?`style="cursor:pointer;color:var(--primary)" onclick="jornadaVerCapsula('${_jEsc(ev.id)}')"`:''}>${_jEsc(ev.desc)}${aberta?' <i class="fas fa-chevron-right" style="font-size:.7rem"></i>':''}</div>`;
+    } else if(ev.type==='temporada'){
+      bodyHtml=`<div class="jtl-title" style="cursor:pointer;color:var(--primary)" onclick="verRetrospectivaTemporada(${Number(ev.title)||0})">${_jEsc(ev.desc)} <i class="fas fa-chevron-right" style="font-size:.7rem"></i></div>`;
     } else {
       bodyHtml=`<div class="jtl-title" ${ev.hasReflexao?`style="cursor:pointer;color:var(--primary)" onclick="jornadaVerReflexao('${_jEsc(ev.id)}')"`:''}>${_jEsc(ev.desc)}${ev.hasReflexao?' <i class="fas fa-chevron-right" style="font-size:.7rem"></i>':''}</div>`;
     }
@@ -8437,7 +8874,7 @@ let _pendingDailyReward=false;
     if(localStorage.getItem(DAILY_BTN_KEY)!==hoje){
       localStorage.setItem(DAILY_BTN_KEY,hoje);
       if(typeof addXp==='function') addXp(5,document.getElementById('btn-daily-entry'));
-      if(typeof addPC==='function') addPC(2,'Entrada diária');
+      if(typeof addPC==='function') addPC(2,'Entrada diária',todayKey());
       setTimeout(updateDailyEntryBtn,200);
       _showDailyRewardAnim();
       saveEntradaDiariaRemote(hoje);
