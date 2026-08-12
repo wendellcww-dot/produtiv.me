@@ -875,25 +875,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div style="font-size:.74rem;color:var(--text-3);margin-top:-.35rem;margin-bottom:.5rem">📅 <span id="presence-days-count">0</span> dias de presença</div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
           <div id="pc-panel" style="margin-top:.5rem">
-            <div class="pc-title">Pontos de Consistência</div>
-            <div class="pc-row">
-              <div>
-                <div class="pc-value" id="pc-total">0</div>
-                <div class="pc-liga" id="liga-badge-inline"></div>
-              </div>
-              <div style="text-align:right">
-                <div id="escudo-count" class="pc-escudos"></div>
-                <div id="liga-next" style="font-size:.68rem;color:var(--primary);margin-top:.2rem"></div>
-              </div>
-            </div>
-            <div class="pc-bar-wrap"><div class="pc-bar-fill" id="pc-bar-fill" style="width:0%"></div></div>
-            <div class="pc-meta">
-              <span style="font-size:.65rem;color:var(--text-3)" id="pc-liga-atual"></span>
-              <span style="font-size:.65rem;color:var(--text-3)" id="pc-liga-prox"></span>
-            </div>
-            <div style="text-align:center;margin-top:.55rem">
-              <span onclick="abrirModalLigas()" style="font-size:.74rem;color:var(--primary);font-weight:700;cursor:pointer">🏅 Ver todas as patentes</span>
-            </div>
+            <div class="season-widget"></div>
           </div>
         </div>
 
@@ -925,9 +907,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div id="insight-container"></div>
-        <div class="card" style="cursor:pointer" onclick="navTo('jornada')">
-          <div class="season-widget"></div>
-        </div>
         <div id="desafio-widget"></div>
 
         <div class="card">
@@ -6283,12 +6262,34 @@ async function endSeason(){
 // Roda a cada carregamento do app / virada de dia: se os 60 dias já passaram,
 // encerra e mostra a retrospectiva antes de seguir em frente.
 async function checkSeasonRollover(){
+  await _seasonOneTimeReset();
   const s=ensureSeason();
   if(_seasonDaysElapsed(s) > SEASON_LENGTH_DAYS){
     const finished=await endSeason();
     if(finished) setTimeout(()=>showSeasonRetrospectiva(finished), 900);
   }
   renderSeasonWidgets();
+}
+
+// Reset único: os painéis de "Pontos de Consistência" (vitalício) e
+// "Temporada" ficaram mostrando dois números diferentes na mesma tela,
+// o que gerava confusão — agora existe só o painel da Temporada, e ele
+// começa zerado pra não carregar esse número desencontrado.
+// Roda só uma vez por aparelho (guardado por flag local).
+async function _seasonOneTimeReset(){
+  const FLAG='pm18_season_consolidacao_v1';
+  if(localStorage.getItem(FLAG)) return;
+  localStorage.setItem(FLAG,'1');
+  const s=loadSeason(); if(!s) return;
+  s.points=0; s.tasksCompleted=0; s.habitsCompleted=0; s.goalsCompleted=0; s.challengesCompleted=0; s.activeDays=[];
+  saveSeason(s);
+  const user=window.app?.state?.user;
+  if(user && !user.local){
+    try{
+      const {error}=await window.supabaseClient.rpc('reset_season_points');
+      if(error) throw error;
+    }catch(e){ console.error('[Temporada] Falha ao zerar no servidor:', e.message||e); }
+  }
 }
 
 function _seasonRecordePessoal(){
@@ -6324,10 +6325,48 @@ function renderSeasonWidgets(){
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       ${next?`<div style="font-size:.74rem;color:var(--text-3);margin-top:.4rem">Próxima patente: <b style="color:var(--text-2)">${next.icon} ${next.name}</b> — faltam <b style="color:var(--primary)">${(next.min-s.points).toLocaleString('pt-BR')}</b> pontos</div>`
             :`<div style="font-size:.74rem;color:var(--gold);margin-top:.4rem">🌟 Patente máxima da temporada alcançada!</div>`}
+      <div style="text-align:center;margin-top:.55rem">
+        <span onclick="event.stopPropagation();abrirModalPatentesTemporada()" style="font-size:.74rem;color:var(--primary);font-weight:700;cursor:pointer">🏅 Ver todas as patentes</span>
+      </div>
     `;
   });
 }
 window.renderSeasonWidgets=renderSeasonWidgets;
+
+// Ladder de patentes da TEMPORADA atual (0-3200 pts, reseta a cada 60 dias) —
+// separado do antigo abrirModalLigas(), que mostra as ligas vitalícias.
+function abrirModalPatentesTemporada(){
+  const s=ensureSeason();
+  const rank=getSeasonRank(s.points);
+  const html=SEASON_RANKS.map(r=>{
+    const achieved=s.points>=r.min;
+    const isCurrent=r.id===rank.id;
+    const faltam=r.min-s.points;
+    return `<div class="ligas-item ${achieved?'achieved':''} ${isCurrent?'current':''}">
+      <div class="ligas-item-icon">${r.icon}</div>
+      <div>
+        <div class="ligas-item-name">${r.name}</div>
+        <div class="ligas-item-pts">${r.min.toLocaleString('pt-BR')} pts${!achieved?` · faltam ${faltam.toLocaleString('pt-BR')}`:''}</div>
+      </div>
+      ${isCurrent?'<span class="ligas-item-check"><i class="fas fa-star"></i> Atual</span>':achieved?'<span class="ligas-item-check"><i class="fas fa-check-circle"></i></span>':'<span class="ligas-item-lock"><i class="fas fa-lock"></i></span>'}
+    </div>`;
+  }).join('');
+  let modal=document.getElementById('ligas-temporada-modal');
+  if(!modal){
+    modal=document.createElement('div'); modal.id='ligas-temporada-modal'; modal.className='modal';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-flag-checkered" style="color:var(--primary);margin-right:.4rem"></i>Patentes da Temporada</h3>
+      <button class="btn btn-icon" onclick="closeModal('ligas-temporada-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Sua patente reseta a cada 60 dias — ${SEASON_LENGTH_DAYS-Math.min(_seasonDaysElapsed(s),SEASON_LENGTH_DAYS)} dias restantes nesta temporada.</div>
+    <div class="ligas-ladder">${html}</div>
+  </div>`;
+  modal.classList.add('active');
+}
+window.abrirModalPatentesTemporada=abrirModalPatentesTemporada;
 
 /* ── Retrospectiva ao final da temporada ── */
 function showSeasonRetrospectiva(finished){
