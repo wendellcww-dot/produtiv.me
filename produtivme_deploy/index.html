@@ -7424,9 +7424,22 @@ async function doAutoShare(){
   openShareModal(_pendingShareType);
 }
 
+// Evita reabrir o mesmo convite de compartilhamento no mesmo dia — vale tanto
+// se a pessoa compartilhou quanto se clicou em "Não quero compartilhar":
+// a resposta (qualquer que seja) já foi dada, não precisa perguntar de novo
+// só porque a tela recarregou ou algo mais disparou um novo render.
+function _autoShareJaMostrado(key){
+  try{ return localStorage.getItem('pm_autoshare_'+key) === todayKey(); }catch(e){ return false; }
+}
+function _autoShareMarcarMostrado(key){
+  try{ localStorage.setItem('pm_autoshare_'+key, todayKey()); }catch(e){}
+}
+
 // Triggers automáticos
 function checkAutoShare_TasksComplete(done, total, streak){
   if(done > 0 && done === total){
+    if(_autoShareJaMostrado('tasks_complete')) return;
+    _autoShareMarcarMostrado('tasks_complete');
     showAutoSharePopup('streak',
       '🎯 Dia zerado!',
       `Você concluiu ${total} tarefa${total>1?'s':''} hoje. Compartilhar no Instagram?`
@@ -7445,6 +7458,8 @@ function checkAutoShare_LevelUp(oldXp, newXp){
     const actualLvBadge = document.getElementById('xp-level-badge')?.textContent?.replace('Nv.','');
     const actualLv = actualLvBadge ? parseInt(actualLvBadge) : newLv;
     if(actualLv !== newLv) return; // evita popup com nível errado
+    if(_autoShareJaMostrado('nivel_'+newLv)) return;
+    _autoShareMarcarMostrado('nivel_'+newLv);
     showAutoSharePopup('nivel',
       `🏆 Nível ${newLv} alcançado!`,
       'Você subiu de nível! Compartilhar essa conquista?'
@@ -7456,6 +7471,8 @@ function checkAutoShare_LevelUp(oldXp, newXp){
 function checkAutoShare_Streak(streak){
   const milestones = [3,7,14,21,30,60,90,100,180,365];
   if(milestones.includes(streak)){
+    if(_autoShareJaMostrado('streak_'+streak)) return;
+    _autoShareMarcarMostrado('streak_'+streak);
     showAutoSharePopup('streak',
       `🔥 ${streak} dias seguidos!`,
       `Sequência de ${streak} dias! Compartilhar no Instagram?`
