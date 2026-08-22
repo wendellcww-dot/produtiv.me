@@ -476,6 +476,26 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .task-item.task-locked input[type="checkbox"]{cursor:not-allowed;opacity:.5}
 .task-locked-hint{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--text-3);margin-top:.35rem}
 
+/* ── Controle de tempo por tarefa ── */
+.tt-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;font-weight:700;color:var(--text-2);background:var(--surface4);border-radius:20px;padding:.15rem .55rem}
+.tt-badge.tt-running{color:#fff;background:var(--primary);animation:ttPulse 1.6s ease-in-out infinite}
+@keyframes ttPulse{0%,100%{opacity:1}50%{opacity:.7}}
+.tt-widget{background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.9rem;margin:.7rem 0;text-align:center}
+.tt-widget-time{font-family:var(--font-display);font-weight:800;font-size:1.8rem;color:var(--text);letter-spacing:.02em}
+.tt-widget-goal{font-size:.76rem;color:var(--text-3);margin-top:.1rem}
+.tt-widget-goal.tt-hit{color:var(--green);font-weight:700}
+.tt-widget-btns{display:flex;gap:.5rem;justify-content:center;margin-top:.75rem}
+.tt-done-summary{background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.7rem .9rem;margin:.7rem 0;font-size:.85rem}
+.tt-done-summary b{color:var(--primary)}
+
+/* ── Tempo de hoje / resumo semanal ── */
+.tt-today-total{font-family:var(--font-display);font-weight:800;font-size:1.6rem;color:var(--primary)}
+.tt-today-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.83rem}
+.tt-today-row:last-child{border-bottom:0}
+.tt-week-delta{font-size:.76rem;font-weight:700;margin-top:.3rem}
+.tt-week-delta.up{color:var(--green)}
+.tt-week-delta.down{color:var(--text-3)}
+
 @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
@@ -860,6 +880,8 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div id="routine-tasks-list"></div>
         </div>
 
+        <div id="tt-today-card"></div>
+
         <!-- ── Hábitos Diários (movido de Metas) ── -->
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
@@ -1128,6 +1150,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div class="kpi-card"><div class="kpi-label">XP Total</div><div class="kpi-value" id="analytics-xp">0</div></div>
         </div>
         <div id="insights-list"></div>
+        <div id="tt-week-card"></div>
         <div class="card">
           <div class="card-title"><i class="fas fa-chart-bar"></i>Evolução Mensal</div>
           <div class="chart-container"><canvas id="monthly-chart"></canvas></div>
@@ -1416,6 +1439,17 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <div class="form-group"><label>Área de Foco</label><select id="task-focus"><option value="trabalho">💼 Trabalho</option><option value="estudos">📚 Estudos</option><option value="saude">💪 Saúde</option><option value="pessoal">🏠 Pessoal</option><option value="financas">💰 Finanças</option></select></div>
     <div class="form-group"><label>Meta Vinculada</label><select id="task-goal"><option value="">Nenhuma</option></select></div>
     <div class="form-group"><label>🔔 Alarme</label><input type="time" id="task-alarm" style="max-width:160px"><div style="font-size:.74rem;color:var(--text-3);margin-top:.2rem">Deixe vazio para não ter alarme</div></div>
+
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+        <input type="checkbox" id="task-tt-enabled" style="width:auto" onchange="document.getElementById('task-tt-planned-wrap').style.display=this.checked?'block':'none'">
+        <span>⏱️ Controlar tempo</span>
+      </label>
+      <div id="task-tt-planned-wrap" style="display:none;margin-top:.5rem">
+        <label>Meta de duração (minutos) <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(opcional)</span></label>
+        <input type="number" id="task-tt-planned" min="5" step="5" placeholder="Ex: 90" style="max-width:160px">
+      </div>
+    </div>
 
     <div class="form-group">
       <label>📅 Dias da Semana <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(deixe em branco para uma tarefa única de hoje)</span></label>
@@ -1817,6 +1851,210 @@ function findTaskAnyDate(appRef, id){
   return null;
 }
 
+/* ══════════════════════════════════════════════════
+   CONTROLE DE TEMPO POR TAREFA (opcional)
+   O tempo NUNCA é um contador incrementado a cada segundo — é sempre
+   recalculado a partir dos timestamps de início/fim de cada sessão.
+   Isso é o que garante que sair da tela, trocar de aba, fechar o app
+   ou o processo ficar em segundo plano nunca "zera" ou atrasa o tempo:
+   basta reabrir e o total é recalculado corretamente na hora.
+══════════════════════════════════════════════════ */
+
+// Soma, em segundos, todas as sessões de uma tarefa. Sessão em andamento
+// (end null) conta até "agora" — por isso o widget nunca precisa incrementar
+// nada sozinho, só re-chamar essa função a cada tick visual.
+function tt_computeTotalSec(sessions){
+  if(!sessions || !sessions.length) return 0;
+  const now=Date.now();
+  return sessions.reduce((sum,s)=>{
+    const start=new Date(s.start).getTime();
+    const end=s.end?new Date(s.end).getTime():now;
+    return sum + Math.max(0, Math.round((end-start)/1000));
+  },0);
+}
+
+function tt_ensure(task){
+  if(!task.timeTracking) task.timeTracking={enabled:false,plannedMin:null,status:'idle',sessions:[]};
+  return task.timeTracking;
+}
+
+function tt_start(task){
+  const tt=tt_ensure(task);
+  if(tt.status==='running') return; // já rodando — evita sessão duplicada por duplo clique
+  const session={id:'ts_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), start:new Date().toISOString(), end:null};
+  tt.sessions.push(session);
+  tt.status='running';
+  tt_saveSessionRemote(task.id, session);
+  return session;
+}
+
+function tt_pause(task){
+  const tt=tt_ensure(task);
+  if(tt.status!=='running') return;
+  const session=tt.sessions[tt.sessions.length-1];
+  if(session && !session.end){
+    session.end=new Date().toISOString();
+    tt_saveSessionRemote(task.id, session);
+  }
+  tt.status='paused';
+}
+
+function tt_resume(task){ tt_start(task); }
+
+function tt_finish(task){
+  const tt=tt_ensure(task);
+  const session=tt.sessions[tt.sessions.length-1];
+  if(session && !session.end){
+    session.end=new Date().toISOString();
+    tt_saveSessionRemote(task.id, session);
+  }
+  tt.status='done';
+  tt.totalSec=tt_computeTotalSec(tt.sessions);
+}
+
+// Sincroniza UMA sessão por vez (upsert por id) — evita ter que reenviar o
+// array inteiro a cada pausa/retomada, e permite que dois aparelhos vejam
+// o estado atual (sessão "em aberto" = cronômetro rodando em outro lugar).
+async function tt_saveSessionRemote(taskId, session){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  const payload={
+    id:session.id, task_id:taskId, user_id:user.id,
+    started_at:session.start, ended_at:session.end||null,
+    updated_at:new Date().toISOString()
+  };
+  if(!_isOnline){
+    offlineQueue.push({type:'upsert_session',id:session.id,user_id:user.id,payload});
+    return;
+  }
+  try{
+    const {error}=await window.supabaseClient.from('tarefa_sessoes').upsert([payload],{onConflict:'id'});
+    if(error) offlineQueue.push({type:'upsert_session',id:session.id,user_id:user.id,payload});
+  }catch(e){ offlineQueue.push({type:'upsert_session',id:session.id,user_id:user.id,payload}); }
+}
+window.tt_saveSessionRemote=tt_saveSessionRemote;
+
+// Carrega e mescla as sessões remotas nas tarefas locais (por task_id).
+// Assim, iniciar o cronômetro no PC e abrir no celular mostra o mesmo estado.
+async function tt_loadSessionsRemote(appRef){
+  const user=appRef?.state?.user;
+  if(!user||user.local) return;
+  const {data,error}=await window.supabaseClient.from('tarefa_sessoes').select('*').eq('user_id',user.id);
+  if(error||!data) return;
+  const byTask={};
+  data.forEach(r=>{ (byTask[r.task_id]=byTask[r.task_id]||[]).push({id:r.id,start:r.started_at,end:r.ended_at}); });
+  const routines=appRef.state.data.routines||{};
+  Object.keys(routines).forEach(dk=>{
+    (routines[dk]||[]).forEach(task=>{
+      const remoteSessions=byTask[task.id];
+      if(!remoteSessions) return;
+      const tt=tt_ensure(task);
+      const byId={}; (tt.sessions||[]).forEach(s=>byId[s.id]=s);
+      remoteSessions.forEach(s=>{ byId[s.id]=s; }); // remoto é fonte oficial por sessão
+      tt.sessions=Object.values(byId).sort((a,b)=>new Date(a.start)-new Date(b.start));
+      const last=tt.sessions[tt.sessions.length-1];
+      if(tt.status!=='done') tt.status = (last && !last.end) ? 'running' : (tt.sessions.length ? 'paused' : 'idle');
+      tt.totalSec=tt_computeTotalSec(tt.sessions);
+    });
+  });
+}
+window.tt_loadSessionsRemote=tt_loadSessionsRemote;
+
+function tt_fmt(totalSec){
+  const h=Math.floor(totalSec/3600), m=Math.floor((totalSec%3600)/60), s=totalSec%60;
+  if(h>0) return `${h}h${String(m).padStart(2,'0')}min`;
+  if(m>0) return `${m}min`;
+  return `${s}s`;
+}
+function tt_fmtClock(totalSec){
+  const h=Math.floor(totalSec/3600), m=Math.floor((totalSec%3600)/60), s=totalSec%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+const TT_FOCUS_ICON={trabalho:'💼',estudos:'📚',saude:'💪',pessoal:'🏠',financas:'💰'};
+
+// Percorre todas as tarefas (qualquer bucket de data) com controle de tempo ativado
+// e soma, por sessão, apenas o que caiu dentro do intervalo [startKey,endKey).
+function tt_collect(startKey, endKey){
+  const routines=(window.app?.state?.data?.routines)||{};
+  const out=[]; // {taskId,title,focus,sec}
+  const seen=new Set();
+  Object.values(routines).forEach(list=>{
+    (list||[]).forEach(task=>{
+      if(seen.has(task.id)) return; // tarefa recorrente pode aparecer em mais de um bucket
+      const tt=task.timeTracking;
+      if(!tt || !tt.enabled || !tt.sessions || !tt.sessions.length) return;
+      seen.add(task.id);
+      let sec=0;
+      tt.sessions.forEach(s=>{
+        const dk=s.start.slice(0,10);
+        if(dk>=startKey && dk<endKey){
+          const end=s.end?new Date(s.end).getTime():Date.now();
+          sec+=Math.max(0,Math.round((end-new Date(s.start).getTime())/1000));
+        }
+      });
+      if(sec>0) out.push({taskId:task.id,title:task.title,focus:task.focus,sec});
+    });
+  });
+  return out;
+}
+
+function renderTTTodayCard(){
+  const el=document.getElementById('tt-today-card'); if(!el) return;
+  const hoje=todayKey();
+  const amanha=new Date(); amanha.setDate(amanha.getDate()+1);
+  const amanhaKey=amanha.toISOString().slice(0,10);
+  const items=tt_collect(hoje, amanhaKey).sort((a,b)=>b.sec-a.sec);
+  if(!items.length){ el.innerHTML=''; return; }
+  const total=items.reduce((s,i)=>s+i.sec,0);
+  el.innerHTML=`<div class="card">
+    <div class="card-title"><i class="fas fa-stopwatch"></i>Tempo de Hoje</div>
+    <div class="tt-today-total">${tt_fmt(total)}</div>
+    <div style="margin-top:.5rem">
+      ${items.map(i=>`<div class="tt-today-row"><span>${TT_FOCUS_ICON[i.focus]||'⏱️'} ${esc(i.title)}</span><span style="font-weight:700;color:var(--text-2)">${tt_fmt(i.sec)}</span></div>`).join('')}
+    </div>
+  </div>`;
+}
+window.renderTTTodayCard=renderTTTodayCard;
+
+function renderTTWeekCard(){
+  const el=document.getElementById('tt-week-card'); if(!el) return;
+  const today=new Date();
+  const startCur=new Date(today); startCur.setDate(startCur.getDate()-6);
+  const endCur=new Date(today); endCur.setDate(endCur.getDate()+1);
+  const startPrev=new Date(startCur); startPrev.setDate(startPrev.getDate()-7);
+  const k=d=>d.toISOString().slice(0,10);
+
+  const curItems=tt_collect(k(startCur),k(endCur));
+  if(!curItems.length){ el.innerHTML=''; return; }
+  const prevItems=tt_collect(k(startPrev),k(startCur));
+
+  const byCat={};
+  curItems.forEach(i=>{ const cat=i.focus||'outro'; byCat[cat]=(byCat[cat]||0)+i.sec; });
+  const totalCur=curItems.reduce((s,i)=>s+i.sec,0);
+  const totalPrev=prevItems.reduce((s,i)=>s+i.sec,0);
+
+  const catLabel={trabalho:'💼 Trabalho',estudos:'📚 Estudos',saude:'💪 Saúde',pessoal:'🏠 Pessoal',financas:'💰 Finanças',outro:'⏱️ Outro'};
+  const rows=Object.entries(byCat).sort((a,b)=>b[1]-a[1])
+    .map(([cat,sec])=>`<div class="tt-today-row"><span>${catLabel[cat]||cat}</span><span style="font-weight:700;color:var(--text-2)">${tt_fmt(sec)}</span></div>`).join('');
+
+  let delta='';
+  if(totalPrev>0){ // só mostra comparação se existir histórico de verdade na semana anterior
+    const diff=totalCur-totalPrev;
+    const cls=diff>=0?'up':'down';
+    const sign=diff>=0?'+':'';
+    delta=`<div class="tt-week-delta ${cls}">${sign}${tt_fmt(Math.abs(diff))} em relação à semana passada</div>`;
+  }
+
+  el.innerHTML=`<div class="card">
+    <div class="card-title"><i class="fas fa-calendar-week"></i>Seu Tempo Esta Semana</div>
+    <div class="tt-today-total">${tt_fmt(totalCur)}</div>
+    ${delta}
+    <div style="margin-top:.6rem">${rows}</div>
+  </div>`;
+}
+window.renderTTWeekCard=renderTTWeekCard;
+
 let _toastTimer;
 function showToast(msg, type='default', ms=2600, onClick=null){
   const el=q('toast');
@@ -1971,6 +2209,12 @@ const offlineQueue = {
             .delete()
             .eq('id',a.id)
             .eq('user_id',a.user_id);
+        }
+
+        else if(a.type==='upsert_session'){
+          await window.supabaseClient
+            .from('tarefa_sessoes')
+            .upsert([a.payload],{onConflict:'id'});
         }
 
       }catch(e){
@@ -2369,6 +2613,8 @@ function _seededShuffle(arr, seed){
 // frequência e evitando repetir as mesmas perguntas de ontem. Domingo: todas ficam
 // disponíveis (tratado direto em renderQuestions).
 let _qShowAll=false;
+let _ttOpenTaskId=null;
+let _ttTickInterval=null;
 let _fraseCurCat='all';
 let _fraseHeroAtual=null;
 function getTodayQuestionSet(all){
@@ -2684,6 +2930,7 @@ _isSyncing: false,
         this.loadJSharesRemote(),
         this.loadPresenceRemote(),
       ]);
+      if(typeof tt_loadSessionsRemote==='function') await tt_loadSessionsRemote(this); // depois de loadTasksRemote, que reconstrói routines
       this.saveLocal();
       setSyncStatus('online');
     }catch(e){ console.error('[Sync]',e); setSyncStatus('error'); }
@@ -2860,7 +3107,8 @@ _isSyncing: false,
         done:!!t.done, estimateMin:t.estimate_min||30,
         linkedGoalId:t.goal_id||'',
         alarmTime:t.alarm_time?String(t.alarm_time).slice(0,5):'',
-        created_at:t.created_at, updated_at:t.updated_at, _synced:true
+        created_at:t.created_at, updated_at:t.updated_at, _synced:true,
+        timeTracking:{enabled:!!t.time_tracking_enabled, plannedMin:t.estimate_min||null, status:'idle', sessions:[]}
       };
       const existing=byId[t.id];
       // Só sobrescreve a versão local se ela já estava sincronizada antes (_synced)
@@ -2927,7 +3175,8 @@ _isSyncing: false,
       priority: task.priority || 'media',
       focus: task.focus || 'trabalho',
       done: !!task.done,
-      estimate_min: Number(task.estimateMin) || 30,
+      estimate_min: Number(task.timeTracking?.plannedMin || task.estimateMin) || 30,
+      time_tracking_enabled: !!(task.timeTracking && task.timeTracking.enabled),
       goal_id: task.linkedGoalId || null,
       alarm_time: alarmIso,
       date_key: dateKey || new Date().toISOString().split('T')[0],
@@ -3088,6 +3337,7 @@ _isSyncing: false,
   ══════════════════════════════════════ */
   renderDashboard(){
     if(typeof renderSeasonWidgets==='function') renderSeasonWidgets();
+    if(typeof renderTTTodayCard==='function') renderTTTodayCard();
     const today=todayKey();
     const tasks=getTodayEffectiveTasks(this);
     // Tarefas recorrentes bloqueadas hoje (outro dia da semana) não contam
@@ -3168,6 +3418,13 @@ _isSyncing: false,
     const chip=task.__recurring?weekDaysChip(task.__weekDays):'';
     const desc=task.description||'';
     const descTrunc=desc.length>90;
+    const tt=task.timeTracking;
+    const ttBadge=(tt&&tt.enabled)?(()=>{
+      const sec=tt_computeTotalSec(tt.sessions);
+      const planned=tt.plannedMin?` / ${tt.plannedMin}min`:'';
+      const hit=tt.plannedMin && sec>=tt.plannedMin*60;
+      return `<span class="tt-badge ${tt.status==='running'?'tt-running':''}"><i class="fas ${tt.status==='running'?'fa-play':'fa-stopwatch'}"></i> ${tt_fmt(sec)}${planned}${hit?' 🎯':''}</span>`;
+    })():'';
     return `<div class="task-item ${task.done?'task-done':''} ${locked?'task-locked':''}" id="task-${task.id}" onclick="if(!event.target.closest('input,.task-share-btn,.task-desc-more')) app.openTaskDetail('${task.id}')">
       <input type="checkbox" ${task.done?'checked':''} ${locked?'disabled':''} onclick="event.stopPropagation()" onchange="app.toggleTask('${task.id}')">
       <div style="flex:1;min-width:0">
@@ -3177,6 +3434,7 @@ _isSyncing: false,
           <span class="badge ${priColors[task.priority||'media']}">${priLabels[task.priority||'media']}</span>
           ${task.focus?`<span class="badge badge-focus">${esc(task.focus)}</span>`:''}
           ${chip?`<span class="badge badge-recur">${chip}</span>`:''}
+          ${ttBadge}
         </div>
         ${locked?`<div class="task-locked-hint"><i class="fas fa-lock"></i> Próxima execução: ${nextRecurrenceLabel(task.__weekDays)}</div>`:''}
       </div>
@@ -3206,6 +3464,8 @@ _isSyncing: false,
     if(task.alarmTime) html+=`<div class="task-sheet-row"><i class="fas fa-bell"></i><div><div class="task-sheet-row-label">Horário</div><div class="task-sheet-row-val">${esc(task.alarmTime)}</div></div></div>`;
     if(rec) html+=`<div class="task-sheet-row"><i class="fas fa-repeat"></i><div><div class="task-sheet-row-label">Recorrência</div><div class="task-sheet-row-val">${weekDaysChip(rec.weekDays)}${locked?` · <span style="color:var(--text-3)">${nextRecurrenceLabel(rec.weekDays)}</span>`:''}${rec.endDate?` · até ${_jFmtDate(rec.endDate+'T12:00:00')}`:''}</div></div></div>`;
 
+    html+=`<div id="tt-widget-slot">${this.renderTTWidget(task)}</div>`;
+
     html+=`<div class="task-sheet-actions">
       <button class="btn btn-ghost" style="flex:1" onclick="closeTaskSheet();app.openEditTask('${task.id}')"><i class="fas fa-pen"></i> Editar</button>
       ${task.done?`<button class="btn btn-primary" style="flex:1" onclick="closeTaskSheet();app.shareTask('${task.id}')"><i class="fas fa-paper-plane"></i> Compartilhar</button>`:''}
@@ -3214,6 +3474,62 @@ _isSyncing: false,
 
     q('task-sheet-content').innerHTML=html;
     q('task-sheet-overlay').classList.add('active');
+    _ttOpenTaskId=id;
+    this.restartTTTick();
+  },
+
+  // Monta o widget de cronômetro (ou o resumo final, se já concluído)
+  renderTTWidget(task){
+    const tt=task.timeTracking;
+    if(!tt || !tt.enabled) return '';
+    const sec=tt_computeTotalSec(tt.sessions);
+    if(tt.status==='done'){
+      const pct = tt.plannedMin ? Math.round(sec/(tt.plannedMin*60)*100) : null;
+      return `<div class="tt-done-summary"><i class="fas fa-stopwatch" style="color:var(--primary)"></i> Tempo registrado: <b>${tt_fmt(sec)}</b>${tt.plannedMin?` · Meta: ${tt.plannedMin}min${pct!==null?` · ${pct}% da meta`:''}`:''}</div>`;
+    }
+    const planned = tt.plannedMin ? `${Math.floor(sec/60)}min / ${tt.plannedMin}min` : tt_fmt(sec);
+    const hit = tt.plannedMin && sec>=tt.plannedMin*60;
+    let btns='';
+    if(tt.status==='idle') btns=`<button class="btn btn-primary" onclick="app.ttAction('${task.id}','start')"><i class="fas fa-play"></i> Iniciar</button>`;
+    else if(tt.status==='running') btns=`<button class="btn btn-ghost" onclick="app.ttAction('${task.id}','pause')"><i class="fas fa-pause"></i> Pausar</button><button class="btn btn-primary" onclick="app.ttAction('${task.id}','finish')"><i class="fas fa-stop"></i> Finalizar</button>`;
+    else if(tt.status==='paused') btns=`<button class="btn btn-primary" onclick="app.ttAction('${task.id}','resume')"><i class="fas fa-play"></i> Continuar</button><button class="btn btn-ghost" onclick="app.ttAction('${task.id}','finish')"><i class="fas fa-stop"></i> Finalizar</button>`;
+    return `<div class="tt-widget">
+      <div class="tt-widget-time" id="tt-clock-${task.id}">${tt_fmtClock(sec)}</div>
+      <div class="tt-widget-goal ${hit?'tt-hit':''}">${planned}${hit?' 🎯':''}</div>
+      <div class="tt-widget-btns">${btns}</div>
+    </div>`;
+  },
+
+  // Inicia/pausa/retoma/finaliza o cronômetro e atualiza a UI na hora (sem precisar recarregar)
+  ttAction(id, action){
+    const found=findTaskAnyDate(this, id); if(!found) return;
+    const task=found.task;
+    const tt=tt_ensure(task);
+    if(action==='start') tt_start(task);
+    else if(action==='pause') tt_pause(task);
+    else if(action==='resume') tt_resume(task);
+    else if(action==='finish') tt_finish(task);
+    task.updated_at=new Date().toISOString(); task._synced=false;
+    this.saveLocal();
+    this.saveTaskRemote(task, found.dateKey);
+    const slot=q('tt-widget-slot'); if(slot) slot.innerHTML=this.renderTTWidget(task);
+    this.restartTTTick();
+    this.renderDashboard(); // atualiza o badge no card também
+  },
+
+  // Atualiza o relógio a cada segundo só enquanto o cronômetro estiver rodando —
+  // sempre recalculado a partir dos timestamps (tt_computeTotalSec), nunca por
+  // incremento simples, então sair e voltar da tela nunca desacerta o tempo.
+  restartTTTick(){
+    if(_ttTickInterval) clearInterval(_ttTickInterval);
+    _ttTickInterval=setInterval(()=>{
+      if(!_ttOpenTaskId) return;
+      const found=findTaskAnyDate(this, _ttOpenTaskId);
+      const tt=found?.task?.timeTracking;
+      if(!tt || tt.status!=='running'){ clearInterval(_ttTickInterval); return; }
+      const el=q('tt-clock-'+_ttOpenTaskId);
+      if(el) el.textContent=tt_fmtClock(tt_computeTotalSec(tt.sessions));
+    },1000);
   },
 
   // Abre o gerador de imagem pré-preenchido com os dados da tarefa concluída
@@ -3321,6 +3637,7 @@ _isSyncing: false,
     q('task-focus').value='trabalho'; q('task-alarm').value='';
     setTaskWeekdayPicker([]);
     q('task-start-date').value=todayKey(); q('task-end-date').value='';
+    q('task-tt-enabled').checked=false; q('task-tt-planned-wrap').style.display='none'; q('task-tt-planned').value='';
     this.populateGoalSelect();
     q('task-modal').classList.add('active');
     setTimeout(()=>q('task-title').focus(),100);
@@ -3339,6 +3656,10 @@ _isSyncing: false,
     setTaskWeekdayPicker(rec?rec.weekDays:[]);
     q('task-start-date').value=rec?rec.startDate:(found.dateKey||todayKey());
     q('task-end-date').value=rec?(rec.endDate||''):'';
+    const tt=task.timeTracking||{};
+    q('task-tt-enabled').checked=!!tt.enabled;
+    q('task-tt-planned-wrap').style.display=tt.enabled?'block':'none';
+    q('task-tt-planned').value=tt.plannedMin||'';
     this.populateGoalSelect(task.linkedGoalId);
     q('task-modal').classList.add('active');
   },
@@ -3359,6 +3680,8 @@ _isSyncing: false,
     const startDate=q('task-start-date').value||today;
     const endDate=q('task-end-date').value||'';
     const newRec = weekDays.length ? {weekDays, startDate, endDate} : null;
+    const ttEnabled=q('task-tt-enabled').checked;
+    const ttPlanned=q('task-tt-planned').value?Number(q('task-tt-planned').value):null;
 
     const existingId=q('task-id').value, now=new Date().toISOString();
     let savedId=existingId;
@@ -3370,6 +3693,7 @@ _isSyncing: false,
         task.priority=q('task-priority').value;
         task.focus=q('task-focus').value; task.linkedGoalId=q('task-goal').value;
         task.alarmTime=q('task-alarm').value; task.updated_at=now; task._synced=false;
+        const tt=tt_ensure(task); tt.enabled=ttEnabled; tt.plannedMin=ttPlanned; // sessões existentes (se houver) são preservadas
         if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
         this.saveLocal(); this.saveTaskRemote(task,found.dateKey);
         showToast('Tarefa atualizada ✏️','success');
@@ -3379,7 +3703,8 @@ _isSyncing: false,
         id:crypto.randomUUID(), title, description:q('task-description').value.trim(),
         priority:q('task-priority').value,
         focus:q('task-focus').value, linkedGoalId:q('task-goal').value,
-        alarmTime:q('task-alarm').value, done:false, created_at:now, updated_at:now, _synced:false
+        alarmTime:q('task-alarm').value, done:false, created_at:now, updated_at:now, _synced:false,
+        timeTracking:{enabled:ttEnabled, plannedMin:ttPlanned, status:'idle', sessions:[]}
       };
       savedId=task.id;
       if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
@@ -4188,6 +4513,7 @@ _isSyncing: false,
      ANALYTICS
   ══════════════════════════════════════ */
   renderAnalytics(){
+    if(typeof renderTTWeekCard==='function') renderTTWeekCard();
     const allTasks=Object.values(this.state.data.routines||{}).flat();
     const completed=allTasks.filter(t=>t.done).length, total=allTasks.length;
     const avg=total?Math.round(completed/total*100):0;
@@ -4364,7 +4690,11 @@ q('task-modal-cancel').addEventListener('click',()=>closeModal('task-modal'));
 q('task-modal-save').addEventListener('click',()=>app.saveTask());
 
 // Seletor de dias da semana (recorrência de tarefas)
-function closeTaskSheet(){ q('task-sheet-overlay').classList.remove('active'); }
+function closeTaskSheet(){
+  q('task-sheet-overlay').classList.remove('active');
+  _ttOpenTaskId=null;
+  if(_ttTickInterval){ clearInterval(_ttTickInterval); _ttTickInterval=null; }
+}
 window.closeTaskSheet=closeTaskSheet;
 // "... Ver mais" expande a descrição sem abrir o sheet inteiro
 document.addEventListener('click',(e)=>{
@@ -4760,6 +5090,8 @@ const RealtimeManager = (() => {
       .channel('pm-' + userId, { config: { broadcast: { self: false } } })
       .on('postgres_changes', { event:'*', schema:'public', table:'tarefas', filter:`user_id=eq.${userId}` },
         p => onTableChange('tarefas', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'tarefa_sessoes', filter:`user_id=eq.${userId}` },
+        p => onTableChange('tarefa_sessoes', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'metas', filter:`user_id=eq.${userId}` },
         p => onTableChange('metas', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'habitos', filter:`user_id=eq.${userId}` },
