@@ -3540,7 +3540,7 @@ _isSyncing: false,
     openShareModal('tarefa');
   },
 
-  toggleTask(id){
+  async toggleTask(id){
     const today=todayKey();
     const rec=getTaskRecurrence(id);
     if(rec){
@@ -3551,7 +3551,11 @@ _isSyncing: false,
       const wasDone=!!doneMap[id][today];
       doneMap[id][today]=!wasDone;
       saveRecurringDoneMap(doneMap);
-      syncRecurringDoneRemote(id);
+      // Espera a confirmação no servidor ANTES de pedir os pontos — o RPC
+      // award_points valida contra o estado atual no banco, então precisa
+      // que essa gravação já tenha sido aplicada, senão o servidor rejeita
+      // o ganho por não conseguir confirmar a ação (rejeição legítima dele).
+      await syncRecurringDoneRemote(id);
       if(!wasDone){ addXp(10, null, id); showToast('✅ Tarefa concluída! +10 XP','success'); if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto(); }
       else {
         const g=loadGamify();
@@ -3569,7 +3573,7 @@ _isSyncing: false,
     const wasDone = task.done;
     task.done=!task.done; task.updated_at=new Date().toISOString(); task._synced=false;
     this.saveLocal();
-    this.saveTaskRemote(task, today);
+    const _taskSavePromise=this.saveTaskRemote(task, today); // não aguardamos aqui — a UI abaixo continua instantânea
 
     // Regenera só a marcação desta tarefa (não a lista inteira) e a move para
     // a seção certa — antes ela só trocava de classe no lugar (com o nome de
@@ -3603,6 +3607,11 @@ _isSyncing: false,
     }
 
     if(task.done){
+      // Só pede a confirmação dos pontos depois que a tarefa realmente terminou
+      // de salvar no servidor — o RPC award_points confere o estado atual da
+      // tarefa no banco antes de liberar os pontos, então chamar isso cedo
+      // demais fazia o servidor rejeitar (via "ação não confirmada").
+      await _taskSavePromise;
       addXp(10, newEl, id); showToast('✅ Tarefa concluída! +10 XP','success');
       if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
       if(tasks.every(t=>t.done)&&tasks.length>0) window._verificarParabens?.();
@@ -3874,7 +3883,7 @@ _isSyncing: false,
     q('goal-modal').classList.add('active');
   },
 
-  saveGoal(){
+  async saveGoal(){
     const title=q('goal-title').value.trim(); if(!title){ showToast('Digite um título','error'); return; }
     if(!this.state.data.goals) this.state.data.goals=[];
     const isFirstGoal=this.state.data.goals.length===0;
@@ -3885,20 +3894,24 @@ _isSyncing: false,
         const wasComplete=(g.progress||0)>=100;
         g.title=title; g.desc=q('goal-desc').value.trim(); g.type=q('goal-type').value; g.priority=q('goal-priority').value; g.start=q('goal-start').value; g.end=q('goal-end').value; g.progress=Number(q('goal-progress').value)||0;
         if(!wasComplete && g.progress>=100) g.completedAt=now;
-        this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g); showToast('Meta atualizada','success');
+        this.saveLocal(); this.renderGoals();
+        const _goalSavePromise=this.saveGoalRemote(g); showToast('Meta atualizada','success');
         if(!wasComplete && g.progress>=100){
           if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+          await _goalSavePromise; // servidor precisa ver a meta em 100% antes de confirmar os pontos
           if(typeof addPC==='function') addPC(20,'meta_concluida',g.id);
         }
       }
     } else {
       const g={id:crypto.randomUUID(),title,desc:q('goal-desc').value.trim(),type:q('goal-type').value,priority:q('goal-priority').value,start:q('goal-start').value,end:q('goal-end').value,progress:Number(q('goal-progress').value)||0,completed:false,created_at:now};
       if(g.progress>=100) g.completedAt=now;
-      this.state.data.goals.push(g); this.saveLocal(); this.renderGoals(); this.saveGoalRemote(g);
+      this.state.data.goals.push(g); this.saveLocal(); this.renderGoals();
+      const _goalSavePromise2=this.saveGoalRemote(g);
       showToast('Meta criada 🎯','success');
       if(isFirstGoal && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta','🎯 Primeira meta criada');
       if(g.progress>=100){
         if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta',`🎯 Meta concluída: ${g.title}`);
+        await _goalSavePromise2;
         if(typeof addPC==='function') addPC(20,'meta_concluida',g.id);
       }
     }
@@ -3949,14 +3962,11 @@ _isSyncing: false,
     if(marcando) h.days.push(day); else h.days.splice(idx,1);
     // Salva local e renderiza imediatamente (feedback rápido)
     saveHabits(habits); this.renderHabits();
-    if(marcando){
-      addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido',habitId+'_'+day); showToast('Hábito marcado! +5 XP','success');
-      if(habits.length>0 && habits.every(x=>(x.days||[]).includes(day)) && day===todayKey() && typeof jornadaAutoRegistrar==='function'){
-        jornadaAutoRegistrar('habito','💪 Todos os hábitos do dia concluídos');
-      }
-      if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
-    }
-    // Salva no banco — banco é fonte de verdade
+
+    // Salva no banco — banco é fonte de verdade. Isso precisa terminar ANTES
+    // de pedir os pontos: o RPC award_points confere se o dia realmente está
+    // marcado no banco, então pedir pontos antes do banco confirmar fazia o
+    // servidor rejeitar por não conseguir validar a ação ainda.
     if(this.state.user&&!this.state.user.local){
       const {error}=await window.supabaseClient.from('habitos').update({days:h.days})
         .eq('id',habitId).eq('user_id',this.state.user.id);
@@ -3965,7 +3975,16 @@ _isSyncing: false,
         if(marcando) h.days.splice(h.days.indexOf(day),1); else h.days.push(day);
         saveHabits(habits); this.renderHabits();
         showToast('Erro ao salvar hábito','error');
+        return;
       }
+    }
+
+    if(marcando){
+      addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido',habitId+'_'+day); showToast('Hábito marcado! +5 XP','success');
+      if(habits.length>0 && habits.every(x=>(x.days||[]).includes(day)) && day===todayKey() && typeof jornadaAutoRegistrar==='function'){
+        jornadaAutoRegistrar('habito','💪 Todos os hábitos do dia concluídos');
+      }
+      if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
     }
   },
 
@@ -5821,7 +5840,7 @@ function deSelectHumor(humor, el) {
   if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
 }
 
-function deConfirmHumor() {
+async function deConfirmHumor() {
   if (!_deHumorSelected) return;
   const today = todayKey();
   const ci = loadCheckin();
@@ -5830,10 +5849,12 @@ function deConfirmHumor() {
   ci.history[today] = _deHumorSelected;
   saveCheckin(ci);
   if (window.app?.state?.user?.id) {
-    window.supabaseClient.from('humor_logs').upsert([{
+    // Aguarda o upsert confirmar antes de pedir os pontos — o RPC award_points
+    // confere se o humor de hoje já está salvo no banco antes de liberar.
+    await window.supabaseClient.from('humor_logs').upsert([{
       user_id: window.app.state.user.id, date: today,
       mood: {pessimo:1,mal:2,ok:3,bem:4,otimo:5}[_deHumorSelected]||3, note: ''
-    }], { onConflict: 'user_id,date' }).then(() => {});
+    }], { onConflict: 'user_id,date' });
   }
   addXp(5);
   if(typeof addPC==='function') addPC(3,'humor_registrado',todayKey());
@@ -9155,16 +9176,19 @@ let _pendingDailyReward=false;
 // Patch deConcluir to grant XP+PC from the button
 (function(){
   const orig=window.deConcluir;
-  window.deConcluir=function(){
+  window.deConcluir=async function(){
     if(typeof orig==='function') orig();
     const hoje=typeof todayKey==='function'?todayKey():new Date().toISOString().split('T')[0];
     if(localStorage.getItem(DAILY_BTN_KEY)!==hoje){
       localStorage.setItem(DAILY_BTN_KEY,hoje);
-      if(typeof addXp==='function') addXp(5,document.getElementById('btn-daily-entry'));
-      if(typeof addPC==='function') addPC(2,'Entrada diária',todayKey());
       setTimeout(updateDailyEntryBtn,200);
       _showDailyRewardAnim();
-      saveEntradaDiariaRemote(hoje);
+      // Espera confirmar no banco antes de pedir os pontos — mesmo motivo dos
+      // outros casos: o RPC award_points precisa achar o registro de hoje já
+      // salvo pra validar a ação, senão rejeita por não conseguir confirmar.
+      await saveEntradaDiariaRemote(hoje);
+      if(typeof addXp==='function') addXp(5,document.getElementById('btn-daily-entry'));
+      if(typeof addPC==='function') addPC(2,'Entrada diária',todayKey());
     }
     _pendingDailyReward=false;
   };
