@@ -1188,6 +1188,20 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="card" style="margin-bottom:.875rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+            <div class="card-title" style="margin:0"><i class="fas fa-users"></i>Amigos</div>
+            <button class="btn btn-icon btn-sm" onclick="amigosAbrirMeuId()" title="Meu ID"><i class="fas fa-id-badge"></i></button>
+          </div>
+          <div id="amigos-desafios-ativos"></div>
+          <div id="amigos-solicitacoes"></div>
+          <div id="amigos-lista"></div>
+          <div style="display:flex;gap:.5rem;margin-top:.6rem">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="amigosAbrirAdicionar()"><i class="fas fa-user-plus"></i> Adicionar amigo</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="amigosAbrirHistorico()"><i class="fas fa-history"></i> Histórico</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
           <div class="card-title"><i class="fas fa-chart-simple"></i>Evolução das Temporadas</div>
           <div id="evolucao-temporadas"></div>
         </div>
@@ -1422,6 +1436,84 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     </div>
     <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Ganhe Pontos de Consistência completando tarefas e hábitos todos os dias para subir de patente.</div>
     <div class="ligas-ladder" id="ligas-ladder"></div>
+  </div>
+</div>
+
+<!-- MEU ID -->
+<div id="meu-id-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-id-badge" style="color:var(--primary);margin-right:.4rem"></i>Meu ID</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('meu-id-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="text-align:center;padding:1rem 0">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.4rem;letter-spacing:.05em;color:var(--primary)" id="meu-id-valor">PROD-------</div>
+      <div style="font-size:.78rem;color:var(--text-3);margin-top:.4rem">Compartilhe esse código para alguém te adicionar</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn btn-primary btn-block" onclick="amigosCopiarId()"><i class="fas fa-copy"></i> Copiar ID</button>
+      <button class="btn btn-ghost btn-block" onclick="amigosCompartilharPerfil()"><i class="fas fa-share-alt"></i> Compartilhar meu perfil</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADICIONAR AMIGO -->
+<div id="add-amigo-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-plus" style="color:var(--primary);margin-right:.4rem"></i>Adicionar amigo</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('add-amigo-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-group"><label>Digite o ID do usuário</label><input id="add-amigo-id" placeholder="PROD-______" style="text-transform:uppercase"></div>
+    <button class="btn btn-primary btn-block" onclick="amigosEnviarSolicitacao()"><i class="fas fa-paper-plane"></i> Enviar solicitação</button>
+  </div>
+</div>
+
+<!-- CRIAR DESAFIO -->
+<div id="criar-desafio-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-swords" style="color:var(--primary);margin-right:.4rem"></i>Criar desafio</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('criar-desafio-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="font-size:.85rem;margin-bottom:.7rem">Desafiar: <b id="cd-nome-amigo"></b></div>
+    <input type="hidden" id="cd-friend-public-id">
+    <div class="form-group">
+      <label>Duração</label>
+      <div class="wd-picker" id="cd-duracao-picker">
+        <div class="wd-pill" data-dur="3">3 dias</div>
+        <div class="wd-pill selected" data-dur="7">7 dias</div>
+        <div class="wd-pill" data-dur="14">14 dias</div>
+        <div class="wd-pill" data-dur="30">30 dias</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>🎯 Objetivo</label>
+      <div style="background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .8rem;font-size:.85rem;font-weight:700">Mais Pontos <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(pontos da temporada acumulados durante o desafio)</span></div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="amigosCriarDesafio()"><i class="fas fa-swords"></i> Enviar desafio</button>
+  </div>
+</div>
+
+<!-- VER DESAFIO -->
+<div id="ver-desafio-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-swords" style="color:var(--primary);margin-right:.4rem"></i>Desafio</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('ver-desafio-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="ver-desafio-body"></div>
+  </div>
+</div>
+
+<!-- HISTÓRICO DE DESAFIOS -->
+<div id="historico-desafios-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-history" style="color:var(--primary);margin-right:.4rem"></i>Histórico de Desafios</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('historico-desafios-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="historico-desafios-body"></div>
   </div>
 </div>
 
@@ -6436,6 +6528,322 @@ function _seasonEndDate(s){
   return d.toISOString().slice(0,10);
 }
 
+/* ══════════════════════════════════════════════════
+   AMIGOS + DESAFIOS
+   Regra central: não existe ranking permanente. O placar só existe dentro
+   de um desafio ativo, e é sempre calculado NA HORA por uma RPC do servidor
+   (get_challenge_live) a partir dos Pontos reais da temporada de cada um —
+   nunca a partir de um campo "vencedor" gravável pelo cliente. Isso é o que
+   impede qualquer manipulação de resultado pelo navegador.
+   Tudo aqui depende das funções/tabelas do Supabase (ver SQL fornecido);
+   sem conta / offline, a seção simplesmente não aparece.
+══════════════════════════════════════════════════ */
+let _meuPublicId=null;
+let _amigosCache={friends:[], incoming:[], outgoing:[], active:[], pending:[]};
+
+function _amigosDisponivel(){
+  const user=window.app?.state?.user;
+  return !!(user && !user.local);
+}
+
+async function amigosCarregarMeuId(){
+  if(!_amigosDisponivel()) return null;
+  if(_meuPublicId) return _meuPublicId;
+  try{
+    const {data,error}=await window.supabaseClient.rpc('ensure_public_id');
+    if(error) throw error;
+    _meuPublicId=data;
+    return data;
+  }catch(e){ console.error('[Amigos] Falha ao obter ID público:',e.message||e); return null; }
+}
+
+function amigosAbrirMeuId(){
+  if(!_amigosDisponivel()){ showToast('Entre com uma conta para usar Amigos e Desafios','default'); return; }
+  q('meu-id-modal').classList.add('active');
+  amigosCarregarMeuId().then(id=>{ if(q('meu-id-valor')) q('meu-id-valor').textContent=id||'—'; });
+}
+window.amigosAbrirMeuId=amigosAbrirMeuId;
+
+function amigosCopiarId(){
+  if(!_meuPublicId) return;
+  navigator.clipboard?.writeText(_meuPublicId).then(()=>showToast('ID copiado! 📋','success'));
+}
+window.amigosCopiarId=amigosCopiarId;
+
+function _amigosConviteTexto(){
+  return `🚀 Estou usando o Produtiv.me para evoluir durante uma temporada de 60 dias.\n\nMe adicione usando meu ID:\n${_meuPublicId||''}\n\nBora disputar um desafio?`;
+}
+function amigosCompartilharPerfil(){
+  const texto=_amigosConviteTexto();
+  if(navigator.share){ navigator.share({text:texto}).catch(()=>{}); }
+  else { navigator.clipboard?.writeText(texto).then(()=>showToast('Convite copiado! 📋','success')); }
+}
+window.amigosCompartilharPerfil=amigosCompartilharPerfil;
+function amigosCompartilharWhatsapp(){
+  window.open('https://wa.me/?text='+encodeURIComponent(_amigosConviteTexto()),'_blank');
+}
+window.amigosCompartilharWhatsapp=amigosCompartilharWhatsapp;
+
+function amigosAbrirAdicionar(){
+  if(!_amigosDisponivel()){ showToast('Entre com uma conta para usar Amigos e Desafios','default'); return; }
+  q('add-amigo-id').value='';
+  q('add-amigo-modal').classList.add('active');
+}
+window.amigosAbrirAdicionar=amigosAbrirAdicionar;
+
+async function amigosEnviarSolicitacao(){
+  const id=(q('add-amigo-id').value||'').trim().toUpperCase();
+  if(!id){ showToast('Digite o ID do amigo','error'); return; }
+  try{
+    const {error}=await window.supabaseClient.rpc('send_friend_request',{target_public_id:id});
+    if(error) throw error;
+    showToast('Solicitação enviada! 👥','success');
+    closeModal('add-amigo-modal');
+    amigosCarregarTudo();
+  }catch(e){ showToast(e.message||'Não foi possível enviar a solicitação','error'); }
+}
+window.amigosEnviarSolicitacao=amigosEnviarSolicitacao;
+
+async function amigosResponderSolicitacao(reqId, accept){
+  try{
+    const {error}=await window.supabaseClient.rpc('respond_friend_request',{request_id:reqId, accept});
+    if(error) throw error;
+    showToast(accept?'Vocês agora são amigos! 🎉':'Solicitação recusada','default');
+    amigosCarregarTudo();
+  }catch(e){ showToast(e.message||'Não foi possível responder','error'); }
+}
+window.amigosResponderSolicitacao=amigosResponderSolicitacao;
+
+// Carrega amizades + desafios e desenha as 3 seções do card (desafios ativos,
+// solicitações pendentes, lista de amigos). Chamado ao abrir a Jornada.
+async function amigosCarregarTudo(){
+  if(!_amigosDisponivel()){
+    ['amigos-desafios-ativos','amigos-solicitacoes','amigos-lista'].forEach(id=>{ const el=q(id); if(el) el.innerHTML=''; });
+    return;
+  }
+  const user=window.app.state.user;
+  try{
+    const [{data:friendships},{data:challenges}] = await Promise.all([
+      window.supabaseClient.from('friendships').select('*, requester:requester_id(name:id), addressee:addressee_id(name:id)').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+      window.supabaseClient.from('challenges').select('*').or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).in('status',['pending','active'])
+    ]);
+    // Para exibir nome/avatar dos amigos, busca os perfis envolvidos
+    const otherIds=new Set();
+    (friendships||[]).forEach(f=>{ otherIds.add(f.requester_id===user.id?f.addressee_id:f.requester_id); });
+    (challenges||[]).forEach(c=>{ otherIds.add(c.creator_id===user.id?c.opponent_id:c.creator_id); });
+    let profiles={};
+    if(otherIds.size){
+      const {data:profs}=await window.supabaseClient.from('profiles').select('id,name,public_id,avatar_b64').in('id',Array.from(otherIds));
+      (profs||[]).forEach(p=>{ profiles[p.id]=p; });
+    }
+
+    _amigosCache.friends=(friendships||[]).filter(f=>f.status==='accepted').map(f=>({...f, other:profiles[f.requester_id===user.id?f.addressee_id:f.requester_id]}));
+    _amigosCache.incoming=(friendships||[]).filter(f=>f.status==='pending' && f.addressee_id===user.id).map(f=>({...f, other:profiles[f.requester_id]}));
+    _amigosCache.active=(challenges||[]).filter(c=>c.status==='active').map(c=>({...c, other:profiles[c.creator_id===user.id?c.opponent_id:c.creator_id], souEuCriador:c.creator_id===user.id}));
+    _amigosCache.pending=(challenges||[]).filter(c=>c.status==='pending').map(c=>({...c, other:profiles[c.creator_id===user.id?c.opponent_id:c.creator_id], souEuCriador:c.creator_id===user.id}));
+
+    _renderAmigosSecoes();
+  }catch(e){ console.error('[Amigos] Falha ao carregar:',e.message||e); }
+}
+window.amigosCarregarTudo=amigosCarregarTudo;
+
+function _renderAmigosSecoes(){
+  // Desafios ativos + pendentes de aceite
+  const elAtivos=q('amigos-desafios-ativos');
+  if(elAtivos){
+    const itens=[..._amigosCache.pending, ..._amigosCache.active];
+    if(!itens.length){
+      elAtivos.innerHTML=`<div style="text-align:center;padding:.8rem 0;color:var(--text-3);font-size:.82rem">
+        <b style="display:block;color:var(--text-2);margin-bottom:.2rem">Você ainda não está participando de nenhum desafio.</b>
+        Convide um amigo e veja quem consegue evoluir mais.
+      </div>`;
+    } else {
+      elAtivos.innerHTML=`<div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">⚔️ Desafios</div>`+
+        itens.map(c=>{
+          if(c.status==='pending'){
+            const aguardandoEu=!c.souEuCriador;
+            return `<div class="jshare-item" style="cursor:default">
+              <div class="jshare-thumb">⚔️</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:.85rem">Você × ${esc(c.other?.name||'Amigo')}</div>
+                <div style="font-size:.72rem;color:var(--text-3)">${c.duration_days} dias · ${aguardandoEu?'aguardando sua resposta':'aguardando resposta dele(a)'}</div>
+              </div>
+              ${aguardandoEu?`<button class="btn btn-primary btn-xs" onclick="amigosResponderDesafio('${c.id}',true)">Aceitar</button><button class="btn btn-ghost btn-xs" onclick="amigosResponderDesafio('${c.id}',false)">Recusar</button>`:''}
+            </div>`;
+          }
+          return `<div class="jshare-item" style="cursor:pointer" onclick="amigosVerDesafio('${c.id}')">
+            <div class="jshare-thumb">⚔️</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:.85rem">Você × ${esc(c.other?.name||'Amigo')}</div>
+              <div style="font-size:.72rem;color:var(--text-3)">Desafio de ${c.duration_days} dias · em andamento</div>
+            </div>
+            <span style="font-size:.7rem;color:var(--primary);font-weight:700">Ver ›</span>
+          </div>`;
+        }).join('');
+    }
+  }
+
+  // Solicitações pendentes recebidas
+  const elSol=q('amigos-solicitacoes');
+  if(elSol){
+    elSol.innerHTML = _amigosCache.incoming.length ? `<div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:.6rem 0 .4rem">👥 Solicitações</div>`+
+      _amigosCache.incoming.map(f=>`<div class="jshare-item" style="cursor:default">
+        <div class="jshare-thumb"><i class="fas fa-user"></i></div>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.85rem">${esc(f.other?.name||'Alguém')} quer adicionar você</div></div>
+        <button class="btn btn-primary btn-xs" onclick="amigosResponderSolicitacao('${f.id}',true)">Aceitar</button>
+        <button class="btn btn-ghost btn-xs" onclick="amigosResponderSolicitacao('${f.id}',false)">Recusar</button>
+      </div>`).join('') : '';
+  }
+
+  // Lista de amigos
+  const elLista=q('amigos-lista');
+  if(elLista){
+    elLista.innerHTML = _amigosCache.friends.length ? `<div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:.6rem 0 .4rem">Seus amigos</div>`+
+      _amigosCache.friends.map(f=>`<div class="jshare-item" style="cursor:default">
+        <div class="jshare-thumb"><i class="fas fa-user"></i></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.85rem">${esc(f.other?.name||'Amigo')}</div>
+          <div style="font-size:.72rem;color:var(--text-3)">${esc(f.other?.public_id||'')}</div>
+        </div>
+        <button class="btn btn-primary btn-xs" onclick="amigosAbrirCriarDesafio('${esc(f.other?.public_id||'')}','${esc(f.other?.name||'Amigo')}')"><i class="fas fa-swords"></i> Desafiar</button>
+      </div>`).join('') : '';
+  }
+}
+
+function amigosAbrirCriarDesafio(friendPublicId, friendName){
+  q('cd-friend-public-id').value=friendPublicId;
+  q('cd-nome-amigo').textContent=friendName;
+  document.querySelectorAll('#cd-duracao-picker .wd-pill').forEach(p=>p.classList.toggle('selected', p.dataset.dur==='7'));
+  q('criar-desafio-modal').classList.add('active');
+}
+window.amigosAbrirCriarDesafio=amigosAbrirCriarDesafio;
+
+// Seletor de duração do desafio (mesmo padrão visual dos dias da semana)
+document.addEventListener('DOMContentLoaded', ()=>{
+  const picker=document.getElementById('cd-duracao-picker');
+  if(picker) picker.addEventListener('click',e=>{
+    const pill=e.target.closest('.wd-pill'); if(!pill) return;
+    picker.querySelectorAll('.wd-pill').forEach(p=>p.classList.remove('selected'));
+    pill.classList.add('selected');
+  });
+});
+
+async function amigosCriarDesafio(){
+  const friendId=q('cd-friend-public-id').value;
+  const durEl=document.querySelector('#cd-duracao-picker .wd-pill.selected');
+  const duration=durEl?Number(durEl.dataset.dur):7;
+  try{
+    const {error}=await window.supabaseClient.rpc('create_challenge',{opponent_public_id:friendId, p_duration:duration});
+    if(error) throw error;
+    showToast('⚔️ Desafio enviado! Esperando aceite.','success');
+    closeModal('criar-desafio-modal');
+    amigosCarregarTudo();
+  }catch(e){ showToast(e.message||'Não foi possível criar o desafio','error'); }
+}
+window.amigosCriarDesafio=amigosCriarDesafio;
+
+async function amigosResponderDesafio(id, accept){
+  try{
+    const {error}=await window.supabaseClient.rpc('respond_challenge',{p_challenge_id:id, accept});
+    if(error) throw error;
+    showToast(accept?'⚔️ Desafio iniciado!':'Desafio recusado','default');
+    amigosCarregarTudo();
+  }catch(e){ showToast(e.message||'Não foi possível responder','error'); }
+}
+window.amigosResponderDesafio=amigosResponderDesafio;
+
+// Busca o placar AO VIVO (calculado no servidor, nunca lido de um campo local)
+async function amigosVerDesafio(id){
+  const ch=[..._amigosCache.active,..._amigosCache.pending].find(c=>c.id===id);
+  if(!ch) return;
+  q('ver-desafio-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--text-3)">Carregando placar...</div>';
+  q('ver-desafio-modal').classList.add('active');
+  try{
+    const {data,error}=await window.supabaseClient.rpc('get_challenge_live',{p_challenge_id:id});
+    if(error) throw error;
+    const live=Array.isArray(data)?data[0]:data;
+    const meuDelta = ch.souEuCriador ? live.creator_delta : live.opponent_delta;
+    const deleDelta = ch.souEuCriador ? live.opponent_delta : live.creator_delta;
+    _renderDesafioBody(ch, live, meuDelta, deleDelta);
+  }catch(e){ q('ver-desafio-body').innerHTML=`<div style="text-align:center;padding:1rem;color:var(--danger)">Não foi possível carregar o placar agora.</div>`; }
+}
+window.amigosVerDesafio=amigosVerDesafio;
+
+function _renderDesafioBody(ch, live, meuDelta, deleDelta){
+  const meuNome='Você', outroNome=ch.other?.name||'Amigo';
+  const sortedAsc = meuDelta>=deleDelta;
+  const linhas=[
+    {nome:meuNome, pts:meuDelta, souEu:true},
+    {nome:outroNome, pts:deleDelta, souEu:false},
+  ].sort((a,b)=>b.pts-a.pts);
+
+  const inicio=new Date(ch.started_at), fim=new Date(ch.ends_at);
+  const hoje=new Date();
+  const diasRestantes=Math.max(0,Math.ceil((fim-hoje)/86400000));
+  const totalDias=ch.duration_days;
+  const diasPassados=Math.min(totalDias, totalDias-diasRestantes);
+  const pct=Math.min(100,Math.round(diasPassados/totalDias*100));
+
+  let html=`<div style="text-align:center;margin-bottom:.8rem">
+    <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem">Você × ${esc(outroNome)}</div>
+    <div style="font-size:.78rem;color:var(--text-3)">Desafio de ${totalDias} dias · Mais Pontos</div>
+  </div>`;
+
+  if(live.is_finished){
+    const souVencedor = live.winner_id ? (ch.souEuCriador ? live.winner_id===ch.creator_id : live.winner_id===ch.opponent_id) : null;
+    html+=`<div style="text-align:center;padding:1rem 0">
+      <div style="font-size:1.8rem">🏆</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-top:.3rem">Desafio concluído!</div>
+      <div style="font-size:.9rem;margin-top:.3rem">${live.winner_id===null?'Empate!':souVencedor?`Você venceu ${esc(outroNome)}!`:`${esc(outroNome)} venceu o desafio.`}</div>
+    </div>`;
+  } else {
+    html+=`<div style="text-align:center;margin-bottom:.6rem"><b>Faltam ${diasRestantes} dia${diasRestantes!==1?'s':''}</b></div>
+    <div class="pc-bar-wrap"><div class="pc-bar-fill" style="width:${pct}%"></div></div>`;
+  }
+
+  html+=`<div style="margin-top:1rem">`+linhas.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:.4rem">
+      <div style="font-size:1.1rem">${i===0?'🥇':'🥈'}</div>
+      <div style="flex:1;font-weight:700;font-size:.88rem">${l.souEu?'Você':esc(l.nome)}</div>
+      <div style="font-family:var(--font-display);font-weight:800;color:var(--primary)">${l.pts}</div>
+    </div>`).join('')+`</div>`;
+
+  q('ver-desafio-body').innerHTML=html;
+}
+
+async function amigosAbrirHistorico(){
+  if(!_amigosDisponivel()){ showToast('Entre com uma conta para usar Amigos e Desafios','default'); return; }
+  q('historico-desafios-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--text-3)">Carregando...</div>';
+  q('historico-desafios-modal').classList.add('active');
+  const user=window.app.state.user;
+  try{
+    const {data:challenges,error}=await window.supabaseClient.from('challenges').select('*')
+      .or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).eq('status','completed').order('ends_at',{ascending:false}).limit(30);
+    if(error) throw error;
+    if(!challenges||!challenges.length){ q('historico-desafios-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--text-3);font-size:.85rem">Nenhum desafio concluído ainda.</div>'; return; }
+    const otherIds=[...new Set(challenges.map(c=>c.creator_id===user.id?c.opponent_id:c.creator_id))];
+    const {data:profs}=await window.supabaseClient.from('profiles').select('id,name').in('id',otherIds);
+    const profiles={}; (profs||[]).forEach(p=>profiles[p.id]=p);
+
+    const rows=await Promise.all(challenges.map(async c=>{
+      const {data}=await window.supabaseClient.rpc('get_challenge_live',{p_challenge_id:c.id});
+      const live=Array.isArray(data)?data[0]:data;
+      const souEuCriador=c.creator_id===user.id;
+      const meuDelta=souEuCriador?live.creator_delta:live.opponent_delta;
+      const deleDelta=souEuCriador?live.opponent_delta:live.creator_delta;
+      const nome=profiles[souEuCriador?c.opponent_id:c.creator_id]?.name||'Amigo';
+      const souVencedor = live.winner_id===null?null:(souEuCriador?live.winner_id===c.creator_id:live.winner_id===c.opponent_id);
+      return `<div style="padding:.7rem 0;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;font-size:.86rem">Você × ${esc(nome)}</div>
+        <div style="font-size:.75rem;color:var(--text-3);margin:.15rem 0">${c.duration_days} dias · ${souVencedor===null?'Empate':souVencedor?'🏆 Você venceu':`🏆 ${esc(nome)} venceu`}</div>
+        <div style="font-size:.8rem;font-weight:700">${meuDelta} × ${deleDelta}</div>
+      </div>`;
+    }));
+    q('historico-desafios-body').innerHTML=rows.join('');
+  }catch(e){ q('historico-desafios-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--danger)">Erro ao carregar histórico.</div>'; }
+}
+window.amigosAbrirHistorico=amigosAbrirHistorico;
+
 // Chamado a cada addPC — soma pontos na temporada atual (otimista, pra tela
 // responder na hora) e mantém as estatísticas locais. Para quem tem conta,
 // isso é só um espelho: awardPointsRemote() (chamado de dentro de addPC)
@@ -8908,6 +9316,7 @@ async function renderJornada(){
   _renderCapsulas();
   if(typeof renderSeasonWidgets==='function') renderSeasonWidgets();
   if(typeof renderEvolucaoTemporadas==='function') renderEvolucaoTemporadas();
+  if(typeof amigosCarregarTudo==='function') amigosCarregarTudo();
   jornadaCarregarAvatar();
 }
 window.renderJornada=renderJornada;
