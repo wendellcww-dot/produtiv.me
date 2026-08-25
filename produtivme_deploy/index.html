@@ -1453,6 +1453,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     <div style="display:flex;flex-direction:column;gap:.5rem">
       <button class="btn btn-primary btn-block" onclick="amigosCopiarId()"><i class="fas fa-copy"></i> Copiar ID</button>
       <button class="btn btn-ghost btn-block" onclick="amigosCompartilharPerfil()"><i class="fas fa-share-alt"></i> Compartilhar meu perfil</button>
+      <button class="btn btn-ghost btn-block" onclick="amigosCompartilharWhatsapp()" style="color:#25d366"><i class="fab fa-whatsapp"></i> Compartilhar pelo WhatsApp</button>
     </div>
   </div>
 </div>
@@ -6538,7 +6539,25 @@ function _seasonEndDate(s){
    Tudo aqui depende das funções/tabelas do Supabase (ver SQL fornecido);
    sem conta / offline, a seção simplesmente não aparece.
 ══════════════════════════════════════════════════ */
+// URL oficial do app — centralizada aqui. Se o domínio mudar no futuro,
+// só precisa trocar essa linha; nenhuma outra parte do código tem a URL fixa.
+const APP_URL = 'https://produtiv-me.vercel.app/';
+
 let _meuPublicId=null;
+
+// ── Mensagens de convite, uma por contexto (nunca a mesma mensagem genérica) ──
+function _conviteAmizadeTexto(){
+  return `👋 Quero te adicionar no Produtiv.me!\n\nMeu ID: *${_meuPublicId||'—'}*\n\nEntra no app e me adiciona para a gente acompanhar nossa evolução e criar desafios. 🔥\n\n🚀 ${APP_URL}`;
+}
+function _convitePerfilTexto(){
+  return `👋 Me adiciona no Produtiv.me!\n\nMeu ID: *${_meuPublicId||'—'}*\n\nDepois podemos criar um desafio e ver quem evolui mais. ⚔️🔥\n\n🚀 Entre no app:\n${APP_URL}`;
+}
+function _conviteDesafioTexto(nomeOuAlvo, duracaoDias){
+  // Ainda não existe um link único por desafio na estrutura atual — por isso
+  // não inventamos um; usamos o link geral do app nos dois lugares, como o
+  // próprio pedido orienta a fazer quando o link específico não existir.
+  return `⚔️ Te desafiei no Produtiv.me!\n\nVamos ver quem consegue evoluir mais nos próximos *${duracaoDias} dias*? 🔥\n\nAceite meu desafio:\n${APP_URL}\n\n🚀 Ainda não tem o app? Entre aqui:\n${APP_URL}`;
+}
 let _amigosCache={friends:[], incoming:[], outgoing:[], active:[], pending:[]};
 
 function _amigosDisponivel(){
@@ -6571,16 +6590,16 @@ function amigosCopiarId(){
 window.amigosCopiarId=amigosCopiarId;
 
 function _amigosConviteTexto(){
-  return `🚀 Estou usando o Produtiv.me para evoluir durante uma temporada de 60 dias.\n\nMe adicione usando meu ID:\n${_meuPublicId||''}\n\nBora disputar um desafio?`;
+  return _convitePerfilTexto();
 }
 function amigosCompartilharPerfil(){
-  const texto=_amigosConviteTexto();
-  if(navigator.share){ navigator.share({text:texto}).catch(()=>{}); }
+  const texto=_convitePerfilTexto();
+  if(navigator.share){ navigator.share({title:'Produtiv.me', text:texto}).catch(()=>{}); }
   else { navigator.clipboard?.writeText(texto).then(()=>showToast('Convite copiado! 📋','success')); }
 }
 window.amigosCompartilharPerfil=amigosCompartilharPerfil;
 function amigosCompartilharWhatsapp(){
-  window.open('https://wa.me/?text='+encodeURIComponent(_amigosConviteTexto()),'_blank');
+  window.open('https://wa.me/?text='+encodeURIComponent(_conviteAmizadeTexto()),'_blank');
 }
 window.amigosCompartilharWhatsapp=amigosCompartilharWhatsapp;
 
@@ -6668,7 +6687,7 @@ function _renderAmigosSecoes(){
                 <div style="font-weight:700;font-size:.85rem">Você × ${esc(c.other?.name||'Amigo')}</div>
                 <div style="font-size:.72rem;color:var(--text-3)">${c.duration_days} dias · ${aguardandoEu?'aguardando sua resposta':'aguardando resposta dele(a)'}</div>
               </div>
-              ${aguardandoEu?`<button class="btn btn-primary btn-xs" onclick="amigosResponderDesafio('${c.id}',true)">Aceitar</button><button class="btn btn-ghost btn-xs" onclick="amigosResponderDesafio('${c.id}',false)">Recusar</button>`:''}
+              ${aguardandoEu?`<button class="btn btn-primary btn-xs" onclick="amigosResponderDesafio('${c.id}',true)">Aceitar</button><button class="btn btn-ghost btn-xs" onclick="amigosResponderDesafio('${c.id}',false)">Recusar</button>`:`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();amigosCompartilharDesafio(${c.duration_days})" title="Reenviar convite"><i class="fab fa-whatsapp"></i></button>`}
             </div>`;
           }
           return `<div class="jshare-item" style="cursor:pointer" onclick="amigosVerDesafio('${c.id}')">
@@ -6730,17 +6749,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 async function amigosCriarDesafio(){
   const friendId=q('cd-friend-public-id').value;
+  const friendName=q('cd-nome-amigo').textContent;
   const durEl=document.querySelector('#cd-duracao-picker .wd-pill.selected');
   const duration=durEl?Number(durEl.dataset.dur):7;
   try{
     const {error}=await window.supabaseClient.rpc('create_challenge',{opponent_public_id:friendId, p_duration:duration});
     if(error) throw error;
-    showToast('⚔️ Desafio enviado! Esperando aceite.','success');
     closeModal('criar-desafio-modal');
     amigosCarregarTudo();
+    showToast('⚔️ Desafio enviado! Toque aqui para avisar por WhatsApp','success',5000,()=>amigosCompartilharDesafio(duration));
   }catch(e){ showToast(e.message||'Não foi possível criar o desafio','error'); }
 }
 window.amigosCriarDesafio=amigosCriarDesafio;
+
+function amigosCompartilharDesafio(duracaoDias){
+  const texto=_conviteDesafioTexto(null, duracaoDias);
+  if(navigator.share){ navigator.share({title:'Produtiv.me', text:texto}).catch(()=>{}); }
+  else { window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank'); }
+}
+window.amigosCompartilharDesafio=amigosCompartilharDesafio;
 
 async function amigosResponderDesafio(id, accept){
   try{
