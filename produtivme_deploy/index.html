@@ -247,7 +247,8 @@ input[type="checkbox"]{width:18px;height:18px;min-width:18px;accent-color:var(--
 
 /* ── NAV ── */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:.4rem .1rem calc(.4rem + env(safe-area-inset-bottom));z-index:1100;box-shadow:0 -4px 28px rgba(0,0,0,.35)}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:.18rem;color:var(--text-3);font-weight:600;font-size:.52rem;padding:.38rem .1rem;border-radius:var(--radius-sm);background:transparent;border:0;cursor:pointer;transition:all var(--t);font-family:var(--font);letter-spacing:.02em;text-transform:uppercase;-webkit-tap-highlight-color:transparent}
+.nav-item{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:.18rem;color:var(--text-3);font-weight:600;font-size:.52rem;padding:.38rem .1rem;border-radius:var(--radius-sm);background:transparent;border:0;cursor:pointer;transition:all var(--t);font-family:var(--font);letter-spacing:.02em;text-transform:uppercase;-webkit-tap-highlight-color:transparent}
+.nav-badge{position:absolute;top:.05rem;right:calc(50% - 1.05rem);min-width:15px;height:15px;padding:0 3px;border-radius:20px;background:var(--danger);color:#fff;font-size:.58rem;font-weight:800;line-height:15px;text-align:center;box-shadow:0 0 0 2px var(--surface);pointer-events:none}
 .nav-item i{font-size:1.05rem;transition:transform var(--t)}
 .nav-item.active{color:var(--primary)}
 .nav-item.active i{transform:scale(1.18)}
@@ -1189,7 +1190,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 
         <div class="card" style="margin-bottom:.875rem">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
-            <div class="card-title" style="margin:0"><i class="fas fa-users"></i>Amigos</div>
+            <div class="card-title" style="margin:0"><i class="fas fa-users"></i>Amigos<span class="badge-pill" id="amigos-card-badge" style="display:none">0</span></div>
             <button class="btn btn-icon btn-sm" onclick="amigosAbrirMeuId()" title="Meu ID"><i class="fas fa-id-badge"></i></button>
           </div>
           <div id="amigos-desafios-ativos"></div>
@@ -1261,7 +1262,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
       <button class="nav-item" data-screen="metas"><i class="fas fa-seedling"></i>Metas</button>
       <button class="nav-item" data-screen="financeiro"><i class="fas fa-wallet"></i>Finanças</button>
       <button class="nav-item" data-screen="mental"><i class="fas fa-brain"></i>Mental</button>
-      <button class="nav-item" data-screen="jornada"><i class="fas fa-user-astronaut"></i>Jornada</button>
+      <button class="nav-item" data-screen="jornada"><i class="fas fa-user-astronaut"></i>Jornada<span class="nav-badge" id="nav-badge-jornada" style="display:none">0</span></button>
       <button class="nav-item" data-screen="frases"><i class="fas fa-quote-left"></i>Frases</button>
       <button class="nav-item" data-screen="analytics"><i class="fas fa-chart-pie"></i>Análise</button>
     </nav>
@@ -5230,6 +5231,10 @@ const RealtimeManager = (() => {
         p => onTableChange('jornada_compartilhamentos', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'profiles', filter:`id=eq.${userId}` },
         p => onTableChange('profiles', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'friendships', filter:`addressee_id=eq.${userId}` },
+        p => onTableChange('friendships', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'friendships', filter:`requester_id=eq.${userId}` },
+        p => onTableChange('friendships', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
@@ -5310,6 +5315,18 @@ const RealtimeManager = (() => {
   if(shareParam){
     history.replaceState(null, '', window.location.pathname);
     setTimeout(()=>{ if(typeof openShareModal==='function') openShareModal(shareParam); }, 2500);
+  }
+
+  // Detecta ?abrir=solicitacoes na URL (vindo de notificação de solicitação
+  // de amizade) — leva o usuário direto para a área de Amigos, sem precisar
+  // procurar. Reaproveita a infraestrutura de notificações já existente.
+  const abrirParam = new URLSearchParams(window.location.search).get('abrir');
+  if(abrirParam==='solicitacoes'){
+    history.replaceState(null, '', window.location.pathname);
+    setTimeout(()=>{
+      if(typeof navTo==='function') navTo('jornada');
+      setTimeout(()=>{ q('amigos-solicitacoes')?.scrollIntoView({behavior:'smooth', block:'center'}); }, 300);
+    }, 2500);
   }
 
   // Listener global PASSWORD_RECOVERY — roda antes de qualquer init
@@ -6623,21 +6640,36 @@ async function amigosEnviarSolicitacao(){
 }
 window.amigosEnviarSolicitacao=amigosEnviarSolicitacao;
 
-async function amigosResponderSolicitacao(reqId, accept){
+async function amigosResponderSolicitacao(reqId, accept, friendPublicId, friendName){
   try{
     const {error}=await window.supabaseClient.rpc('respond_friend_request',{request_id:reqId, accept});
     if(error) throw error;
-    showToast(accept?'Vocês agora são amigos! 🎉':'Solicitação recusada','default');
+    if(accept){
+      showToast('✅ Agora vocês são amigos! Toque para criar um desafio ⚔️','success',4500,
+        ()=>amigosAbrirCriarDesafio(friendPublicId||'', friendName||'Amigo'));
+    } else {
+      showToast('Solicitação recusada','default');
+    }
     amigosCarregarTudo();
   }catch(e){ showToast(e.message||'Não foi possível responder','error'); }
 }
 window.amigosResponderSolicitacao=amigosResponderSolicitacao;
+
+// Atualiza os indicadores visuais (nav inferior + título do card) com a
+// quantidade de solicitações de amizade pendentes recebidas.
+function _amigosAtualizarBadges(count){
+  const navB=q('nav-badge-jornada');
+  if(navB){ navB.textContent=count>9?'9+':String(count); navB.style.display=count>0?'block':'none'; }
+  const cardB=q('amigos-card-badge');
+  if(cardB){ cardB.textContent=count>9?'9+':String(count); cardB.style.display=count>0?'inline-flex':'none'; }
+}
 
 // Carrega amizades + desafios e desenha as 3 seções do card (desafios ativos,
 // solicitações pendentes, lista de amigos). Chamado ao abrir a Jornada.
 async function amigosCarregarTudo(){
   if(!_amigosDisponivel()){
     ['amigos-desafios-ativos','amigos-solicitacoes','amigos-lista'].forEach(id=>{ const el=q(id); if(el) el.innerHTML=''; });
+    _amigosAtualizarBadges(0);
     return;
   }
   const user=window.app.state.user;
@@ -6702,17 +6734,26 @@ function _renderAmigosSecoes(){
     }
   }
 
-  // Solicitações pendentes recebidas
+  // Solicitações pendentes recebidas — seção sempre visível e identificada,
+  // para o usuário nunca precisar adivinhar onde está a solicitação.
   const elSol=q('amigos-solicitacoes');
   if(elSol){
-    elSol.innerHTML = _amigosCache.incoming.length ? `<div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:.6rem 0 .4rem">👥 Solicitações</div>`+
-      _amigosCache.incoming.map(f=>`<div class="jshare-item" style="cursor:default">
-        <div class="jshare-thumb"><i class="fas fa-user"></i></div>
-        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.85rem">${esc(f.other?.name||'Alguém')} quer adicionar você</div></div>
-        <button class="btn btn-primary btn-xs" onclick="amigosResponderSolicitacao('${f.id}',true)">Aceitar</button>
+    const qtd=_amigosCache.incoming.length;
+    const header=`<div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin:.6rem 0 .4rem">🔔 Solicitações de amizade${qtd?` (${qtd})`:''}</div>`;
+    elSol.innerHTML = header + (qtd ? _amigosCache.incoming.map(f=>{
+      const thumb=f.other?.avatar_b64?`<img src="${esc(f.other.avatar_b64)}" alt="">`:'<i class="fas fa-user"></i>';
+      return `<div class="jshare-item" style="cursor:default">
+        <div class="jshare-thumb">${thumb}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.85rem">${esc(f.other?.name||'Alguém')} quer ser seu amigo</div>
+          <div style="font-size:.72rem;color:var(--text-3)">${esc(f.other?.public_id||'')}</div>
+        </div>
+        <button class="btn btn-primary btn-xs" onclick="amigosResponderSolicitacao('${f.id}',true,'${esc(f.other?.public_id||'')}','${esc(f.other?.name||'Amigo')}')">Aceitar</button>
         <button class="btn btn-ghost btn-xs" onclick="amigosResponderSolicitacao('${f.id}',false)">Recusar</button>
-      </div>`).join('') : '';
+      </div>`;
+    }).join('') : `<div style="text-align:center;padding:.6rem 0;color:var(--text-3);font-size:.8rem">Você não possui novas solicitações.</div>`);
   }
+  _amigosAtualizarBadges(_amigosCache.incoming.length);
 
   // Lista de amigos
   const elLista=q('amigos-lista');
