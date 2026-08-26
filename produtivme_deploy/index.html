@@ -6675,7 +6675,7 @@ async function amigosCarregarTudo(){
   const user=window.app.state.user;
   try{
     const [{data:friendships},{data:challenges}] = await Promise.all([
-      window.supabaseClient.from('friendships').select('*, requester:requester_id(name:id), addressee:addressee_id(name:id)').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+      window.supabaseClient.from('friendships').select('*').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
       window.supabaseClient.from('challenges').select('*').or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).in('status',['pending','active'])
     ]);
     // Para exibir nome/avatar dos amigos, busca os perfis envolvidos
