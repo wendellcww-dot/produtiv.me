@@ -2732,6 +2732,21 @@ function saveHabits(d){ localStorage.setItem(HABITS_KEY, JSON.stringify(d)); }
 function loadMood(){ try{ return JSON.parse(localStorage.getItem(MOOD_KEY)||'[]'); }catch(e){ return []; } }
 function saveMood(d){ localStorage.setItem(MOOD_KEY, JSON.stringify(d)); }
 
+// Limpa TODO o cache local do usuário anterior — localStorage (todas as
+// chaves pm18_/pm_: XP, temporada, jornada, compartilhamentos, finanças,
+// hábitos, etc.) e o IndexedDB (JDB: avatar, fotos/vídeos da jornada,
+// cards de compartilhamento). Varre por prefixo em vez de lista fixa, para
+// que nenhuma chave nova fique de fora no futuro. Chamada ao detectar troca
+// de conta E ao fazer logout — sem isso, dados de uma conta ficavam visíveis
+// para a próxima pessoa que entrasse no mesmo aparelho.
+async function limparDadosLocaisUsuario(){
+  Object.keys(localStorage).forEach(k=>{
+    if(k.startsWith('pm18_') || k.startsWith('pm_')) localStorage.removeItem(k);
+  });
+  localStorage.removeItem('tutorialCompleted');
+  try{ if(typeof JDB!=='undefined') await JDB.clear(); }catch(e){ console.error('[Limpeza local] Falha ao limpar fotos/avatar:',e); }
+}
+
 /* ══════════════════════════════════════
    APP
 ══════════════════════════════════════ */
@@ -2765,17 +2780,9 @@ _isSyncing: false,
       const savedSess = localStorage.getItem(SESSION_KEY);
       const savedUser = savedSess ? JSON.parse(savedSess) : null;
       if(savedUser && savedUser.id !== session.user.id){
-        // Usuário diferente — limpa tudo
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(GAMIFY_KEY);
-        localStorage.removeItem('pm18_carry_done');
-        localStorage.removeItem('pm18_checkin_v1');
-        localStorage.removeItem('pm18_presence_v1');
-        localStorage.removeItem('pm_share_idx');
-        localStorage.removeItem('pm_resumo_dia');
-        localStorage.removeItem('pm_period_share_shown');
+        // Usuário diferente — limpa tudo (localStorage + IndexedDB)
+        await limparDadosLocaisUsuario();
         this.state.data = this.getDefaultData();
-        saveGamify({});
       }
       // Atualiza sessão local com dados do Supabase
       this.state.user = {
@@ -2832,17 +2839,9 @@ _isSyncing: false,
       const oldSess = localStorage.getItem(SESSION_KEY);
       const oldUser = oldSess ? JSON.parse(oldSess) : null;
       if(oldUser && oldUser.id !== newUserId){
-        // Limpa TODOS os dados locais ao trocar de conta
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(GAMIFY_KEY);
-        localStorage.removeItem('pm18_carry_done');
-        localStorage.removeItem('pm18_checkin_v1');
-        localStorage.removeItem('pm18_presence_v1');
-        localStorage.removeItem('pm_share_idx');
-        localStorage.removeItem('pm_resumo_dia');
-        localStorage.removeItem('pm_period_share_shown');
+        // Limpa TODOS os dados locais ao trocar de conta (localStorage + IndexedDB)
+        await limparDadosLocaisUsuario();
         this.state.data = this.getDefaultData();
-        saveGamify({});
       }
       this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
@@ -5020,7 +5019,7 @@ q('btn-logout').addEventListener('click',async()=>{
   showLoading('Saindo...');
   await RealtimeManager.destroy();
   await window.supabaseClient.auth.signOut();
-  localStorage.removeItem(SESSION_KEY);
+  await limparDadosLocaisUsuario();
   app.state.user=null; app.state.data=app.getDefaultData();
   hideLoading(); app.showAuth(); closeModal('settings-modal');
 });
@@ -8312,6 +8311,7 @@ const JDB=(()=>{
     set:async(k,v)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
     get:async(k)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readonly'); const r=tx.objectStore('photos').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); }); },
     del:async(k)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').delete(k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
+    clear:async()=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').clear(); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
   };
 })();
 
