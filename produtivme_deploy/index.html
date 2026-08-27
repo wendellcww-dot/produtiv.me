@@ -1750,6 +1750,78 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   </div>
 </div>
 
+<!-- AUTO SHARE POPUP -->
+<div id="auto-share-popup">
+  <div class="asp-title" id="asp-title">🎉 Incrível!</div>
+  <div class="asp-sub" id="asp-sub">Quer compartilhar essa conquista?</div>
+  <div class="asp-btns">
+    <button class="btn btn-primary" style="flex:1" id="asp-yes-btn" onclick="doAutoShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
+    <button class="btn btn-ghost" style="flex:1" onclick="closeAutoShare()">Não quero compartilhar</button>
+  </div>
+</div>
+
+<!-- TASK DETAIL SHEET -->
+<div id="task-sheet-overlay" class="task-sheet-overlay" onclick="if(event.target===this) closeTaskSheet()">
+  <div class="task-sheet" id="task-sheet-content"></div>
+</div>
+
+<!-- SHARE MODAL -->
+<div id="share-modal">
+  <div class="share-inner">
+    <div class="share-header">
+      <div class="share-header-title">✦ Studio</div>
+      <button class="btn btn-icon btn-sm" onclick="closeShareModal()"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Template tabs -->
+    <div class="share-tpl-bar">
+      <button class="share-tpl active" data-t="classic"   onclick="sm_setTpl('classic',this)">Clássico</button>
+      <button class="share-tpl"        data-t="premium"   onclick="sm_setTpl('premium',this)">Premium</button>
+      <button class="share-tpl"        data-t="glass"     onclick="sm_setTpl('glass',this)">Glass</button>
+      <button class="share-tpl"        data-t="polaroid"  onclick="sm_setTpl('polaroid',this)">Polaroid</button>
+      <button class="share-tpl"        data-t="timeline"  onclick="sm_setTpl('timeline',this)">Timeline</button>
+      <button class="share-tpl"        data-t="apple"     onclick="sm_setTpl('apple',this)">Apple</button>
+    </div>
+
+    <!-- Formato: Stories (9:16) ou Feed (4:5) -->
+    <div class="share-tpl-bar" style="margin-top:-.3rem">
+      <button class="share-fmt active" data-f="stories" onclick="sm_setFormat('stories',this)"><i class="fas fa-mobile-alt"></i> Stories</button>
+      <button class="share-fmt" data-f="feed" onclick="sm_setFormat('feed',this)"><i class="fas fa-th-large"></i> Feed</button>
+    </div>
+
+    <!-- Photo controls -->
+    <div class="share-photo-bar">
+      <button class="share-photo-btn" onclick="sm_pickPhoto('camera')"><i class="fas fa-camera"></i> Câmera</button>
+      <button class="share-photo-btn" onclick="sm_pickPhoto('gallery')"><i class="fas fa-image"></i> Galeria</button>
+      <button class="share-photo-btn danger" id="sm-rm-photo" style="display:none" onclick="sm_removePhoto()"><i class="fas fa-trash"></i></button>
+      <span id="sm-photo-status" style="font-size:.7rem;color:var(--text-3);margin-left:auto">Sem foto</span>
+    </div>
+    <input type="file" id="sm-f-gallery" accept="image/*" style="display:none" onchange="sm_onFile(event)">
+    <input type="file" id="sm-f-camera"  accept="image/*" capture="environment" style="display:none" onchange="sm_onFile(event)">
+
+    <!-- Photo editor (shown after photo selected) -->
+    <div id="sm-editor" style="display:none;margin-bottom:.65rem">
+      <div id="sm-editor-wrap" style="position:relative;overflow:hidden;border-radius:10px;background:#000;height:160px;cursor:grab;touch-action:none">
+        <canvas id="sm-editor-canvas" style="position:absolute;image-rendering:crisp-edges"></canvas>
+      </div>
+      <div style="display:flex;gap:.35rem;margin-top:.4rem;justify-content:center">
+        <button class="share-photo-btn" onclick="sm_resetPhoto()"><i class="fas fa-undo"></i> Resetar</button>
+        <button class="share-photo-btn" onclick="sm_centerPhoto()"><i class="fas fa-crosshairs"></i> Centralizar</button>
+      </div>
+    </div>
+
+    <!-- Canvas preview -->
+    <div id="share-canvas-wrap"><div class="sm-crop-box" id="sm-crop-box"><canvas id="share-canvas" width="1080" height="1920"></canvas></div></div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+      <button class="btn btn-primary" style="flex:1" onclick="doShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
+      <button class="btn btn-ghost" onclick="downloadShareImage()" title="Baixar"><i class="fas fa-download"></i></button>
+    </div>
+    <div id="share-type-btns" style="display:flex;gap:.35rem;flex-wrap:wrap"></div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 <div id="loading-overlay" class="loading-overlay">
   <div class="spinner"></div>
@@ -1757,7 +1829,9 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 </div>
 
 <!-- ══════════════════════════════════
-     JAVASCRIPT
+     JAVASCRIPT (script único de propósito — dividir isso em blocos
+     separados causava uma condição de corrida onde o app tentava usar
+     funções/constantes definidas mais abaixo antes delas existirem)
 ══════════════════════════════════ -->
   <script>
 
@@ -2732,6 +2806,21 @@ function saveHabits(d){ localStorage.setItem(HABITS_KEY, JSON.stringify(d)); }
 function loadMood(){ try{ return JSON.parse(localStorage.getItem(MOOD_KEY)||'[]'); }catch(e){ return []; } }
 function saveMood(d){ localStorage.setItem(MOOD_KEY, JSON.stringify(d)); }
 
+// Limpa TODO o cache local do usuário anterior — localStorage (todas as
+// chaves pm18_/pm_: XP, temporada, jornada, compartilhamentos, finanças,
+// hábitos, etc.) e o IndexedDB (JDB: avatar, fotos/vídeos da jornada,
+// cards de compartilhamento). Varre por prefixo em vez de lista fixa, para
+// que nenhuma chave nova fique de fora no futuro. Chamada ao detectar troca
+// de conta E ao fazer logout — sem isso, dados de uma conta ficavam visíveis
+// para a próxima pessoa que entrasse no mesmo aparelho.
+async function limparDadosLocaisUsuario(){
+  Object.keys(localStorage).forEach(k=>{
+    if(k.startsWith('pm18_') || k.startsWith('pm_')) localStorage.removeItem(k);
+  });
+  localStorage.removeItem('tutorialCompleted');
+  try{ if(typeof JDB!=='undefined') await JDB.clear(); }catch(e){ console.error('[Limpeza local] Falha ao limpar fotos/avatar:',e); }
+}
+
 /* ══════════════════════════════════════
    APP
 ══════════════════════════════════════ */
@@ -2765,17 +2854,9 @@ _isSyncing: false,
       const savedSess = localStorage.getItem(SESSION_KEY);
       const savedUser = savedSess ? JSON.parse(savedSess) : null;
       if(savedUser && savedUser.id !== session.user.id){
-        // Usuário diferente — limpa tudo
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(GAMIFY_KEY);
-        localStorage.removeItem('pm18_carry_done');
-        localStorage.removeItem('pm18_checkin_v1');
-        localStorage.removeItem('pm18_presence_v1');
-        localStorage.removeItem('pm_share_idx');
-        localStorage.removeItem('pm_resumo_dia');
-        localStorage.removeItem('pm_period_share_shown');
+        // Usuário diferente — limpa tudo (localStorage + IndexedDB)
+        await limparDadosLocaisUsuario();
         this.state.data = this.getDefaultData();
-        saveGamify({});
       }
       // Atualiza sessão local com dados do Supabase
       this.state.user = {
@@ -2832,17 +2913,9 @@ _isSyncing: false,
       const oldSess = localStorage.getItem(SESSION_KEY);
       const oldUser = oldSess ? JSON.parse(oldSess) : null;
       if(oldUser && oldUser.id !== newUserId){
-        // Limpa TODOS os dados locais ao trocar de conta
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(GAMIFY_KEY);
-        localStorage.removeItem('pm18_carry_done');
-        localStorage.removeItem('pm18_checkin_v1');
-        localStorage.removeItem('pm18_presence_v1');
-        localStorage.removeItem('pm_share_idx');
-        localStorage.removeItem('pm_resumo_dia');
-        localStorage.removeItem('pm_period_share_shown');
+        // Limpa TODOS os dados locais ao trocar de conta (localStorage + IndexedDB)
+        await limparDadosLocaisUsuario();
         this.state.data = this.getDefaultData();
-        saveGamify({});
       }
       this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
@@ -5020,7 +5093,7 @@ q('btn-logout').addEventListener('click',async()=>{
   showLoading('Saindo...');
   await RealtimeManager.destroy();
   await window.supabaseClient.auth.signOut();
-  localStorage.removeItem(SESSION_KEY);
+  await limparDadosLocaisUsuario();
   app.state.user=null; app.state.data=app.getDefaultData();
   hideLoading(); app.showAuth(); closeModal('settings-modal');
 });
@@ -5516,82 +5589,6 @@ const RealtimeManager = (() => {
   console.log('[App] Bootstrap completo ✅');
 })();
 
-</script> 
- 
-
-<!-- AUTO SHARE POPUP -->
-<div id="auto-share-popup">
-  <div class="asp-title" id="asp-title">🎉 Incrível!</div>
-  <div class="asp-sub" id="asp-sub">Quer compartilhar essa conquista?</div>
-  <div class="asp-btns">
-    <button class="btn btn-primary" style="flex:1" id="asp-yes-btn" onclick="doAutoShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
-    <button class="btn btn-ghost" style="flex:1" onclick="closeAutoShare()">Não quero compartilhar</button>
-  </div>
-</div>
-
-<!-- TASK DETAIL SHEET -->
-<div id="task-sheet-overlay" class="task-sheet-overlay" onclick="if(event.target===this) closeTaskSheet()">
-  <div class="task-sheet" id="task-sheet-content"></div>
-</div>
-
-<!-- SHARE MODAL -->
-<div id="share-modal">
-  <div class="share-inner">
-    <div class="share-header">
-      <div class="share-header-title">✦ Studio</div>
-      <button class="btn btn-icon btn-sm" onclick="closeShareModal()"><i class="fas fa-times"></i></button>
-    </div>
-
-    <!-- Template tabs -->
-    <div class="share-tpl-bar">
-      <button class="share-tpl active" data-t="classic"   onclick="sm_setTpl('classic',this)">Clássico</button>
-      <button class="share-tpl"        data-t="premium"   onclick="sm_setTpl('premium',this)">Premium</button>
-      <button class="share-tpl"        data-t="glass"     onclick="sm_setTpl('glass',this)">Glass</button>
-      <button class="share-tpl"        data-t="polaroid"  onclick="sm_setTpl('polaroid',this)">Polaroid</button>
-      <button class="share-tpl"        data-t="timeline"  onclick="sm_setTpl('timeline',this)">Timeline</button>
-      <button class="share-tpl"        data-t="apple"     onclick="sm_setTpl('apple',this)">Apple</button>
-    </div>
-
-    <!-- Formato: Stories (9:16) ou Feed (4:5) -->
-    <div class="share-tpl-bar" style="margin-top:-.3rem">
-      <button class="share-fmt active" data-f="stories" onclick="sm_setFormat('stories',this)"><i class="fas fa-mobile-alt"></i> Stories</button>
-      <button class="share-fmt" data-f="feed" onclick="sm_setFormat('feed',this)"><i class="fas fa-th-large"></i> Feed</button>
-    </div>
-
-    <!-- Photo controls -->
-    <div class="share-photo-bar">
-      <button class="share-photo-btn" onclick="sm_pickPhoto('camera')"><i class="fas fa-camera"></i> Câmera</button>
-      <button class="share-photo-btn" onclick="sm_pickPhoto('gallery')"><i class="fas fa-image"></i> Galeria</button>
-      <button class="share-photo-btn danger" id="sm-rm-photo" style="display:none" onclick="sm_removePhoto()"><i class="fas fa-trash"></i></button>
-      <span id="sm-photo-status" style="font-size:.7rem;color:var(--text-3);margin-left:auto">Sem foto</span>
-    </div>
-    <input type="file" id="sm-f-gallery" accept="image/*" style="display:none" onchange="sm_onFile(event)">
-    <input type="file" id="sm-f-camera"  accept="image/*" capture="environment" style="display:none" onchange="sm_onFile(event)">
-
-    <!-- Photo editor (shown after photo selected) -->
-    <div id="sm-editor" style="display:none;margin-bottom:.65rem">
-      <div id="sm-editor-wrap" style="position:relative;overflow:hidden;border-radius:10px;background:#000;height:160px;cursor:grab;touch-action:none">
-        <canvas id="sm-editor-canvas" style="position:absolute;image-rendering:crisp-edges"></canvas>
-      </div>
-      <div style="display:flex;gap:.35rem;margin-top:.4rem;justify-content:center">
-        <button class="share-photo-btn" onclick="sm_resetPhoto()"><i class="fas fa-undo"></i> Resetar</button>
-        <button class="share-photo-btn" onclick="sm_centerPhoto()"><i class="fas fa-crosshairs"></i> Centralizar</button>
-      </div>
-    </div>
-
-    <!-- Canvas preview -->
-    <div id="share-canvas-wrap"><div class="sm-crop-box" id="sm-crop-box"><canvas id="share-canvas" width="1080" height="1920"></canvas></div></div>
-
-    <!-- Actions -->
-    <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
-      <button class="btn btn-primary" style="flex:1" onclick="doShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
-      <button class="btn btn-ghost" onclick="downloadShareImage()" title="Baixar"><i class="fas fa-download"></i></button>
-    </div>
-    <div id="share-type-btns" style="display:flex;gap:.35rem;flex-wrap:wrap"></div>
-  </div>
-</div>
-
-<script>
 /* ══════════════════════════════════════════════════
    TUTORIAL GUIADO
 ══════════════════════════════════════════════════ */
@@ -8312,6 +8309,7 @@ const JDB=(()=>{
     set:async(k,v)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
     get:async(k)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readonly'); const r=tx.objectStore('photos').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); }); },
     del:async(k)=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').delete(k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
+    clear:async()=>{ const d=await open(); return new Promise((res,rej)=>{ const tx=d.transaction('photos','readwrite'); tx.objectStore('photos').clear(); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); },
   };
 })();
 
