@@ -522,6 +522,15 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   .finance-kpis{grid-template-columns:repeat(4,1fr)}
   .medals-grid{grid-template-columns:repeat(4,1fr)}
 }
+/* Telas largas (desktop) — o app foi desenhado mobile-first (coluna única,
+   max-width:720px, centralizada). Esta regra só amplia um pouco o
+   aproveitamento de espaço em monitores grandes, sem mudar a estrutura do
+   layout (nenhum elemento muda de posição/tipo abaixo de 1024px). */
+@media(min-width:1024px){
+  main{max-width:900px}
+  .stats-grid{grid-template-columns:repeat(4,1fr)}
+  .medals-grid{grid-template-columns:repeat(6,1fr)}
+}
 
 </script>
 
@@ -1930,7 +1939,7 @@ async function upsertTaskWithRecurrence(payload, rec){
       data_inicio: rec?rec.startDate:null,
       data_fim: (rec&&rec.endDate)?rec.endDate:null
     };
-    const {error}=await window.supabaseClient.from('tarefas').upsert([fullPayload]);
+    const {error}=await window.supabaseClient.from('tarefas').upsert([fullPayload],{onConflict:'id'});
     if(!error){ _recurColumnsAvailable=true; return true; }
     if(!isMissingColumnError(error)){
       offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload:fullPayload});
@@ -1938,7 +1947,7 @@ async function upsertTaskWithRecurrence(payload, rec){
     }
     _recurColumnsAvailable=false; // roda a migração SQL para sincronizar recorrência entre dispositivos
   }
-  const {error}=await window.supabaseClient.from('tarefas').upsert([payload]);
+  const {error}=await window.supabaseClient.from('tarefas').upsert([payload],{onConflict:'id'});
   if(error){ offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload}); return false; }
   return true;
 }
@@ -2017,6 +2026,32 @@ function findTaskAnyDate(appRef, id){
     if(t) return {task:t, dateKey};
   }
   return null;
+}
+
+// Gera um UUID DETERMINÍSTICO a partir de uma string — a mesma entrada
+// sempre produz a mesma saída, em qualquer aparelho. Usado no carry-over de
+// tarefas: em vez de crypto.randomUUID() (aleatório), calculamos o id da
+// cópia de "hoje" a partir de (tarefa de origem + data). Assim, se o PC e o
+// celular rodarem o carry-over da MESMA tarefa no mesmo dia antes de
+// sincronizar entre si, os dois calculam o MESMO id — o upsert no Supabase
+// (que usa "id" como chave) funde os dois em uma única linha, em vez de
+// criar duas tarefas duplicadas com o mesmo título.
+function _deterministicUuid(str){
+  function h(seed){
+    let h1=0xdeadbeef^seed, h2=0x41c6ce57^seed;
+    for(let i=0;i<str.length;i++){
+      const ch=str.charCodeAt(i);
+      h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677);
+    }
+    h1=Math.imul(h1^(h1>>>16),2246822507); h1^=Math.imul(h2^(h2>>>13),3266489909);
+    h2=Math.imul(h2^(h2>>>16),2246822507); h2^=Math.imul(h1^(h1>>>13),3266489909);
+    return ((h1>>>0).toString(16).padStart(8,'0')) + ((h2>>>0).toString(16).padStart(8,'0'));
+  }
+  const hex = h(0x9e3779b9) + h(0x85ebca6b); // 32 chars hex
+  const p1=hex.slice(0,8), p2=hex.slice(8,12), p3='4'+hex.slice(13,16),
+        variant=['8','9','a','b'][parseInt(hex[16],16)%4], p4=variant+hex.slice(17,20),
+        p5=hex.slice(20,32);
+  return `${p1}-${p2}-${p3}-${p4}-${p5}`;
 }
 
 /* ══════════════════════════════════════════════════
@@ -3081,7 +3116,11 @@ _isSyncing: false,
     if(!_isOnline){ setSyncStatus('offline'); return; }
     setSyncStatus('syncing');
     try{
-      await Promise.all([
+      // allSettled em vez de all: uma entidade falhando (rede, RLS, coluna
+      // ainda não migrada, etc.) não pode impedir que as outras 13, que
+      // carregaram com sucesso, sejam salvas localmente neste ciclo.
+      const _syncLabels=['tarefas','metas','financas','habitos','humor','respostas','frases','gamificacao','diario','custom','entradaDiaria','jornada','jshares','presence'];
+      const results = await Promise.allSettled([
         this.loadTasksRemote(),
         this.loadGoalsRemote(),
         this.loadFinancasRemote(),
@@ -3097,9 +3136,13 @@ _isSyncing: false,
         this.loadJSharesRemote(),
         this.loadPresenceRemote(),
       ]);
-      if(typeof tt_loadSessionsRemote==='function') await tt_loadSessionsRemote(this); // depois de loadTasksRemote, que reconstrói routines
+      let anyFailed=false;
+      results.forEach((r,i)=>{ if(r.status==='rejected'){ anyFailed=true; console.error(`[Sync] ${_syncLabels[i]} falhou:`, r.reason); } });
+      if(typeof tt_loadSessionsRemote==='function'){
+        try{ await tt_loadSessionsRemote(this); }catch(e){ anyFailed=true; console.error('[Sync] tt_loadSessionsRemote falhou:',e); } // depois de loadTasksRemote, que reconstrói routines
+      }
       this.saveLocal();
-      setSyncStatus('online');
+      setSyncStatus(anyFailed?'error':'online');
     }catch(e){ console.error('[Sync]',e); setSyncStatus('error'); }
   },
 
@@ -3449,7 +3492,10 @@ _isSyncing: false,
       if(tombstones[t.id]) return; // tarefa excluída — nunca reaparece via carry-over
       // Não duplica se já existe tarefa com mesmo título hoje
       if(!todayTitles.has(t.title)){
-        const novoId=crypto.randomUUID();
+        // ID determinístico (não aleatório) — se outro aparelho também rodar o
+        // carry-over dessa mesma tarefa hoje, os dois calculam o MESMO id, e a
+        // sincronização funde tudo numa única linha em vez de duplicar.
+        const novoId=_deterministicUuid('carryover:'+t.id+':'+today);
         const nova={
           ...t,
           id:novoId,          // novo ID para o novo dia
@@ -3477,6 +3523,17 @@ _isSyncing: false,
   /* Canal realtime ÚNICO por usuário — gerenciado pelo RealtimeManager */
   initRealtimeSync(){
     RealtimeManager.init(this.state.user?.id);
+  },
+
+  // Chamado pelo Service Worker quando ele recebe um evento de background
+  // sync (mensagem PROCESS_OFFLINE_QUEUE) — antes disso não existia, então
+  // a sincronização em segundo plano avisada pelo SW não fazia nada.
+  async processOfflineQueue(){
+    await offlineQueue.flush();
+    if(this.state.user && !this.state.user.local && _isOnline){
+      await this.syncRemote();
+      this.renderAll();
+    }
   },
 
   /* ══════════════════════════════════════
@@ -3846,6 +3903,21 @@ _isSyncing: false,
   },
 
   saveTask(){
+    // Trava contra duplo-toque: um segundo clique/toque rápido, antes do
+    // modal fechar, criava duas tarefas iguais com IDs diferentes.
+    if(this._savingTask) return;
+    this._savingTask=true;
+    const btn=q('task-modal-save');
+    if(btn) btn.disabled=true;
+    try{
+      this._doSaveTask();
+    } finally {
+      this._savingTask=false;
+      if(btn) btn.disabled=false;
+    }
+  },
+
+  _doSaveTask(){
     const title=q('task-title').value.trim();
     if(!title){ showToast('Digite um título','error'); return; }
     const today=todayKey();
@@ -5123,7 +5195,7 @@ function dispararNotificacao(titulo, corpo, comSom){
   // Usa o SW quando disponível (funciona com app em background)
   navigator.serviceWorker?.ready
     .then(reg => reg.showNotification(titulo, opts))
-    .catch(() => { try { new Notification(titulo, opts); } catch(e){} });
+    .catch(() => { try { new Notification(titulo, opts); } catch(e){ console.error('[Notif] Falha ao mostrar notificação:',e); } });
 
   if (comSom) setTimeout(tocarAlarme, 300);
 }
@@ -5336,6 +5408,15 @@ const RealtimeManager = (() => {
     _s.channel = buildChannel(userId);
   }
 
+  // Registrado UMA ÚNICA VEZ (fora de init()) — antes, init() adicionava um
+  // novo listener 'online' a cada chamada (ex: cada troca de conta), e eles
+  // se acumulavam porque destroy() nunca os removia. Ler _s.userId
+  // dinamicamente aqui (em vez de capturar o userId no fechamento) evita
+  // esse vazamento por completo.
+  window.addEventListener('online', () => {
+    if (_s.userId && !_s.isSubscribed && !_s.destroyed) reconnect(_s.userId);
+  });
+
   return {
     init(userId) {
       if (!userId) return;
@@ -5343,9 +5424,6 @@ const RealtimeManager = (() => {
       if (_s.channel && _s.userId !== userId) this.destroy();
       _s.userId = userId; _s.destroyed = false;
       _s.channel = buildChannel(userId);
-      window.addEventListener('online', () => {
-        if (!_s.isSubscribed && !_s.destroyed) reconnect(userId);
-      });
     },
     async destroy() {
       _s.destroyed = true; clearTimeout(_s.reconnectTimer);
@@ -5402,12 +5480,22 @@ const RealtimeManager = (() => {
     }, 2500);
   }
 
-  // Listener global PASSWORD_RECOVERY — roda antes de qualquer init
+  // Listener global — roda antes de qualquer init
   window.supabaseClient.auth.onAuthStateChange((event, session) => {
     if(event === 'PASSWORD_RECOVERY'){
       q('auth-screen').classList.add('hidden');
       q('main-app').classList.add('hidden');
       q('reset-screen').classList.remove('hidden');
+    }
+    // Rede de segurança: se o Supabase encerrar a sessão sozinho (ex: refresh
+    // token revogado/expirado com o app aberto), sem isso a interface ficava
+    // "logada" mas silenciosamente parando de sincronizar (sessão zumbi).
+    if(event === 'SIGNED_OUT' && app?.state?.user){
+      RealtimeManager.destroy();
+      app.state.user = null;
+      localStorage.removeItem('pm18_session_v1');
+      app.showAuth();
+      showToast('Sua sessão expirou. Entre novamente.','error',5000);
     }
   });
 
@@ -5447,16 +5535,10 @@ const RealtimeManager = (() => {
     history.replaceState(null, '', window.location.pathname);
 
   } else if(isReset){
-    // Supabase redirecionou com ?reset=1 mas sem code ainda — escuta o evento
+    // Supabase redirecionou com ?reset=1 mas sem code ainda — o listener
+    // global PASSWORD_RECOVERY registrado acima já cobre esse caso.
     await app.init();
     const splashR = document.getElementById('splash-screen'); if(splashR){ splashR.classList.add('hide'); setTimeout(()=>splashR.remove(),400); }
-    window.supabaseClient.auth.onAuthStateChange((event, session) => {
-      if(event === 'PASSWORD_RECOVERY'){
-        q('auth-screen').classList.add('hidden');
-        q('main-app').classList.add('hidden');
-        q('reset-screen').classList.remove('hidden');
-      }
-    });
 
   } else {
     // Verifica sessão em cache ANTES do init para mostrar app instantaneamente
@@ -5486,9 +5568,10 @@ const RealtimeManager = (() => {
               app.state.user = null;
               localStorage.removeItem('pm18_session_v1');
               app.showAuth();
-            } else {
-              RealtimeManager.init(user.id);
             }
+            // (Realtime já é iniciado pelo bloco "Inicia Realtime se já
+            // logado" mais abaixo — init() é idempotente, então uma segunda
+            // chamada aqui era só redundante.)
           });
         } else { await app.init(); }
       } catch(e){ await app.init(); }
@@ -5566,12 +5649,16 @@ const RealtimeManager = (() => {
   // Detector de virada de dia — roda carryOver sem precisar reabrir o app
   (function watchDayChange(){
     let lastDay = new Date().toDateString();
-    setInterval(()=>{
+    setInterval(async ()=>{
       const hoje = new Date().toDateString();
       if(hoje !== lastDay){
         lastDay = hoje;
         if(app?.state?.user) {
           localStorage.removeItem('pm18_carry_done'); // força rodar hoje
+          // Sincroniza ANTES do carry-over — reduz a chance de rodar com
+          // dados desatualizados (o id determinístico já protege contra
+          // duplicação mesmo assim, isso só evita trabalho repetido).
+          if(!app.state.user.local){ try{ await app.syncRemote(); }catch(e){ console.error('[DayChange] sync falhou:',e); } }
           app.carryOverTasks();
           // Sempre re-renderiza, mesmo quando não há nada para copiar —
           // senão a tela fica presa no dia anterior (checkboxes de tarefas
@@ -6030,16 +6117,6 @@ const LIGAS = [
 
 function loadPC(){ try{ return JSON.parse(localStorage.getItem(PC_KEY)||'{}'); }catch(e){ return {}; } }
 function savePC(d){ localStorage.setItem(PC_KEY, JSON.stringify(d)); }
-
-function getPCState(){
-  const d = loadPC();
-  return {
-    total: d.total || 0,
-    escudos: d.escudos || 0,
-    lastPenaltyDay: d.lastPenaltyDay || null,
-    records: d.records || {},
-  };
-}
 
 function getLiga(pc){
   let liga = LIGAS[0];
@@ -6538,10 +6615,6 @@ async function ensureSeasonRemote(){
 function _seasonDaysElapsed(s){
   return Math.floor((new Date(todayKey()+'T00:00:00') - new Date(s.startedAt+'T00:00:00'))/86400000) + 1;
 }
-function _seasonEndDate(s){
-  const d=new Date(s.startedAt+'T00:00:00'); d.setDate(d.getDate()+SEASON_LENGTH_DAYS-1);
-  return d.toISOString().slice(0,10);
-}
 
 /* ══════════════════════════════════════════════════
    AMIGOS + DESAFIOS
@@ -6603,9 +6676,6 @@ function amigosCopiarId(){
 }
 window.amigosCopiarId=amigosCopiarId;
 
-function _amigosConviteTexto(){
-  return _convitePerfilTexto();
-}
 function amigosCompartilharPerfil(){
   const texto=_convitePerfilTexto();
   if(navigator.share){ navigator.share({title:'Produtiv.me', text:texto}).catch(()=>{}); }
@@ -7226,55 +7296,10 @@ function getPresenceStreak(){
   return loadPresence().streak || 0;
 }
 
-const CHECKIN_MSGS = {
-  'pessimo': { emoji:'😞', title:'Dia difícil?', msg:'Tudo bem. Dias difíceis existem para nos ensinar. Você veio aqui, isso já é um passo.' },
-  'mal':     { emoji:'😕', title:'Não está fácil', msg:'Reconhecer como você está é sabedoria. O app está aqui para te ajudar a seguir em frente.' },
-  'ok':      { emoji:'😐', title:'Dia neutro', msg:'Neutro hoje pode virar ótimo amanhã. Vamos tornar esse dia um pouco melhor?' },
-  'bem':     { emoji:'😊', title:'Que bom!', msg:'Energia boa! Aproveite esse estado para concluir suas tarefas e hábitos do dia.' },
-  'otimo':   { emoji:'😄', title:'Incrível!', msg:'Você está em chamas hoje! Canaliza essa energia e vai ser um dia memorável.' },
-};
-
 function showCheckinModal(){
   // Substituído pela experiência diária
   showDailyEntry();
 }
-
-function doCheckin(humor){
-  const today = new Date().toISOString().split('T')[0];
-  const ci = loadCheckin();
-  ci.lastDay = today;
-  ci.history = ci.history || {};
-  ci.history[today] = humor;
-  saveCheckin(ci);
-  
-  // Salva no banco também
-  if(window.app?.state?.user?.id){
-    window.supabaseClient.from('humor_logs').upsert([{
-      user_id: window.app.state.user.id,
-      date: today,
-      mood: {pessimo:1,mal:2,ok:3,bem:4,otimo:5}[humor]||3,
-      note: ''
-    }],{onConflict:'user_id,date'}).then(()=>{});
-  }
-  
-  const m = CHECKIN_MSGS[humor];
-  document.getElementById('checkin-modal')?.remove();
-  
-  // Mostra resposta personalizada
-  const resp = document.createElement('div');
-  resp.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9200;display:flex;align-items:center;justify-content:center;padding:1rem';
-  resp.innerHTML = `
-    <div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:min(320px,95vw);text-align:center">
-      <div style="font-size:2.5rem;margin-bottom:.5rem">${m.emoji}</div>
-      <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-bottom:.5rem">${m.title}</div>
-      <div style="font-size:.875rem;color:var(--text-2);line-height:1.6;margin-bottom:1rem">${m.msg}</div>
-      <button class="btn btn-primary btn-block" onclick="this.closest('div[style]').remove()">Vamos lá! 💪</button>
-    </div>`;
-  document.body.appendChild(resp);
-  addXp(5);
-  showToast('Check-in feito! +5 XP 😊','success',2500);
-}
-
 
 function checkResumoDia(){
   const now = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
@@ -7843,10 +7868,6 @@ function sm_buildContent(type){
 // ── getWeekTasks / getMonthTasks (kept here for compat) ──
 function getWeekTasks(weeksAgo){ weeksAgo=weeksAgo||0; const routines=window.app?.state?.data?.routines||{}; const now=new Date(); const start=new Date(now); start.setDate(now.getDate()-now.getDay()-weeksAgo*7); const end=new Date(start); end.setDate(start.getDate()+6); const keys=Object.keys(routines).filter(dk=>{ const d=new Date(dk+'T00:00:00'); return d>=start&&d<=end; }); const tasks=keys.flatMap(k=>routines[k]||[]); return {total:tasks.length,done:tasks.filter(t=>t.done).length}; }
 function getMonthTasks(monthsAgo){ monthsAgo=monthsAgo||0; const routines=window.app?.state?.data?.routines||{}; const now=new Date(); const target=new Date(now.getFullYear(),now.getMonth()-monthsAgo,1); const ym=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0'); const keys=Object.keys(routines).filter(dk=>dk.startsWith(ym)); const tasks=keys.flatMap(k=>routines[k]||[]); return {total:tasks.length,done:tasks.filter(t=>t.done).length,ym}; }
-
-// ── compat stubs ──
-function drawText(ctx,text,x,y,size,color,align,font,weight){ ctx.fillStyle=color; ctx.font=`${weight||'normal'} ${size}px ${font||'sans-serif'}`; ctx.textAlign=align||'center'; ctx.fillText(String(text),x,y); }
-function drawWrappedText(ctx,text,x,y,maxW,size,color,align){ ctx.fillStyle=color; ctx.font=`italic ${size}px sans-serif`; ctx.textAlign=align||'center'; const words=String(text).split(' '); let line='',cy=y; words.forEach(w=>{ const t=line+w+' '; if(ctx.measureText(t).width>maxW&&line!==''){ ctx.fillText(line,x,cy); line=w+' '; cy+=size*1.5; }else line=t; }); ctx.fillText(line,x,cy); }
 
 // ════════════════════════════════════════
 //  6 TEMPLATES
@@ -8461,7 +8482,7 @@ async function jphGet(path){
 async function jphDelete(...paths){
   const valid=paths.filter(Boolean);
   if(!valid.length) return;
-  try{ await window.supabaseClient.storage.from(JPHOTO_BUCKET).remove(valid); }catch(e){}
+  try{ await window.supabaseClient.storage.from(JPHOTO_BUCKET).remove(valid); }catch(e){ console.error('[Jornada] Falha ao remover arquivo(s) do Storage:',valid,e); }
   valid.forEach(p=>JDB.del('sp_'+p).catch(()=>{}));
 }
 
