@@ -2996,7 +2996,9 @@ _isSyncing: false,
     if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
     if(typeof checkPeriodShareTrigger === 'function') setTimeout(checkPeriodShareTrigger, 2000);
     if(typeof registerDailyPresence === 'function') registerDailyPresence();
-    if(typeof showCheckinModal === 'function') setTimeout(showCheckinModal, 2000);
+    // NÃO chamar showCheckinModal()/showDailyEntry() aqui — a Entrada Diária
+    // só deve começar quando o usuário tocar "☀️ Iniciar meu dia"
+    // (triggerDailyEntry), nunca automaticamente na abertura do app.
     if(typeof checkRecordes === 'function') setTimeout(checkRecordes, 4000);
     if(typeof checkResumoDia === 'function') setTimeout(checkResumoDia, 5000);
     if(typeof addPCAccess === 'function') addPCAccess();
