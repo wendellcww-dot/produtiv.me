@@ -6795,7 +6795,10 @@ function _renderAmigosSecoes(){
             <div class="jshare-thumb">⚔️</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:700;font-size:.85rem">Você × ${esc(c.other?.name||'Amigo')}</div>
-              <div style="font-size:.72rem;color:var(--text-3)">Desafio de ${c.duration_days} dias · em andamento</div>
+              <div style="font-size:.72rem;color:var(--text-3)">${(()=>{
+                const msRest=new Date(c.ends_at)-new Date();
+                return msRest<=0 ? `Desafio de ${c.duration_days} dias · prazo encerrado, toque para ver o resultado` : `Desafio de ${c.duration_days} dias · faltam ${_formatTempoRestante(msRest)}`;
+              })()}</div>
             </div>
             <span style="font-size:.7rem;color:var(--primary);font-weight:700">Ver ›</span>
           </div>`;
@@ -6890,6 +6893,20 @@ async function amigosResponderDesafio(id, accept){
 window.amigosResponderDesafio=amigosResponderDesafio;
 
 // Busca o placar AO VIVO (calculado no servidor, nunca lido de um campo local)
+// Formata o tempo que falta pro desafio acabar — em dias quando falta mais
+// de 1 dia, em horas/minutos quando está entrando na reta final. Antes só
+// mostrava dias, então nas últimas horas continuava dizendo "Faltam 0 dias"
+// (ou nem isso), dando a impressão de que o desafio tinha "travado".
+function _formatTempoRestante(ms){
+  if(ms<=0) return null; // já encerrou
+  const dias=Math.floor(ms/86400000);
+  if(dias>=1) return `${dias} dia${dias!==1?'s':''}`;
+  const horas=Math.floor(ms/3600000);
+  if(horas>=1) return `${horas} hora${horas!==1?'s':''}`;
+  const min=Math.max(1,Math.floor(ms/60000));
+  return `${min} minuto${min!==1?'s':''}`;
+}
+
 async function amigosVerDesafio(id){
   const ch=[..._amigosCache.active,..._amigosCache.pending].find(c=>c.id===id);
   if(!ch) return;
@@ -6902,6 +6919,13 @@ async function amigosVerDesafio(id){
     const meuDelta = ch.souEuCriador ? live.creator_delta : live.opponent_delta;
     const deleDelta = ch.souEuCriador ? live.opponent_delta : live.creator_delta;
     _renderDesafioBody(ch, live, meuDelta, deleDelta);
+    // Prazo já passou mas o registro no banco ainda está "active" — tenta
+    // fechar sozinho (best-effort: se o RLS não deixar, ignora em silêncio;
+    // não afeta o que já foi mostrado na tela).
+    if(ch.status==='active' && new Date(ch.ends_at)<=new Date()){
+      window.supabaseClient.from('challenges').update({status:'completed'}).eq('id',id)
+        .then(({error})=>{ if(!error) amigosCarregarTudo(); });
+    }
   }catch(e){ q('ver-desafio-body').innerHTML=`<div style="text-align:center;padding:1rem;color:var(--danger)">Não foi possível carregar o placar agora.</div>`; }
 }
 window.amigosVerDesafio=amigosVerDesafio;
@@ -6916,9 +6940,15 @@ function _renderDesafioBody(ch, live, meuDelta, deleDelta){
 
   const inicio=new Date(ch.started_at), fim=new Date(ch.ends_at);
   const hoje=new Date();
-  const diasRestantes=Math.max(0,Math.ceil((fim-hoje)/86400000));
+  const msRestantes=fim-hoje;
+  const prazoEsgotado=msRestantes<=0;
+  // Considera encerrado se o servidor já marcou OU se o prazo já passou —
+  // antes só confiava em live.is_finished, então se esse campo demorasse a
+  // virar (ou nunca virasse), o desafio ficava "contando pontos" pra sempre
+  // mesmo depois do prazo.
+  const finalizado = live.is_finished || prazoEsgotado;
   const totalDias=ch.duration_days;
-  const diasPassados=Math.min(totalDias, totalDias-diasRestantes);
+  const diasPassados=Math.min(totalDias, Math.max(0,(hoje-inicio)/86400000));
   const pct=Math.min(100,Math.round(diasPassados/totalDias*100));
 
   let html=`<div style="text-align:center;margin-bottom:.8rem">
@@ -6926,15 +6956,20 @@ function _renderDesafioBody(ch, live, meuDelta, deleDelta){
     <div style="font-size:.78rem;color:var(--text-3)">Desafio de ${totalDias} dias · Mais Pontos</div>
   </div>`;
 
-  if(live.is_finished){
-    const souVencedor = live.winner_id ? (ch.souEuCriador ? live.winner_id===ch.creator_id : live.winner_id===ch.opponent_id) : null;
+  if(finalizado){
+    // Se o servidor ainda não calculou o vencedor (prazo passou mas
+    // is_finished ainda não virou), decide pelo placar que já temos.
+    const souVencedor = live.is_finished
+      ? (live.winner_id ? (ch.souEuCriador ? live.winner_id===ch.creator_id : live.winner_id===ch.opponent_id) : null)
+      : (meuDelta===deleDelta ? null : meuDelta>deleDelta);
+    const empate = live.is_finished ? live.winner_id===null : meuDelta===deleDelta;
     html+=`<div style="text-align:center;padding:1rem 0">
       <div style="font-size:1.8rem">🏆</div>
       <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-top:.3rem">Desafio concluído!</div>
-      <div style="font-size:.9rem;margin-top:.3rem">${live.winner_id===null?'Empate!':souVencedor?`Você venceu ${esc(outroNome)}!`:`${esc(outroNome)} venceu o desafio.`}</div>
+      <div style="font-size:.9rem;margin-top:.3rem">${empate?'Empate!':souVencedor?`Você venceu ${esc(outroNome)}!`:`${esc(outroNome)} venceu o desafio.`}</div>
     </div>`;
   } else {
-    html+=`<div style="text-align:center;margin-bottom:.6rem"><b>Faltam ${diasRestantes} dia${diasRestantes!==1?'s':''}</b></div>
+    html+=`<div style="text-align:center;margin-bottom:.6rem"><b>Faltam ${_formatTempoRestante(msRestantes)}</b></div>
     <div class="pc-bar-wrap"><div class="pc-bar-fill" style="width:${pct}%"></div></div>`;
   }
 
