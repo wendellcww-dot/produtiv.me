@@ -2854,6 +2854,11 @@ async function limparDadosLocaisUsuario(){
   });
   localStorage.removeItem('tutorialCompleted');
   try{ if(typeof JDB!=='undefined') await JDB.clear(); }catch(e){ console.error('[Limpeza local] Falha ao limpar fotos/avatar:',e); }
+  // Variáveis de Amigos em memória (não vivem no localStorage) — sem isso,
+  // trocar de conta na mesma aba mantinha o public_id e a checagem de nome
+  // "presos" no usuário anterior.
+  if(typeof _meuPublicId!=='undefined') _meuPublicId=null;
+  if(typeof _nomePerfilChecado!=='undefined') _nomePerfilChecado=false;
 }
 
 /* ══════════════════════════════════════
@@ -6656,13 +6661,32 @@ function _amigosDisponivel(){
 
 async function amigosCarregarMeuId(){
   if(!_amigosDisponivel()) return null;
-  if(_meuPublicId) return _meuPublicId;
+  if(_meuPublicId){ _amigosGarantirNomePerfil(); return _meuPublicId; }
   try{
     const {data,error}=await window.supabaseClient.rpc('ensure_public_id');
     if(error) throw error;
     _meuPublicId=data;
+    _amigosGarantirNomePerfil();
     return data;
   }catch(e){ console.error('[Amigos] Falha ao obter ID público:',e.message||e); return null; }
+}
+
+// Corrige contas onde profiles.name ficou vazio (o gatilho de criação do
+// perfil não copiou o nome informado no cadastro). Só grava se realmente
+// estiver faltando — nunca sobrescreve um nome que o usuário já tenha.
+let _nomePerfilChecado=false;
+async function _amigosGarantirNomePerfil(){
+  if(_nomePerfilChecado) return;
+  _nomePerfilChecado=true;
+  try{
+    const user=window.app?.state?.user;
+    if(!user?.id || !user?.name) return;
+    const {data,error}=await window.supabaseClient.from('profiles').select('name').eq('id',user.id).maybeSingle();
+    if(error) throw error;
+    if(data && !data.name){
+      await window.supabaseClient.from('profiles').update({name:user.name}).eq('id',user.id);
+    }
+  }catch(e){ console.error('[Amigos] Falha ao verificar nome do perfil:',e.message||e); }
 }
 
 function amigosAbrirMeuId(){
@@ -6741,6 +6765,7 @@ async function amigosCarregarTudo(){
     _amigosAtualizarBadges(0);
     return;
   }
+  _amigosGarantirNomePerfil(); // corrige o próprio nome se tiver ficado vazio no cadastro
   const user=window.app.state.user;
   try{
     const [{data:friendships},{data:challenges}] = await Promise.all([
