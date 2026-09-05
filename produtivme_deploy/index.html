@@ -53,9 +53,23 @@
     // captureError(error, context) — Sentry. Mesma garantia: nunca lança.
     window.captureError = function(error, context){
       try{
-        if(window.Sentry && typeof window.Sentry.captureException === 'function'){
-          window.Sentry.captureException(error, context ? {contexts:{app:context}} : undefined);
+        if(!(window.Sentry && typeof window.Sentry.captureException === 'function')) return;
+        let toSend = error;
+        const extra = Object.assign({}, context||{});
+        // Erros do Supabase/PostgREST vêm como objeto plano {code,message,details,hint},
+        // não como Error de verdade — capturados assim, o Sentry só mostra
+        // "Object captured as exception with keys: code, details, hint, message",
+        // sem contexto útil. Aqui a gente detecta esse formato e monta um
+        // Error de verdade, com code/details/hint preservados como contexto
+        // extra (nunca o conteúdo da tarefa em si — só os campos do erro).
+        if(error && typeof error==='object' && !(error instanceof Error) &&
+           ('code' in error || 'details' in error || 'hint' in error)){
+          extra.supabase_code = error.code;
+          extra.supabase_details = error.details;
+          extra.supabase_hint = error.hint;
+          toSend = new Error('[Supabase] '+(error.message||error.code||'erro sem mensagem'));
         }
+        window.Sentry.captureException(toSend, {contexts:{app:extra}});
       }catch(e){ /* observabilidade nunca pode quebrar o app */ }
     };
 
@@ -2425,6 +2439,7 @@ function setSyncStatus(s){
    OFFLINE QUEUE
 ══════════════════════════════════════ */
 const offlineQueue = {
+  _flushing: false,
   load(){ 
     try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); } 
     catch(e){ return []; } 
@@ -2457,7 +2472,16 @@ const offlineQueue = {
 
   async flush(){
     if(!_isOnline) return;
+    // flush() é chamado tanto pelo evento 'online' quanto pela mensagem de
+    // background sync do Service Worker — sem essa trava, os dois podiam
+    // rodar ao mesmo tempo e reenviar os MESMOS itens da fila em paralelo
+    // (rajada de POST /tarefas em menos de 1s, mesmo id, upsert redundante).
+    if(this._flushing) return;
+    this._flushing = true;
+    try{ await this._doFlush(); } finally { this._flushing = false; }
+  },
 
+  async _doFlush(){
     const list=this.load();
     if(!list.length) return;
 
@@ -3215,6 +3239,15 @@ _isSyncing: false,
   async syncRemote(){
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ setSyncStatus('offline'); return; }
+    // Mutex real — _isSyncing existia mas nunca era checado antes, então
+    // chamadas concorrentes (evento 'online' + Realtime + boot, todos por
+    // volta do mesmo momento) rodavam syncRemote() em paralelo, cada uma
+    // competindo pra escrever o mesmo estado local e multiplicando
+    // chamadas de rede/gravações quase ao mesmo tempo. Agora uma segunda
+    // chamada enquanto a primeira ainda está em andamento simplesmente não
+    // faz nada — a sincronização já em curso cobre o que ela ia buscar.
+    if(this._isSyncing) return;
+    this._isSyncing = true;
     setSyncStatus('syncing');
     window.addBreadcrumb?.('sync_started','sync');
     try{
@@ -3246,6 +3279,7 @@ _isSyncing: false,
       this.saveLocal();
       setSyncStatus(anyFailed?'error':'online');
     }catch(e){ console.error('[Sync]',e); window.captureError?.(e,{operation:'sync_remote'}); setSyncStatus('error'); }
+    finally{ this._isSyncing = false; }
   },
 
   // Carrega frases customizadas do Supabase
@@ -3473,6 +3507,19 @@ _isSyncing: false,
 
   async saveTaskRemote(task, dateKey){
     if(!this.state.user||this.state.user.local) return;
+    if(!task.id){
+      // NUNCA gera um id novo aqui. Toda tarefa já deveria ter recebido um
+      // id no momento em que foi criada (saveTask/carryOverTasks) — se
+      // chegou até aqui sem id, é sinal de bug em outro lugar. O código
+      // antigo fazia `task.id || crypto.randomUUID()`, que minerava um id
+      // aleatório silenciosamente: exatamente o mecanismo que transformava
+      // uma tarefa já existente numa linha NOVA e duplicada no Supabase.
+      // Falhar alto (e mandar pro Sentry) é sempre melhor que duplicar.
+      const err=new Error('saveTaskRemote chamado sem task.id — operação abortada para não duplicar');
+      window.captureError?.(err,{operation:'task_upsert',dateKey,hasTitle:!!task.title});
+      console.error('[Tarefas]', err.message, task);
+      return false;
+    }
     let alarmIso=null;
     if(task.alarmTime){ alarmIso=task.alarmTime.slice(0,5); } // salva só HH:MM
 
@@ -3480,7 +3527,7 @@ _isSyncing: false,
     const nowIso=new Date().toISOString();
 
     const payload = {
-      id: task.id || crypto.randomUUID(),
+      id: task.id,
       user_id: this.state.user.id,
       title: task.title || 'Sem título',
       description: task.description || null,
@@ -5557,10 +5604,33 @@ const RealtimeManager = (() => {
    INIT
 ══════════════════════════════════════ */
 (async function(){
+  // Trava defensiva: garante que esse bootstrap (registro do SW, checagem
+  // de sessão, showApp/init, Realtime, OneSignal) rode no máximo 1 vez por
+  // carregamento de página, mesmo que algo dispare essa IIFE de novo.
+  if(window.__pmBootstrapped) return;
+  window.__pmBootstrapped = true;
+
   // 1. Registra o SW próprio PRIMEIRO (antes do OneSignal init)
+  let _swReady=false;
   if ('serviceWorker' in navigator) {
     try {
       await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+      // register() resolvendo só significa que a registration existe — não
+      // garante um worker ATIVO nem "controller" pronto pra receber
+      // postMessage (é exatamente essa lacuna que gerava o "[WM] No SW
+      // registration for postMessage" do OneSignal). .ready só resolve
+      // quando já existe um worker ativo para o escopo.
+      await navigator.serviceWorker.ready;
+      // Se ainda não há controller (comum na PRIMEIRA visita, antes do SW
+      // assumir a página), espera até ~3s pelo evento de troca — sem travar
+      // o app se nunca vier (nesse caso o próximo load já resolve sozinho).
+      if(!navigator.serviceWorker.controller){
+        await Promise.race([
+          new Promise(res=>navigator.serviceWorker.addEventListener('controllerchange', res, {once:true})),
+          new Promise(res=>setTimeout(res,3000)),
+        ]);
+      }
+      _swReady=true;
       console.log('[PWA] SW registrado ✅');
 
       // Escuta mensagens do SW (background sync)
