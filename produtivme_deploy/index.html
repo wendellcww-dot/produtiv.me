@@ -21,6 +21,85 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- ══════════════════════════════════════════════════
+       OBSERVABILIDADE — PostHog (analytics) + Sentry (erros)
+       Configuração centralizada. Ambos carregam de forma assíncrona e
+       NUNCA bloqueiam a abertura do app: se qualquer um falhar ao
+       carregar/inicializar, track()/captureError() viram no-op seguro e
+       o resto do Produtiv.me continua funcionando normalmente.
+  ══════════════════════════════════════════════════ -->
+  <script>
+    window.POSTHOG_KEY = 'phc_qF3nNQhGVjms2zwy6fnQiY9U7nhEGrd249dL9vPr7F2V';
+    window.POSTHOG_HOST = 'https://us.i.posthog.com'; // único lugar pra trocar host futuramente
+    window.SENTRY_DSN = 'https://a48240b044e762f7af3c8fdf3de173ce@o4512029267132416.ingest.us.sentry.io/4512029300686848';
+    window.APP_ENVIRONMENT = 'production';
+    window.APP_VERSION = '1.0.0'; // não havia versionamento no código — centralizado aqui; suba este número a cada release
+
+    // track(eventName, properties) — PostHog. Nunca lança erro: se o SDK
+    // não carregou/falhou, a chamada simplesmente não faz nada.
+    window.track = function(eventName, properties){
+      try{
+        if(window.posthog && typeof window.posthog.capture === 'function'){
+          window.posthog.capture(eventName, Object.assign({
+            app_version: window.APP_VERSION,
+            environment: window.APP_ENVIRONMENT,
+            device_type: (/Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop'),
+          }, properties||{}));
+        }
+      }catch(e){ /* observabilidade nunca pode quebrar o app */ }
+    };
+
+    // captureError(error, context) — Sentry. Mesma garantia: nunca lança.
+    window.captureError = function(error, context){
+      try{
+        if(window.Sentry && typeof window.Sentry.captureException === 'function'){
+          window.Sentry.captureException(error, context ? {contexts:{app:context}} : undefined);
+        }
+      }catch(e){ /* observabilidade nunca pode quebrar o app */ }
+    };
+
+    // breadcrumb(message, category, data) — Sentry, opcional/defensivo.
+    window.addBreadcrumb = function(message, category, data){
+      try{
+        if(window.Sentry && typeof window.Sentry.addBreadcrumb === 'function'){
+          window.Sentry.addBreadcrumb({message, category: category||'app', level:'info', data: data||undefined});
+        }
+      }catch(e){}
+    };
+  </script>
+
+  <!-- PostHog — snippet oficial de instalação via tag de script (sem npm).
+       Carrega o array.js de forma assíncrona; init() já enfileira chamadas
+       feitas antes do carregamento terminar, então track() acima é seguro a
+       qualquer momento. -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init me ts,capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId setPersonProperties".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    try{
+      posthog.init(window.POSTHOG_KEY, {
+        api_host: window.POSTHOG_HOST,
+        person_profiles: 'identified_only', // não cria perfil pra visitantes anônimos não logados
+        autocapture: false,        // desligado de propósito — autocapture pega texto de elementos clicados, risco de vazar conteúdo privado
+        disable_session_recording: true, // Session Replay explicitamente NÃO deve ser ativado agora
+        capture_pageview: false,   // é um app single-page, não faz sentido pageview automático
+      });
+    }catch(e){ console.error('[PostHog] Falha ao inicializar:', e); }
+  </script>
+
+  <!-- Sentry — bundle via CDN (sem npm), init manual após carregar -->
+  <script src="https://browser.sentry-cdn.com/7.120.3/bundle.min.js" crossorigin="anonymous"
+    onload="try{
+      Sentry.init({
+        dsn: window.SENTRY_DSN,
+        environment: window.APP_ENVIRONMENT,
+        release: 'produtiv-me@' + window.APP_VERSION,
+        sendDefaultPii: false,
+        autoSessionTracking: true
+      });
+    }catch(e){ console.error('[Sentry] Falha ao inicializar:', e); }"
+    onerror="console.error('[Sentry] Falha ao carregar o SDK — app continua normalmente')"
+  ></script>
+
 <script>
 window.supabaseClient = window.supabase.createClient(
   "https://ddybuxzdvbvvgnixzijx.supabase.co",
@@ -1942,13 +2021,14 @@ async function upsertTaskWithRecurrence(payload, rec){
     const {error}=await window.supabaseClient.from('tarefas').upsert([fullPayload],{onConflict:'id'});
     if(!error){ _recurColumnsAvailable=true; return true; }
     if(!isMissingColumnError(error)){
+      window.captureError?.(error,{operation:'task_upsert'});
       offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload:fullPayload});
       return false;
     }
     _recurColumnsAvailable=false; // roda a migração SQL para sincronizar recorrência entre dispositivos
   }
   const {error}=await window.supabaseClient.from('tarefas').upsert([payload],{onConflict:'id'});
-  if(error){ offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload}); return false; }
+  if(error){ window.captureError?.(error,{operation:'task_upsert'}); offlineQueue.push({type:'upsert_task',id:payload.id,user_id:payload.user_id,payload}); return false; }
   return true;
 }
 async function syncRecurringDoneRemote(taskId){
@@ -2941,6 +3021,7 @@ _isSyncing: false,
       const {data,error}=await window.supabaseClient.auth.signInWithPassword({email:q('login-email').value,password:q('login-password').value});
       hideLoading();
       if(error){
+        window.captureError?.(error,{operation:'login'});
         const msgs = {
           'Invalid login credentials': 'Email ou senha incorretos.',
           'Email not confirmed': 'Confirme seu email antes de entrar.',
@@ -2948,6 +3029,7 @@ _isSyncing: false,
         };
         showAlert('❌ '+(msgs[error.message]||error.message), true); return;
       }
+      window.addBreadcrumb?.('login','auth');
       const newUserId = data.user.id;
       // Se usuário mudou, limpa dados locais do usuário anterior
       const oldSess = localStorage.getItem(SESSION_KEY);
@@ -2959,6 +3041,7 @@ _isSyncing: false,
       }
       this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
       localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
+      try{ window.posthog?.identify(newUserId); window.Sentry?.setUser({id:newUserId}); }catch(e){}
       this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); this.renderAll(); hideLoading(); this.carryOverTasks();
     });
 
@@ -2971,6 +3054,7 @@ _isSyncing: false,
       const {data,error}=await window.supabaseClient.auth.signUp({email:q('register-email').value,password:pass,options:{data:{name}}});
       hideLoading();
       if(error){
+        window.captureError?.(error,{operation:'signup'});
         const msgs = {
           'User already registered': 'Este email já possui uma conta. Clique em Entrar.',
           'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
@@ -2982,6 +3066,7 @@ _isSyncing: false,
       if(data?.user){
         this.state.user={id:data.user.id,email:data.user.email,name:name||data.user.email.split('@')[0]};
         localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
+        try{ window.posthog?.identify(data.user.id); window.Sentry?.setUser({id:data.user.id}); }catch(e){}
         this.showApp();
         showLoading('Sincronizando...'); await this.syncRemote(); this.renderAll(); hideLoading();
         this.carryOverTasks();
@@ -2998,6 +3083,14 @@ _isSyncing: false,
     q('main-app').classList.remove('hidden');
     this.renderAll();
     this.initRealtimeSync();
+    try{
+      const pc=typeof loadPC==='function'?loadPC():{};
+      const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+      window.track?.('app_opened',{
+        user_level: liga?.name||undefined,
+        current_streak: typeof getPresenceStreak==='function'?getPresenceStreak():undefined,
+      });
+    }catch(e){}
     if(typeof initTutorial === 'function') setTimeout(initTutorial, 800);
     if(typeof checkPeriodShareTrigger === 'function') setTimeout(checkPeriodShareTrigger, 2000);
     if(typeof registerDailyPresence === 'function') registerDailyPresence();
@@ -3055,14 +3148,15 @@ _isSyncing: false,
         btn.classList.add('active');
         const el=q(screen+'-screen');
         if(el) el.classList.add('active');
+        window.addBreadcrumb?.('nav_'+screen,'navigation');
         // Lazy render por tela
         if(screen==='rotina'){ this.renderHistoryDate(); this.renderWeekChart(); }
         else if(screen==='financeiro'){ this.renderFinance(); }
         else if(screen==='analytics'){ this.renderAnalytics(); if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['comparacao_semanal']); }
         else if(screen==='mental'){ this.renderMental(); this.renderMoodChart(); }
-        else if(screen==='questione'){ this.renderQuestions(); }
+        else if(screen==='questione'){ window.track?.('reflection_started'); this.renderQuestions(); }
         else if(screen==='frases'){ this.renderFrases(); }
-        else if(screen==='jornada'){ if(typeof renderJornada==='function') renderJornada(); if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['ver_jornada']); }
+        else if(screen==='jornada'){ window.track?.('journey_opened'); if(typeof renderJornada==='function') renderJornada(); if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['ver_jornada']); }
         else if(screen==='metas'){ if(typeof marcarDesafioVisual==='function') marcarDesafioVisual(['atualizar_meta']); }
       });
     });
@@ -3122,6 +3216,7 @@ _isSyncing: false,
     if(!this.state.user||this.state.user.local) return;
     if(!_isOnline){ setSyncStatus('offline'); return; }
     setSyncStatus('syncing');
+    window.addBreadcrumb?.('sync_started','sync');
     try{
       // allSettled em vez de all: uma entidade falhando (rede, RLS, coluna
       // ainda não migrada, etc.) não pode impedir que as outras 13, que
@@ -3144,13 +3239,13 @@ _isSyncing: false,
         this.loadPresenceRemote(),
       ]);
       let anyFailed=false;
-      results.forEach((r,i)=>{ if(r.status==='rejected'){ anyFailed=true; console.error(`[Sync] ${_syncLabels[i]} falhou:`, r.reason); } });
+      results.forEach((r,i)=>{ if(r.status==='rejected'){ anyFailed=true; console.error(`[Sync] ${_syncLabels[i]} falhou:`, r.reason); window.captureError?.(r.reason,{operation:'sync_remote',entity:_syncLabels[i]}); } });
       if(typeof tt_loadSessionsRemote==='function'){
-        try{ await tt_loadSessionsRemote(this); }catch(e){ anyFailed=true; console.error('[Sync] tt_loadSessionsRemote falhou:',e); } // depois de loadTasksRemote, que reconstrói routines
+        try{ await tt_loadSessionsRemote(this); }catch(e){ anyFailed=true; console.error('[Sync] tt_loadSessionsRemote falhou:',e); window.captureError?.(e,{operation:'sync_remote',entity:'tt_sessions'}); } // depois de loadTasksRemote, que reconstrói routines
       }
       this.saveLocal();
       setSyncStatus(anyFailed?'error':'online');
-    }catch(e){ console.error('[Sync]',e); setSyncStatus('error'); }
+    }catch(e){ console.error('[Sync]',e); window.captureError?.(e,{operation:'sync_remote'}); setSyncStatus('error'); }
   },
 
   // Carrega frases customizadas do Supabase
@@ -3298,7 +3393,7 @@ _isSyncing: false,
   async loadTasksRemote(){
     if(!this.state.user||this.state.user.local) return;
     const {data,error}=await window.supabaseClient.from('tarefas').select('*').eq('user_id',this.state.user.id);
-    if(error||!data) return;
+    if(error||!data){ if(error) window.captureError?.(error,{operation:'load_tasks'}); return; }
     pruneTaskTombstones();
     const tombstones=getTaskTombstones();
 
@@ -3428,6 +3523,7 @@ _isSyncing: false,
     setSyncStatus('syncing');
     const {error}=await window.supabaseClient.from('tarefas').delete().eq('id',id).eq('user_id',this.state.user.id);
     if(error){
+      window.captureError?.(error,{operation:'task_delete'});
       offlineQueue.push({type:'delete_task',id,user_id:this.state.user.id});
       setSyncStatus('error');
     } else {
@@ -3787,7 +3883,11 @@ _isSyncing: false,
       // que essa gravação já tenha sido aplicada, senão o servidor rejeita
       // o ganho por não conseguir confirmar a ação (rejeição legítima dele).
       await syncRecurringDoneRemote(id);
-      if(!wasDone){ addXp(10, null, id); showToast('✅ Tarefa concluída! +10 XP','success'); if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto(); }
+      if(!wasDone){
+        addXp(10, null, id); showToast('✅ Tarefa concluída! +10 XP','success');
+        window.track?.('task_completed',{recurring:true});
+        if(typeof checkDiaPerfeitoAuto==='function') checkDiaPerfeitoAuto();
+      }
       else {
         const g=loadGamify();
         g.totalXp=Math.max(0,(g.totalXp||0)-10);
@@ -3804,6 +3904,7 @@ _isSyncing: false,
     const wasDone = task.done;
     task.done=!task.done; task.updated_at=new Date().toISOString(); task._synced=false;
     this.saveLocal();
+    if(!wasDone) window.track?.('task_completed',{recurring:false,priority:task.priority});
     const _taskSavePromise=this.saveTaskRemote(task, today); // não aguardamos aqui — a UI abaixo continua instantânea
 
     // Regenera só a marcação desta tarefa (não a lista inteira) e a move para
@@ -3965,6 +4066,7 @@ _isSyncing: false,
       if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
       this.state.data.routines[today].push(task);
       this.saveLocal(); this.saveTaskRemote(task,today);
+      window.track?.('task_created',{priority:task.priority,has_recurrence:!!newRec,has_alarm:!!task.alarmTime,has_time_tracking:ttEnabled});
       showToast('Tarefa criada! 🎯','success');
     }
 
@@ -4153,6 +4255,7 @@ _isSyncing: false,
       if(g.progress>=100) g.completedAt=now;
       this.state.data.goals.push(g); this.saveLocal(); this.renderGoals();
       const _goalSavePromise2=this.saveGoalRemote(g);
+      window.track?.('goal_created',{type:g.type,priority:g.priority});
       showToast('Meta criada 🎯','success');
       if(isFirstGoal && typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('meta','🎯 Primeira meta criada');
       if(g.progress>=100){
@@ -4217,6 +4320,7 @@ _isSyncing: false,
       const {error}=await window.supabaseClient.from('habitos').update({days:h.days})
         .eq('id',habitId).eq('user_id',this.state.user.id);
       if(error){
+        window.captureError?.(error,{operation:'habit_toggle'});
         // Reverte se falhou
         if(marcando) h.days.splice(h.days.indexOf(day),1); else h.days.push(day);
         saveHabits(habits); this.renderHabits();
@@ -4227,6 +4331,7 @@ _isSyncing: false,
 
     if(marcando){
       addXp(5); if(typeof addPC==='function') addPC(5,'habito_concluido',habitId+'_'+day); showToast('Hábito marcado! +5 XP','success');
+      window.track?.('habit_completed');
       if(habits.length>0 && habits.every(x=>(x.days||[]).includes(day)) && day===todayKey() && typeof jornadaAutoRegistrar==='function'){
         jornadaAutoRegistrar('habito','💪 Todos os hábitos do dia concluídos');
       }
@@ -4449,6 +4554,7 @@ _isSyncing: false,
     const isNew=jornadaRegistrarReflexao(qasFull);
     logReflexaoAnswers(qasFull);
     addXp(8);
+    window.track?.('reflection_completed',{questions_answered:qasFull.length});
     showToast(isNew?'🧠 Reflexão registrada na Jornada! +8 XP':'Reflexão de hoje atualizada','success');
     if(typeof renderJornada==='function') renderJornada();
     this.showReflexaoConcluida();
@@ -5170,10 +5276,12 @@ q('btn-save-settings').addEventListener('click',()=>{
 q('btn-logout').addEventListener('click',async()=>{
   if(!confirm('Sair da conta?')) return;
   showLoading('Saindo...');
+  window.addBreadcrumb?.('logout','auth');
   await RealtimeManager.destroy();
   await window.supabaseClient.auth.signOut();
   await limparDadosLocaisUsuario();
   app.state.user=null; app.state.data=app.getDefaultData();
+  try{ window.posthog?.reset(); window.Sentry?.setUser(null); }catch(e){}
   hideLoading(); app.showAuth(); closeModal('settings-modal');
 });
 
@@ -5345,7 +5453,7 @@ const RealtimeManager = (() => {
       if (_s.isSyncing) { setTimeout(() => onTableChange(table, payload), 200); return; }
       _s.isSyncing = true; setSyncStatus('syncing');
       try { await app.syncRemote(); app.renderAll(); setSyncStatus('online'); }
-      catch(e) { console.error('[Realtime] sync error:', e); setSyncStatus('error'); }
+      catch(e) { console.error('[Realtime] sync error:', e); window.captureError?.(e,{operation:'realtime_sync',table}); setSyncStatus('error'); }
       finally { _s.isSyncing = false; }
     }, 400);
   }
@@ -5389,9 +5497,11 @@ const RealtimeManager = (() => {
         p => onTableChange('friendships', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
+        window.addBreadcrumb?.('realtime_status_'+status,'realtime');
         if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
         else if (['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)) {
           _s.isSubscribed = false; setSyncStatus(status==='CHANNEL_ERROR'?'error':'offline');
+          if(status==='CHANNEL_ERROR') window.captureError?.(err||new Error('Realtime CHANNEL_ERROR'),{operation:'realtime_connection'});
           if (!_s.destroyed) scheduleReconnect(userId);
         }
       });
@@ -5461,6 +5571,7 @@ const RealtimeManager = (() => {
       });
     } catch(e) {
       console.error('[PWA] Erro ao registrar SW:', e);
+      window.captureError?.(e,{operation:'service_worker_register'});
     }
   }
 
@@ -5501,6 +5612,8 @@ const RealtimeManager = (() => {
       RealtimeManager.destroy();
       app.state.user = null;
       localStorage.removeItem('pm18_session_v1');
+      try{ window.posthog?.reset(); window.Sentry?.setUser(null); }catch(e){}
+      window.captureError?.(new Error('Sessão encerrada pelo Supabase (SIGNED_OUT inesperado)'),{operation:'session_expired'});
       app.showAuth();
       showToast('Sua sessão expirou. Entre novamente.','error',5000);
     }
@@ -5648,7 +5761,7 @@ const RealtimeManager = (() => {
           }
         }, 500);
 
-      } catch(e) { console.error('[OneSignal] Erro:', e); }
+      } catch(e) { console.error('[OneSignal] Erro:', e); window.captureError?.(e,{operation:'onesignal_init'}); }
     });
   }, 1000);
 
@@ -6738,13 +6851,14 @@ async function amigosResponderSolicitacao(reqId, accept, friendPublicId, friendN
     const {error}=await window.supabaseClient.rpc('respond_friend_request',{request_id:reqId, accept});
     if(error) throw error;
     if(accept){
+      window.track?.('friend_added');
       showToast('✅ Agora vocês são amigos! Toque para criar um desafio ⚔️','success',4500,
         ()=>amigosAbrirCriarDesafio(friendPublicId||'', friendName||'Amigo'));
     } else {
       showToast('Solicitação recusada','default');
     }
     amigosCarregarTudo();
-  }catch(e){ showToast(e.message||'Não foi possível responder','error'); }
+  }catch(e){ window.captureError?.(e,{operation:'friend_request_response'}); showToast(e.message||'Não foi possível responder','error'); }
 }
 window.amigosResponderSolicitacao=amigosResponderSolicitacao;
 
@@ -6895,8 +7009,9 @@ async function amigosCriarDesafio(){
     if(error) throw error;
     closeModal('criar-desafio-modal');
     amigosCarregarTudo();
+    window.track?.('challenge_created',{duration_days:duration});
     showToast('⚔️ Desafio enviado! Toque aqui para avisar por WhatsApp','success',5000,()=>amigosCompartilharDesafio(duration));
-  }catch(e){ showToast(e.message||'Não foi possível criar o desafio','error'); }
+  }catch(e){ window.captureError?.(e,{operation:'challenge_create'}); showToast(e.message||'Não foi possível criar o desafio','error'); }
 }
 window.amigosCriarDesafio=amigosCriarDesafio;
 
@@ -6948,10 +7063,11 @@ async function amigosVerDesafio(id){
     // fechar sozinho (best-effort: se o RLS não deixar, ignora em silêncio;
     // não afeta o que já foi mostrado na tela).
     if(ch.status==='active' && new Date(ch.ends_at)<=new Date()){
+      window.track?.('challenge_completed',{duration_days:ch.duration_days});
       window.supabaseClient.from('challenges').update({status:'completed'}).eq('id',id)
         .then(({error})=>{ if(!error) amigosCarregarTudo(); });
     }
-  }catch(e){ q('ver-desafio-body').innerHTML=`<div style="text-align:center;padding:1rem;color:var(--danger)">Não foi possível carregar o placar agora.</div>`; }
+  }catch(e){ window.captureError?.(e,{operation:'challenge_view'}); q('ver-desafio-body').innerHTML=`<div style="text-align:center;padding:1rem;color:var(--danger)">Não foi possível carregar o placar agora.</div>`; }
 }
 window.amigosVerDesafio=amigosVerDesafio;
 
@@ -7456,6 +7572,8 @@ function startTutorial(){
   if(_tutActive) return;
   _tutActive = true;
   _tutStep = 0;
+  window.track?.('tutorial_started');
+  window.addBreadcrumb?.('tutorial_started','tutorial');
   // Cria elementos
   _tutBackdrop = document.createElement('div');
   _tutBackdrop.id = 'tutorial-backdrop';
@@ -7647,6 +7765,8 @@ function finishTutorial(giveBonus){
   localStorage.setItem('tutorialCompleted','true');
   _tutActive = false;
   _tutBackdrop?.remove(); _tutSpotlight?.remove(); _tutBox?.remove();
+  window.track?.('tutorial_completed');
+  window.addBreadcrumb?.('tutorial_completed','tutorial');
   if(giveBonus){
     const g = window.app?.state?.data?.goals||[];
     const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
@@ -8098,12 +8218,13 @@ async function doShare(){
   try {
     if(navigator.share && navigator.canShare({files:[file]})){
       await navigator.share({files:[file], title:'Minha evolução no Produtiv.me'});
+      window.track?.('moment_shared',{method:'native_share'});
       _askSaveJornada(thumbB64); // downloadShareImage() já pergunta sozinho, então só chamamos aqui
     } else {
       downloadShareImage();
     }
   } catch(e) {
-    if(e.name !== 'AbortError') downloadShareImage();
+    if(e.name !== 'AbortError'){ window.captureError?.(e,{operation:'moment_share'}); downloadShareImage(); }
   }
 }
 
@@ -8923,6 +9044,7 @@ async function jornadaSalvarEvento(){
   }
   const evs=loadJornada(); evs.unshift(ev); saveJornada(evs);
   saveJornadaEventRemote(ev);
+  window.track?.('moment_created',{type,has_photo:!!ev.hasPhoto});
   if(_jevPhoto && !ev.photoPath) await JDB.set(id,_jevPhoto).catch(()=>{}); // fallback local (sem conta ou upload falhou)
   closeModal('jornada-modal');
   showToast('Momento registrado! 📸','success');
@@ -9722,6 +9844,8 @@ function triggerDailyEntry(){
   const hoje=typeof todayKey==='function'?todayKey():new Date().toISOString().split('T')[0];
   if(localStorage.getItem(DAILY_BTN_KEY)===hoje) return;
   _pendingDailyReward=true;
+  window.track?.('daily_entry_started');
+  window.addBreadcrumb?.('daily_entry_started','daily_entry');
   if(typeof showDailyEntry==='function'){
     const deKey='pm18_de_shown_v1';
     localStorage.removeItem(deKey);
@@ -9739,6 +9863,8 @@ let _pendingDailyReward=false;
     const hoje=typeof todayKey==='function'?todayKey():new Date().toISOString().split('T')[0];
     if(localStorage.getItem(DAILY_BTN_KEY)!==hoje){
       localStorage.setItem(DAILY_BTN_KEY,hoje);
+      window.track?.('daily_entry_completed');
+      window.addBreadcrumb?.('daily_entry_completed','daily_entry');
       setTimeout(updateDailyEntryBtn,200);
       _showDailyRewardAnim();
       // Espera confirmar no banco antes de pedir os pontos — mesmo motivo dos
