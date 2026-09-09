@@ -6235,10 +6235,15 @@ async function deConfirmHumor() {
   if (window.app?.state?.user?.id) {
     // Aguarda o upsert confirmar antes de pedir os pontos — o RPC award_points
     // confere se o humor de hoje já está salvo no banco antes de liberar.
-    await window.supabaseClient.from('humor_logs').upsert([{
+    // A tabela humor_logs só tem a coluna "value" (integer) — não existe
+    // "mood" nem "note". Mandar esses dois campos inexistentes é o que
+    // causava o HTTP 400 (PostgREST rejeita colunas que não existem no
+    // schema). Mesma escala 1–5 já usada na tela Mental (mood-btn).
+    const {error}=await window.supabaseClient.from('humor_logs').upsert([{
       user_id: window.app.state.user.id, date: today,
-      mood: {pessimo:1,mal:2,ok:3,bem:4,otimo:5}[_deHumorSelected]||3, note: ''
+      value: {pessimo:1,mal:2,ok:3,bem:4,otimo:5}[_deHumorSelected]||3
     }], { onConflict: 'user_id,date' });
+    if(error){ console.error('[Entrada Diária] Erro ao salvar humor:',error); window.captureError?.(error,{operation:'daily_entry_mood_save'}); }
   }
   addXp(5);
   if(typeof addPC==='function') addPC(3,'humor_registrado',todayKey());
