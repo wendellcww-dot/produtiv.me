@@ -1305,6 +1305,17 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
 
         <div class="card" style="margin-bottom:.875rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+            <div class="card-title" style="margin:0"><i class="fas fa-trophy"></i>Competição</div>
+            <button class="btn btn-icon btn-sm" onclick="compAbrirCriar()" title="Criar competição"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="comp-lista"></div>
+          <div style="margin-top:.6rem">
+            <button class="btn btn-ghost btn-sm" style="width:100%" onclick="compAbrirCriar()"><i class="fas fa-trophy"></i> Criar competição</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:.875rem">
           <div class="card-title"><i class="fas fa-chart-simple"></i>Evolução das Temporadas</div>
           <div id="evolucao-temporadas"></div>
         </div>
@@ -1607,6 +1618,46 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
       <button class="btn btn-icon btn-sm" onclick="closeModal('ver-desafio-modal')"><i class="fas fa-times"></i></button>
     </div>
     <div id="ver-desafio-body"></div>
+  </div>
+</div>
+
+<!-- CRIAR COMPETIÇÃO -->
+<div id="criar-comp-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-trophy" style="color:var(--primary);margin-right:.4rem"></i>Criar competição</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('criar-comp-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Nome da competição</label>
+      <input type="text" id="comp-nome" maxlength="60" placeholder="Ex: Desafio da Semana">
+    </div>
+    <div class="form-group">
+      <label>Amigos (escolha até 4)</label>
+      <div id="comp-lista-amigos" style="display:flex;flex-direction:column;gap:.4rem;max-height:220px;overflow-y:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-3);margin-top:.35rem">Você também participa automaticamente.</div>
+    </div>
+    <div class="form-group">
+      <label>Duração</label>
+      <div class="wd-picker" id="comp-duracao-picker">
+        <div class="wd-pill" data-dur="3">3 dias</div>
+        <div class="wd-pill selected" data-dur="7">7 dias</div>
+        <div class="wd-pill" data-dur="14">14 dias</div>
+        <div class="wd-pill" data-dur="30">30 dias</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="compCriar()"><i class="fas fa-trophy"></i> Criar competição</button>
+  </div>
+</div>
+
+<!-- VER COMPETIÇÃO / PLACAR -->
+<div id="ver-comp-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-trophy" style="color:var(--primary);margin-right:.4rem"></i>Placar</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('ver-comp-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="ver-comp-body"></div>
   </div>
 </div>
 
@@ -2197,6 +2248,19 @@ function tt_pause(task){
 }
 
 function tt_resume(task){ tt_start(task); }
+
+// Se a tarefa tiver um cronômetro rodando OU pausado (ou seja, ainda não
+// finalizado), fecha a sessão em aberto e marca o cronômetro como
+// concluído. Chamado sempre que uma tarefa é concluída ou excluída — nunca
+// deixa um timer "esquecido" continuando a contar depois disso. Reaproveita
+// tt_finish() por completo (não duplica a lógica de fechar sessão/calcular
+// tempo), então o tempo já registrado nunca é apagado.
+function tt_forceFinishIfActive(task){
+  const tt=task?.timeTracking;
+  if(!tt || (tt.status!=='running' && tt.status!=='paused')) return false;
+  tt_finish(task);
+  return true;
+}
 
 function tt_finish(task){
   const tt=tt_ensure(task);
@@ -2986,9 +3050,31 @@ _isSyncing: false,
 
   saveLocal(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state.data)); }catch(e){} },
 
+  // Corrige tarefas que já estão concluídas mas ficaram com o cronômetro
+  // ativo — acontece se o app fechou/travou entre marcar a tarefa como
+  // feita e persistir o estado do timer, ou se outro aparelho concluiu a
+  // tarefa enquanto este tinha o cronômetro rodando localmente. Roda ao
+  // carregar local e depois de toda sincronização remota. Nunca apaga
+  // tempo já registrado — só fecha a sessão em aberto, como tt_finish já faz.
+  ttHealCompletedTasks(){
+    const routines=this.state.data?.routines||{};
+    let healed=false;
+    Object.keys(routines).forEach(dateKey=>{
+      (routines[dateKey]||[]).forEach(task=>{
+        if(task.done && tt_forceFinishIfActive(task)){
+          task.updated_at=new Date().toISOString(); task._synced=false;
+          this.saveTaskRemote(task, dateKey);
+          healed=true;
+        }
+      });
+    });
+    if(healed) this.saveLocal();
+  },
+
   /* ── INIT ── */
   async init(){
     this.loadLocal();
+    this.ttHealCompletedTasks();
     this.initAuthUI();
     this.initNavUI();
 
@@ -3276,6 +3362,7 @@ _isSyncing: false,
       if(typeof tt_loadSessionsRemote==='function'){
         try{ await tt_loadSessionsRemote(this); }catch(e){ anyFailed=true; console.error('[Sync] tt_loadSessionsRemote falhou:',e); window.captureError?.(e,{operation:'sync_remote',entity:'tt_sessions'}); } // depois de loadTasksRemote, que reconstrói routines
       }
+      this.ttHealCompletedTasks();
       this.saveLocal();
       setSyncStatus(anyFailed?'error':'online');
     }catch(e){ console.error('[Sync]',e); window.captureError?.(e,{operation:'sync_remote'}); setSyncStatus('error'); }
@@ -3925,6 +4012,16 @@ _isSyncing: false,
       const wasDone=!!doneMap[id][today];
       doneMap[id][today]=!wasDone;
       saveRecurringDoneMap(doneMap);
+      if(!wasDone){
+        // Tarefas recorrentes têm uma única linha "canônica" (não uma por
+        // dia) — é nela que o cronômetro vive. Mesma regra: concluir =
+        // parar o timer, se houver um ativo.
+        const foundRec=findTaskAnyDate(this,id);
+        if(foundRec && tt_forceFinishIfActive(foundRec.task)){
+          foundRec.task.updated_at=new Date().toISOString(); foundRec.task._synced=false;
+          this.saveLocal(); this.saveTaskRemote(foundRec.task, foundRec.dateKey);
+        }
+      }
       // Espera a confirmação no servidor ANTES de pedir os pontos — o RPC
       // award_points valida contra o estado atual no banco, então precisa
       // que essa gravação já tenha sido aplicada, senão o servidor rejeita
@@ -3950,6 +4047,10 @@ _isSyncing: false,
     if(!task) return;
     const wasDone = task.done;
     task.done=!task.done; task.updated_at=new Date().toISOString(); task._synced=false;
+    // Tarefa concluída = cronômetro obrigatoriamente parado. Sem isso, o
+    // usuário podia marcar a tarefa como feita e o timer continuava
+    // rodando por horas, contando tempo que não é mais real.
+    if(!wasDone) tt_forceFinishIfActive(task);
     this.saveLocal();
     if(!wasDone) window.track?.('task_completed',{recurring:false,priority:task.priority});
     const _taskSavePromise=this.saveTaskRemote(task, today); // não aguardamos aqui — a UI abaixo continua instantânea
@@ -4125,6 +4226,7 @@ _isSyncing: false,
     if(!confirm('Excluir esta tarefa?')) return;
     addTaskTombstone(id); // primeiro a lápide — nenhuma sincronização concorrente traz essa tarefa de volta
     const found=findTaskAnyDate(this, id);
+    if(found) tt_forceFinishIfActive(found.task); // fecha a sessão em aberto antes de apagar a tarefa
     if(found && this.state.data.routines[found.dateKey]){
       this.state.data.routines[found.dateKey]=this.state.data.routines[found.dateKey].filter(t=>t.id!==id);
     }
@@ -5542,6 +5644,8 @@ const RealtimeManager = (() => {
         p => onTableChange('friendships', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'friendships', filter:`requester_id=eq.${userId}` },
         p => onTableChange('friendships', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'competition_participants', filter:`user_id=eq.${userId}` },
+        p => onTableChange('competition_participants', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         window.addBreadcrumb?.('realtime_status_'+status,'realtime');
@@ -5740,6 +5844,7 @@ const RealtimeManager = (() => {
           // Inicializa navegação ANTES de mostrar o app
           app.state.user = user;
           app.loadLocal();
+          app.ttHealCompletedTasks();
           app.initAuthUI();
           app.initNavUI(); // crítico — listeners de navegação
           // Mostra app com navegação já funcional
@@ -7232,6 +7337,166 @@ async function amigosAbrirHistorico(){
 }
 window.amigosAbrirHistorico=amigosAbrirHistorico;
 
+/* ══════════════════════════════════════════════════
+   COMPETIÇÃO ENTRE AMIGOS
+   Até 4 amigos + o criador = até 5 participantes. Reaproveita a
+   gamificação já existente (seasons.final_points, via get_competition_live)
+   — não é um segundo sistema de pontuação, é o mesmo desafio 1x1 já
+   existente generalizado pra N participantes.
+══════════════════════════════════════════════════ */
+let _compCache=[]; // competições do usuário (ativas + concluídas)
+
+async function compCarregarLista(){
+  const el=q('comp-lista');
+  if(!_amigosDisponivel()){ if(el) el.innerHTML=''; return; }
+  const user=window.app.state.user;
+  try{
+    const {data:parts,error:e1}=await window.supabaseClient.from('competition_participants').select('competition_id').eq('user_id',user.id);
+    if(e1) throw e1;
+    const ids=(parts||[]).map(p=>p.competition_id);
+    if(!ids.length){ _compCache=[]; if(el) el.innerHTML='<div style="text-align:center;padding:.6rem 0;color:var(--text-3);font-size:.8rem">Você ainda não participa de nenhuma competição.</div>'; return; }
+    const {data:comps,error:e2}=await window.supabaseClient.from('competitions').select('*').in('id',ids).order('created_at',{ascending:false});
+    if(e2) throw e2;
+    _compCache=comps||[];
+    if(!el) return;
+    if(!_compCache.length){ el.innerHTML='<div style="text-align:center;padding:.6rem 0;color:var(--text-3);font-size:.8rem">Você ainda não participa de nenhuma competição.</div>'; return; }
+    el.innerHTML=_compCache.map(c=>{
+      const msRest=new Date(c.ends_at)-new Date();
+      const status = c.status==='completed' ? 'Concluída' : (msRest<=0 ? 'Prazo encerrado, toque para ver o resultado' : `Faltam ${_formatTempoRestante(msRest)}`);
+      return `<div class="jshare-item" style="cursor:pointer" onclick="compAbrirVer('${c.id}')">
+        <div class="jshare-thumb">🏆</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.85rem">${esc(c.name)}</div>
+          <div style="font-size:.72rem;color:var(--text-3)">${status}</div>
+        </div>
+        <span style="font-size:.7rem;color:var(--primary);font-weight:700">Ver ›</span>
+      </div>`;
+    }).join('');
+  }catch(e){ window.captureError?.(e,{operation:'competitions_load'}); if(el) el.innerHTML='<div style="text-align:center;padding:.6rem 0;color:var(--danger);font-size:.8rem">Erro ao carregar competições.</div>'; }
+}
+window.compCarregarLista=compCarregarLista;
+
+function compAbrirCriar(){
+  if(!_amigosDisponivel()){ showToast('Entre com uma conta para usar Competição','default'); return; }
+  const friends=_amigosCache.friends||[];
+  const el=q('comp-lista-amigos');
+  if(!friends.length){
+    el.innerHTML='<div style="font-size:.8rem;color:var(--text-3)">Você ainda não tem amigos adicionados.</div>';
+  } else {
+    el.innerHTML=friends.map(f=>`
+      <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer">
+        <input type="checkbox" class="comp-friend-check" value="${f.other?.id||''}" onchange="_compLimitarSelecao(this)">
+        <span style="font-size:.85rem">${esc(f.other?.name||'Amigo')}</span>
+      </label>`).join('');
+  }
+  q('comp-nome').value='';
+  q('criar-comp-modal').classList.add('active');
+}
+window.compAbrirCriar=compAbrirCriar;
+
+// Trava a seleção em no máximo 4 amigos (limite explícito do requisito)
+function _compLimitarSelecao(changedEl){
+  const checks=[...document.querySelectorAll('.comp-friend-check')];
+  const marcados=checks.filter(c=>c.checked);
+  if(marcados.length>4){
+    changedEl.checked=false;
+    showToast('Máximo de 4 amigos por competição','error');
+  }
+}
+window._compLimitarSelecao=_compLimitarSelecao;
+
+async function compCriar(){
+  const nome=q('comp-nome').value.trim();
+  if(!nome){ showToast('Digite um nome para a competição','error'); return; }
+  const ids=[...document.querySelectorAll('.comp-friend-check')].filter(c=>c.checked).map(c=>c.value).filter(Boolean);
+  if(!ids.length){ showToast('Selecione pelo menos 1 amigo','error'); return; }
+  if(ids.length>4){ showToast('Máximo de 4 amigos por competição','error'); return; }
+  const duracao=Number(q('comp-duracao-picker').querySelector('.wd-pill.selected')?.dataset.dur||7);
+  try{
+    const {error}=await window.supabaseClient.rpc('create_competition',{p_name:nome, p_participant_ids:ids, p_duration_days:duracao});
+    if(error) throw error;
+    closeModal('criar-comp-modal');
+    compCarregarLista();
+    window.track?.('challenge_created',{kind:'competition',participants:ids.length+1,duration_days:duracao});
+    showToast('🏆 Competição criada!','success');
+  }catch(e){ window.captureError?.(e,{operation:'competition_create'}); showToast(e.message||'Não foi possível criar a competição','error'); }
+}
+window.compCriar=compCriar;
+
+// Seletor de duração — mesmo padrão já usado no modal de desafio 1x1
+document.addEventListener('DOMContentLoaded',()=>{
+  const picker=document.getElementById('comp-duracao-picker');
+  if(picker) picker.addEventListener('click',(ev)=>{
+    const pill=ev.target.closest('.wd-pill'); if(!pill) return;
+    picker.querySelectorAll('.wd-pill').forEach(p=>p.classList.remove('selected'));
+    pill.classList.add('selected');
+  });
+});
+
+async function compAbrirVer(id){
+  const comp=_compCache.find(c=>c.id===id);
+  if(!comp) return;
+  q('ver-comp-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--text-3)">Carregando placar...</div>';
+  q('ver-comp-modal').classList.add('active');
+  try{
+    const {data,error}=await window.supabaseClient.rpc('get_competition_live',{p_competition_id:id});
+    if(error) throw error;
+    const rows=Array.isArray(data)?data:[data];
+    const userIds=rows.map(r=>r.user_id);
+    const {data:profs}=await window.supabaseClient.from('profiles').select('id,name,avatar_b64').in('id',userIds);
+    const profiles={}; (profs||[]).forEach(p=>profiles[p.id]=p);
+    const meuId=window.app.state.user.id;
+    const finalizado = rows[0]?.is_finished || new Date(comp.ends_at)<=new Date();
+    const ranked=rows.map(r=>({
+      id:r.user_id, pts:r.points, souEu:r.user_id===meuId,
+      nome: r.user_id===meuId ? 'Você' : (profiles[r.user_id]?.name||'Amigo'),
+      avatar: profiles[r.user_id]?.avatar_b64||null,
+    })).sort((a,b)=>b.pts-a.pts);
+    _compRenderPlacar(comp, ranked, finalizado);
+    if(comp.status==='active' && new Date(comp.ends_at)<=new Date()){
+      window.track?.('challenge_completed',{kind:'competition',duration_days:Math.round((new Date(comp.ends_at)-new Date(comp.starts_at))/86400000)});
+      compCarregarLista();
+    }
+  }catch(e){ window.captureError?.(e,{operation:'competition_view'}); q('ver-comp-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--danger)">Não foi possível carregar o placar agora.</div>'; }
+}
+window.compAbrirVer=compAbrirVer;
+
+function _compRenderPlacar(comp, ranked, finalizado){
+  const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+  const msRest=new Date(comp.ends_at)-new Date();
+  let html=`<div style="text-align:center;margin-bottom:.8rem">
+    <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem">🏆 ${esc(comp.name)}</div>
+    <div style="font-size:.78rem;color:var(--text-3)">${ranked.length} participantes · Mais Pontos</div>
+  </div>`;
+  if(finalizado){
+    const vencedor=ranked[0];
+    const empate=ranked.length>1 && ranked[0].pts===ranked[1].pts;
+    html+=`<div style="text-align:center;padding:.8rem 0">
+      <div style="font-size:1.6rem">🏆</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin-top:.2rem">Competição concluída!</div>
+      <div style="font-size:.88rem;margin-top:.2rem">${empate?'Empate no topo!':(vencedor.souEu?'Você venceu! 🎉':`${esc(vencedor.nome)} venceu!`)}</div>
+    </div>`;
+  } else {
+    html+=`<div style="text-align:center;margin-bottom:.6rem"><b>⏳ Faltam ${_formatTempoRestante(msRest)}</b></div>`;
+  }
+  html+=`<div style="margin-top:.6rem">`+ranked.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;background:${i===0&&finalizado?'rgba(139,92,246,.12)':'var(--surface3)'};border:1px solid ${i===0&&finalizado?'var(--primary)':'var(--border)'};border-radius:var(--radius-sm);margin-bottom:.4rem">
+      <div style="font-size:1.1rem">${medals[i]||(i+1)}</div>
+      <div class="jshare-thumb" style="width:32px;height:32px;flex-shrink:0">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'<i class="fas fa-user" style="font-size:.8rem"></i>'}</div>
+      <div style="flex:1;font-weight:700;font-size:.85rem">${p.souEu?'Você':esc(p.nome)}</div>
+      <div style="font-family:var(--font-display);font-weight:800;color:var(--primary)">${p.pts} XP</div>
+    </div>`).join('')+`</div>`;
+  html+=`<button class="btn btn-ghost btn-block" style="margin-top:.6rem" onclick="compCompartilhar('${comp.id}')"><i class="fab fa-instagram"></i> Compartilhar no Instagram</button>`;
+  q('ver-comp-body').innerHTML=html;
+  window._compShareData={comp,ranked,finalizado};
+}
+
+function compCompartilhar(id){
+  if(!window._compShareData || window._compShareData.comp.id!==id) return;
+  openShareModal('competicao');
+}
+window.compCompartilhar=compCompartilhar;
+
 // Chamado a cada addPC — soma pontos na temporada atual (otimista, pra tela
 // responder na hora) e mantém as estatísticas locais. Para quem tem conta,
 // isso é só um espelho: awardPointsRemote() (chamado de dentro de addPC)
@@ -7872,6 +8137,7 @@ function closeShareModal(){
   window._shareMedalData=null;
   window._shareFraseData=null;
   window._sharePostData=null;
+  window._compShareData=null;
 }
 
 function renderShareTypeButtons(){
@@ -8119,6 +8385,16 @@ function sm_buildContent(type){
       {icon:'📅',label:'Dias entre as fotos',val:p.diasEntre!=null?`${p.diasEntre} dias`:'—'},
     ],badge:'',frase:p.caption||'',type};
   }
+  if(type==='competicao'){
+    const d=window._compShareData;
+    if(!d) return {kind:'stats',title:'Competição',icon:'🏆',rows:[],badge:'',frase,type};
+    const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const rows=d.ranked.map((p,i)=>({icon:medals[i]||`${i+1}º`, label:p.souEu?'Você':p.nome, val:`${p.pts} XP`}));
+    const badge = d.finalizado
+      ? (d.ranked[0]?.souEu?'🏆 Você venceu!':`🏆 ${d.ranked[0]?.nome||''} venceu!`)
+      : '⏳ Em andamento';
+    return {kind:'stats',title:d.comp.name,icon:'🏆',rows,badge,frase,type};
+  }
   return {kind:'hero',icon:'🔥',headline:streak,unit:'dias',badge:'',sub:'',stats:[],frase,type};
 }
 
@@ -8316,6 +8592,7 @@ function _askSaveJornada(thumbB64){
     semanal:'📊 Semana',
     comp_semanal:'📅 Comparação Semanal',
     comp_mensal:'📆 Comparação Mensal',
+    competicao:`🏆 ${window._compShareData?.comp?.name||'Competição'}`,
   };
   const desc = descMap[_shareType]||_shareType;
 
@@ -9663,6 +9940,7 @@ async function renderJornada(){
   if(typeof renderSeasonWidgets==='function') renderSeasonWidgets();
   if(typeof renderEvolucaoTemporadas==='function') renderEvolucaoTemporadas();
   if(typeof amigosCarregarTudo==='function') amigosCarregarTudo();
+  if(typeof compCarregarLista==='function') compCarregarLista();
   jornadaCarregarAvatar();
 }
 window.renderJornada=renderJornada;
