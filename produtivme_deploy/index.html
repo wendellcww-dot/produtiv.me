@@ -1610,6 +1610,35 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   </div>
 </div>
 
+<!-- CRIAR DESAFIO EM GRUPO (extensão do 1x1 — até 4 amigos = 5 participantes) -->
+<div id="criar-desafio-grupo-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3><i class="fas fa-people-group" style="color:var(--primary);margin-right:.4rem"></i>Desafio em grupo</h3>
+      <button class="btn btn-icon btn-sm" onclick="closeModal('criar-desafio-grupo-modal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Nome do desafio</label>
+      <input type="text" id="cdg-nome" maxlength="60" placeholder="Ex: Desafio da Semana">
+    </div>
+    <div class="form-group">
+      <label>Amigos (escolha até 4)</label>
+      <div id="cdg-lista-amigos" style="display:flex;flex-direction:column;gap:.4rem;max-height:220px;overflow-y:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-3);margin-top:.35rem">Você também participa automaticamente.</div>
+    </div>
+    <div class="form-group">
+      <label>Duração</label>
+      <div class="wd-picker" id="cdg-duracao-picker">
+        <div class="wd-pill" data-dur="3">3 dias</div>
+        <div class="wd-pill selected" data-dur="7">7 dias</div>
+        <div class="wd-pill" data-dur="14">14 dias</div>
+        <div class="wd-pill" data-dur="30">30 dias</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="amigosCriarDesafioGrupo()"><i class="fas fa-people-group"></i> Criar desafio</button>
+  </div>
+</div>
+
 <!-- HISTÓRICO DE DESAFIOS -->
 <div id="historico-desafios-modal" class="modal">
   <div class="modal-content">
@@ -2197,6 +2226,19 @@ function tt_pause(task){
 }
 
 function tt_resume(task){ tt_start(task); }
+
+// Se a tarefa tiver um cronômetro rodando OU pausado (ou seja, ainda não
+// finalizado), fecha a sessão em aberto e marca o cronômetro como
+// concluído. Chamado sempre que uma tarefa é concluída ou excluída — nunca
+// deixa um timer "esquecido" continuando a contar depois disso. Reaproveita
+// tt_finish() por completo (não duplica a lógica de fechar sessão/calcular
+// tempo), então o tempo já registrado nunca é apagado.
+function tt_forceFinishIfActive(task){
+  const tt=task?.timeTracking;
+  if(!tt || (tt.status!=='running' && tt.status!=='paused')) return false;
+  tt_finish(task);
+  return true;
+}
 
 function tt_finish(task){
   const tt=tt_ensure(task);
@@ -2986,9 +3028,31 @@ _isSyncing: false,
 
   saveLocal(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state.data)); }catch(e){} },
 
+  // Corrige tarefas que já estão concluídas mas ficaram com o cronômetro
+  // ativo — acontece se o app fechou/travou entre marcar a tarefa como
+  // feita e persistir o estado do timer, ou se outro aparelho concluiu a
+  // tarefa enquanto este tinha o cronômetro rodando localmente. Roda ao
+  // carregar local e depois de toda sincronização remota. Nunca apaga
+  // tempo já registrado — só fecha a sessão em aberto, como tt_finish já faz.
+  ttHealCompletedTasks(){
+    const routines=this.state.data?.routines||{};
+    let healed=false;
+    Object.keys(routines).forEach(dateKey=>{
+      (routines[dateKey]||[]).forEach(task=>{
+        if(task.done && tt_forceFinishIfActive(task)){
+          task.updated_at=new Date().toISOString(); task._synced=false;
+          this.saveTaskRemote(task, dateKey);
+          healed=true;
+        }
+      });
+    });
+    if(healed) this.saveLocal();
+  },
+
   /* ── INIT ── */
   async init(){
     this.loadLocal();
+    this.ttHealCompletedTasks();
     this.initAuthUI();
     this.initNavUI();
 
@@ -3276,6 +3340,7 @@ _isSyncing: false,
       if(typeof tt_loadSessionsRemote==='function'){
         try{ await tt_loadSessionsRemote(this); }catch(e){ anyFailed=true; console.error('[Sync] tt_loadSessionsRemote falhou:',e); window.captureError?.(e,{operation:'sync_remote',entity:'tt_sessions'}); } // depois de loadTasksRemote, que reconstrói routines
       }
+      this.ttHealCompletedTasks();
       this.saveLocal();
       setSyncStatus(anyFailed?'error':'online');
     }catch(e){ console.error('[Sync]',e); window.captureError?.(e,{operation:'sync_remote'}); setSyncStatus('error'); }
@@ -3925,6 +3990,16 @@ _isSyncing: false,
       const wasDone=!!doneMap[id][today];
       doneMap[id][today]=!wasDone;
       saveRecurringDoneMap(doneMap);
+      if(!wasDone){
+        // Tarefas recorrentes têm uma única linha "canônica" (não uma por
+        // dia) — é nela que o cronômetro vive. Mesma regra: concluir =
+        // parar o timer, se houver um ativo.
+        const foundRec=findTaskAnyDate(this,id);
+        if(foundRec && tt_forceFinishIfActive(foundRec.task)){
+          foundRec.task.updated_at=new Date().toISOString(); foundRec.task._synced=false;
+          this.saveLocal(); this.saveTaskRemote(foundRec.task, foundRec.dateKey);
+        }
+      }
       // Espera a confirmação no servidor ANTES de pedir os pontos — o RPC
       // award_points valida contra o estado atual no banco, então precisa
       // que essa gravação já tenha sido aplicada, senão o servidor rejeita
@@ -3950,6 +4025,10 @@ _isSyncing: false,
     if(!task) return;
     const wasDone = task.done;
     task.done=!task.done; task.updated_at=new Date().toISOString(); task._synced=false;
+    // Tarefa concluída = cronômetro obrigatoriamente parado. Sem isso, o
+    // usuário podia marcar a tarefa como feita e o timer continuava
+    // rodando por horas, contando tempo que não é mais real.
+    if(!wasDone) tt_forceFinishIfActive(task);
     this.saveLocal();
     if(!wasDone) window.track?.('task_completed',{recurring:false,priority:task.priority});
     const _taskSavePromise=this.saveTaskRemote(task, today); // não aguardamos aqui — a UI abaixo continua instantânea
@@ -4125,6 +4204,7 @@ _isSyncing: false,
     if(!confirm('Excluir esta tarefa?')) return;
     addTaskTombstone(id); // primeiro a lápide — nenhuma sincronização concorrente traz essa tarefa de volta
     const found=findTaskAnyDate(this, id);
+    if(found) tt_forceFinishIfActive(found.task); // fecha a sessão em aberto antes de apagar a tarefa
     if(found && this.state.data.routines[found.dateKey]){
       this.state.data.routines[found.dateKey]=this.state.data.routines[found.dateKey].filter(t=>t.id!==id);
     }
@@ -5542,6 +5622,8 @@ const RealtimeManager = (() => {
         p => onTableChange('friendships', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'friendships', filter:`requester_id=eq.${userId}` },
         p => onTableChange('friendships', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'challenge_participants', filter:`user_id=eq.${userId}` },
+        p => onTableChange('challenge_participants', p))
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         window.addBreadcrumb?.('realtime_status_'+status,'realtime');
@@ -5740,6 +5822,7 @@ const RealtimeManager = (() => {
           // Inicializa navegação ANTES de mostrar o app
           app.state.user = user;
           app.loadLocal();
+          app.ttHealCompletedTasks();
           app.initAuthUI();
           app.initNavUI(); // crítico — listeners de navegação
           // Mostra app com navegação já funcional
@@ -6986,13 +7069,30 @@ function _renderAmigosSecoes(){
   const elAtivos=q('amigos-desafios-ativos');
   if(elAtivos){
     const itens=[..._amigosCache.pending, ..._amigosCache.active];
-    if(!itens.length){
-      elAtivos.innerHTML=`<div style="text-align:center;padding:.8rem 0;color:var(--text-3);font-size:.82rem">
+    const grupos=_amigosCache.groupActive||[];
+    const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+      <div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">⚔️ Desafios</div>
+      <button class="btn btn-ghost btn-xs" onclick="amigosAbrirCriarDesafioGrupo()"><i class="fas fa-people-group"></i> Desafio em grupo</button>
+    </div>`;
+    if(!itens.length && !grupos.length){
+      elAtivos.innerHTML=header+`<div style="text-align:center;padding:.8rem 0;color:var(--text-3);font-size:.82rem">
         <b style="display:block;color:var(--text-2);margin-bottom:.2rem">Você ainda não está participando de nenhum desafio.</b>
-        Convide um amigo e veja quem consegue evoluir mais.
+        Convide um amigo (ou até 4) e veja quem consegue evoluir mais.
       </div>`;
     } else {
-      elAtivos.innerHTML=`<div style="font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">⚔️ Desafios</div>`+
+      const gruposHtml=grupos.map(c=>{
+        const msRest=new Date(c.ends_at)-new Date();
+        const status = msRest<=0 ? `prazo encerrado, toque para ver o resultado` : `faltam ${_formatTempoRestante(msRest)}`;
+        return `<div class="jshare-item" style="cursor:pointer" onclick="amigosVerDesafioGrupo('${c.id}')">
+          <div class="jshare-thumb"><i class="fas fa-people-group"></i></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:.85rem">${esc(c.name||'Desafio em grupo')}</div>
+            <div style="font-size:.72rem;color:var(--text-3)">${c.participantes.length} participantes · ${status}</div>
+          </div>
+          <span style="font-size:.7rem;color:var(--primary);font-weight:700">Ver ›</span>
+        </div>`;
+      }).join('');
+      elAtivos.innerHTML=header+gruposHtml+
         itens.map(c=>{
           if(c.status==='pending'){
             const aguardandoEu=!c.souEuCriador;
@@ -7096,6 +7196,127 @@ function amigosCompartilharDesafio(duracaoDias){
   else { window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank'); }
 }
 window.amigosCompartilharDesafio=amigosCompartilharDesafio;
+
+/* ── DESAFIO EM GRUPO (extensão do 1x1 acima — até 4 amigos = 5 no total) ── */
+
+function amigosAbrirCriarDesafioGrupo(){
+  if(!_amigosDisponivel()){ showToast('Entre com uma conta para usar Desafios','default'); return; }
+  const friends=_amigosCache.friends||[];
+  const el=q('cdg-lista-amigos');
+  if(!friends.length){
+    el.innerHTML='<div style="font-size:.8rem;color:var(--text-3)">Você ainda não tem amigos adicionados.</div>';
+  } else {
+    el.innerHTML=friends.map(f=>`
+      <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer">
+        <input type="checkbox" class="dg-friend-check" value="${esc(f.other?.public_id||'')}" onchange="_dgLimitarSelecao(this)">
+        <span style="font-size:.85rem">${esc(f.other?.name||'Amigo')}</span>
+      </label>`).join('');
+  }
+  q('cdg-nome').value='';
+  document.querySelectorAll('#cdg-duracao-picker .wd-pill').forEach(p=>p.classList.toggle('selected', p.dataset.dur==='7'));
+  q('criar-desafio-grupo-modal').classList.add('active');
+}
+window.amigosAbrirCriarDesafioGrupo=amigosAbrirCriarDesafioGrupo;
+
+function _dgLimitarSelecao(changedEl){
+  const marcados=[...document.querySelectorAll('.dg-friend-check')].filter(c=>c.checked);
+  if(marcados.length>4){
+    changedEl.checked=false;
+    showToast('Máximo de 4 amigos por desafio em grupo','error');
+  }
+}
+window._dgLimitarSelecao=_dgLimitarSelecao;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const picker=document.getElementById('cdg-duracao-picker');
+  if(picker) picker.addEventListener('click',(ev)=>{
+    const pill=ev.target.closest('.wd-pill'); if(!pill) return;
+    picker.querySelectorAll('.wd-pill').forEach(p=>p.classList.remove('selected'));
+    pill.classList.add('selected');
+  });
+});
+
+async function amigosCriarDesafioGrupo(){
+  const nome=q('cdg-nome').value.trim();
+  if(!nome){ showToast('Digite um nome para o desafio','error'); return; }
+  const ids=[...document.querySelectorAll('.dg-friend-check')].filter(c=>c.checked).map(c=>c.value).filter(Boolean);
+  if(!ids.length){ showToast('Selecione pelo menos 1 amigo','error'); return; }
+  if(ids.length>4){ showToast('Máximo de 4 amigos por desafio em grupo','error'); return; }
+  const duracao=Number(q('cdg-duracao-picker').querySelector('.wd-pill.selected')?.dataset.dur||7);
+  try{
+    const {error}=await window.supabaseClient.rpc('create_group_challenge',{p_name:nome, p_opponent_public_ids:ids, p_duration_days:duracao});
+    if(error) throw error;
+    closeModal('criar-desafio-grupo-modal');
+    amigosCarregarTudo();
+    window.track?.('challenge_created',{kind:'group',participants:ids.length+1,duration_days:duracao});
+    showToast('👥 Desafio em grupo criado!','success');
+  }catch(e){ window.captureError?.(e,{operation:'group_challenge_create'}); showToast(e.message||'Não foi possível criar o desafio','error'); }
+}
+window.amigosCriarDesafioGrupo=amigosCriarDesafioGrupo;
+
+async function amigosVerDesafioGrupo(id){
+  const ch=(_amigosCache.groupActive||[]).find(c=>c.id===id);
+  if(!ch) return;
+  q('ver-desafio-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--text-3)">Carregando placar...</div>';
+  q('ver-desafio-modal').classList.add('active');
+  try{
+    const {data,error}=await window.supabaseClient.rpc('get_group_challenge_live',{p_challenge_id:id});
+    if(error) throw error;
+    const rows=Array.isArray(data)?data:[data];
+    const meuId=window.app.state.user.id;
+    const finalizado = rows[0]?.is_finished || new Date(ch.ends_at)<=new Date();
+    const ranked=rows.map(r=>{
+      const part=ch.participantes.find(p=>p.user_id===r.user_id);
+      return {
+        id:r.user_id, pts:r.points, souEu:r.user_id===meuId,
+        nome: r.user_id===meuId ? 'Você' : (part?.profile?.name||'Amigo'),
+        avatar: part?.profile?.avatar_b64||null,
+      };
+    }).sort((a,b)=>b.pts-a.pts);
+    _dgRenderPlacar(ch, ranked, finalizado);
+    if(ch.status==='active' && new Date(ch.ends_at)<=new Date()){
+      window.track?.('challenge_completed',{kind:'group',duration_days:ch.duration_days});
+      amigosCarregarTudo();
+    }
+  }catch(e){ window.captureError?.(e,{operation:'group_challenge_view'}); q('ver-desafio-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--danger)">Não foi possível carregar o placar agora.</div>'; }
+}
+window.amigosVerDesafioGrupo=amigosVerDesafioGrupo;
+
+function _dgRenderPlacar(ch, ranked, finalizado){
+  const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+  const msRest=new Date(ch.ends_at)-new Date();
+  let html=`<div style="text-align:center;margin-bottom:.8rem">
+    <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem">👥 ${esc(ch.name||'Desafio em grupo')}</div>
+    <div style="font-size:.78rem;color:var(--text-3)">${ranked.length} participantes · Mais Pontos</div>
+  </div>`;
+  if(finalizado){
+    const vencedor=ranked[0];
+    const empate=ranked.length>1 && ranked[0].pts===ranked[1].pts;
+    html+=`<div style="text-align:center;padding:.8rem 0">
+      <div style="font-size:1.6rem">🏆</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin-top:.2rem">Desafio concluído!</div>
+      <div style="font-size:.88rem;margin-top:.2rem">${empate?'Empate no topo!':(vencedor.souEu?'Você venceu! 🎉':`${esc(vencedor.nome)} venceu!`)}</div>
+    </div>`;
+  } else {
+    html+=`<div style="text-align:center;margin-bottom:.6rem"><b>⏳ Faltam ${_formatTempoRestante(msRest)}</b></div>`;
+  }
+  html+=`<div style="margin-top:.6rem">`+ranked.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;background:${i===0&&finalizado?'rgba(139,92,246,.12)':'var(--surface3)'};border:1px solid ${i===0&&finalizado?'var(--primary)':'var(--border)'};border-radius:var(--radius-sm);margin-bottom:.4rem">
+      <div style="font-size:1.1rem">${medals[i]||(i+1)}</div>
+      <div class="jshare-thumb" style="width:32px;height:32px;flex-shrink:0">${p.avatar?`<img src="${esc(p.avatar)}" alt="">`:'<i class="fas fa-user" style="font-size:.8rem"></i>'}</div>
+      <div style="flex:1;font-weight:700;font-size:.85rem">${p.souEu?'Você':esc(p.nome)}</div>
+      <div style="font-family:var(--font-display);font-weight:800;color:var(--primary)">${p.pts} XP</div>
+    </div>`).join('')+`</div>`;
+  html+=`<button class="btn btn-ghost btn-block" style="margin-top:.6rem" onclick="amigosCompartilharDesafioGrupo('${ch.id}')"><i class="fab fa-instagram"></i> Compartilhar no Instagram</button>`;
+  q('ver-desafio-body').innerHTML=html;
+  window._shareDesafioData={nome:ch.name, ranked, finalizado};
+}
+
+function amigosCompartilharDesafioGrupo(id){
+  if(!window._shareDesafioData) return;
+  openShareModal('desafio');
+}
+window.amigosCompartilharDesafioGrupo=amigosCompartilharDesafioGrupo;
 
 async function amigosResponderDesafio(id, accept){
   try{
@@ -7872,6 +8093,7 @@ function closeShareModal(){
   window._shareMedalData=null;
   window._shareFraseData=null;
   window._sharePostData=null;
+  window._shareDesafioData=null;
 }
 
 function renderShareTypeButtons(){
@@ -8119,6 +8341,16 @@ function sm_buildContent(type){
       {icon:'📅',label:'Dias entre as fotos',val:p.diasEntre!=null?`${p.diasEntre} dias`:'—'},
     ],badge:'',frase:p.caption||'',type};
   }
+  if(type==='desafio'){
+    const d=window._shareDesafioData;
+    if(!d) return {kind:'stats',title:'Desafio',icon:'⚔️',rows:[],badge:'',frase,type};
+    const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
+    const rows=d.ranked.map((p,i)=>({icon:medals[i]||`${i+1}º`, label:p.souEu?'Você':p.nome, val:`${p.pts} XP`}));
+    const badge = d.finalizado
+      ? (d.ranked[0]?.souEu?'🏆 Você venceu!':`🏆 ${d.ranked[0]?.nome||''} venceu!`)
+      : '⏳ Em andamento';
+    return {kind:'stats',title:d.nome||'Desafio',icon:'⚔️',rows,badge,frase,type};
+  }
   return {kind:'hero',icon:'🔥',headline:streak,unit:'dias',badge:'',sub:'',stats:[],frase,type};
 }
 
@@ -8316,6 +8548,7 @@ function _askSaveJornada(thumbB64){
     semanal:'📊 Semana',
     comp_semanal:'📅 Comparação Semanal',
     comp_mensal:'📆 Comparação Mensal',
+    desafio:`⚔️ ${window._shareDesafioData?.nome||'Desafio'}`,
   };
   const desc = descMap[_shareType]||_shareType;
 
