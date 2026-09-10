@@ -34,7 +34,7 @@
     window.POSTHOG_HOST = 'https://us.i.posthog.com'; // único lugar pra trocar host futuramente
     window.SENTRY_DSN = 'https://a48240b044e762f7af3c8fdf3de173ce@o4512029267132416.ingest.us.sentry.io/4512029300686848';
     window.APP_ENVIRONMENT = 'production';
-    window.APP_VERSION = '1.0.0'; // não havia versionamento no código — centralizado aqui; suba este número a cada release
+    window.APP_VERSION = '1.0.1'; // não havia versionamento no código — centralizado aqui; suba este número a cada release
 
     // track(eventName, properties) — PostHog. Nunca lança erro: se o SDK
     // não carregou/falhou, a chamada simplesmente não faz nada.
@@ -7040,13 +7040,19 @@ async function amigosCarregarTudo(){
   _amigosGarantirNomePerfil(); // corrige o próprio nome se tiver ficado vazio no cadastro
   const user=window.app.state.user;
   try{
-    const [{data:friendships},{data:challenges}] = await Promise.all([
-      window.supabaseClient.from('friendships').select('*').or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+    // Amigos vêm da função get_my_friends() (SECURITY DEFINER), que já resolve
+    // e retorna o nome/avatar de cada amigo sem depender da policy de RLS
+    // de leitura cruzada em "profiles" — precisa existir no banco (ver SQL
+    // fornecido). challenges continua em consulta direta normalmente.
+    const [{data:friendsData, error:friendsErr}, {data:challenges}] = await Promise.all([
+      window.supabaseClient.rpc('get_my_friends'),
       window.supabaseClient.from('challenges').select('*').or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).in('status',['pending','active'])
     ]);
-    // Para exibir nome/avatar dos amigos, busca os perfis envolvidos
+    if(friendsErr){ window.captureError?.(friendsErr,{where:'amigosCarregarTudo/get_my_friends'}); }
+    const friendsList=friendsData||[];
+
+    // Para exibir nome/avatar de quem está nos desafios (pode não ser amigo ainda), busca os perfis envolvidos
     const otherIds=new Set();
-    (friendships||[]).forEach(f=>{ otherIds.add(f.requester_id===user.id?f.addressee_id:f.requester_id); });
     (challenges||[]).forEach(c=>{ otherIds.add(c.creator_id===user.id?c.opponent_id:c.creator_id); });
     let profiles={};
     if(otherIds.size){
@@ -7054,8 +7060,9 @@ async function amigosCarregarTudo(){
       (profs||[]).forEach(p=>{ profiles[p.id]=p; });
     }
 
-    _amigosCache.friends=(friendships||[]).filter(f=>f.status==='accepted').map(f=>({...f, other:profiles[f.requester_id===user.id?f.addressee_id:f.requester_id]}));
-    _amigosCache.incoming=(friendships||[]).filter(f=>f.status==='pending' && f.addressee_id===user.id).map(f=>({...f, other:profiles[f.requester_id]}));
+    const toOther=f=>({id:f.friend_id, name:f.friend_name, public_id:f.friend_public_id, avatar_b64:f.friend_avatar});
+    _amigosCache.friends=friendsList.filter(f=>f.status==='accepted').map(f=>({id:f.friendship_id, status:f.status, other:toOther(f)}));
+    _amigosCache.incoming=friendsList.filter(f=>f.status==='pending' && !f.is_requester).map(f=>({id:f.friendship_id, status:f.status, other:toOther(f)}));
     _amigosCache.active=(challenges||[]).filter(c=>c.status==='active').map(c=>({...c, other:profiles[c.creator_id===user.id?c.opponent_id:c.creator_id], souEuCriador:c.creator_id===user.id}));
     _amigosCache.pending=(challenges||[]).filter(c=>c.status==='pending').map(c=>({...c, other:profiles[c.creator_id===user.id?c.opponent_id:c.creator_id], souEuCriador:c.creator_id===user.id}));
 
