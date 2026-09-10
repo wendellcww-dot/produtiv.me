@@ -7040,10 +7040,10 @@ async function amigosCarregarTudo(){
   _amigosGarantirNomePerfil(); // corrige o próprio nome se tiver ficado vazio no cadastro
   const user=window.app.state.user;
   try{
-    // Amigos vêm da função get_my_friends() (SECURITY DEFINER), que já resolve
-    // e retorna o nome/avatar de cada amigo sem depender da policy de RLS
-    // de leitura cruzada em "profiles" — precisa existir no banco (ver SQL
-    // fornecido). challenges continua em consulta direta normalmente.
+    // Amigos vêm da função get_my_friends() e os perfis dos oponentes de desafio
+    // vêm de get_my_challenge_profiles() — ambas SECURITY DEFINER, resolvendo
+    // nome/avatar sem depender da policy de RLS de leitura cruzada em "profiles"
+    // (precisam existir no banco — ver SQL fornecido).
     const [{data:friendsData, error:friendsErr}, {data:challenges}] = await Promise.all([
       window.supabaseClient.rpc('get_my_friends'),
       window.supabaseClient.from('challenges').select('*').or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).in('status',['pending','active'])
@@ -7051,12 +7051,10 @@ async function amigosCarregarTudo(){
     if(friendsErr){ window.captureError?.(friendsErr,{where:'amigosCarregarTudo/get_my_friends'}); }
     const friendsList=friendsData||[];
 
-    // Para exibir nome/avatar de quem está nos desafios (pode não ser amigo ainda), busca os perfis envolvidos
-    const otherIds=new Set();
-    (challenges||[]).forEach(c=>{ otherIds.add(c.creator_id===user.id?c.opponent_id:c.creator_id); });
     let profiles={};
-    if(otherIds.size){
-      const {data:profs}=await window.supabaseClient.from('profiles').select('id,name,public_id,avatar_b64').in('id',Array.from(otherIds));
+    if((challenges||[]).length){
+      const {data:profs, error:profsErr}=await window.supabaseClient.rpc('get_my_challenge_profiles');
+      if(profsErr){ window.captureError?.(profsErr,{where:'amigosCarregarTudo/get_my_challenge_profiles'}); }
       (profs||[]).forEach(p=>{ profiles[p.id]=p; });
     }
 
