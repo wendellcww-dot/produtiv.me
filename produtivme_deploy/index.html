@@ -2460,7 +2460,19 @@ document.addEventListener('visibilitychange', async ()=>{
   if(!document.hidden && _isOnline){
     const now=Date.now();
     if(!window._lastVisible || now-window._lastVisible > 120000){
-      if(app?.state?.user && !app.state.user.local) await app.syncRemote();
+      if(app?.state?.user && !app.state.user.local){
+        await app.syncRemote();
+        // Depois de muito tempo em segundo plano, o navegador costuma
+        // derrubar o WebSocket do Realtime sem avisar a tempo, e o
+        // reconnect automático (que também ficou "congelado" junto com os
+        // timers em background) demora a se estabilizar — isso é o que
+        // causa o pisca-pisca Online/Offline logo ao voltar pro app.
+        // Forçar reconexão limpa aqui evita essa instabilidade visível.
+        if(typeof RealtimeManager!=='undefined'){
+          await RealtimeManager.destroy();
+          RealtimeManager.init(app.state.user.id);
+        }
+      }
     }
   }
   if(document.hidden) window._lastVisible=Date.now();
