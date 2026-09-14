@@ -831,6 +831,14 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <button id="tab-register" class="btn btn-ghost auth-tab inactive">Criar conta</button>
         </div>
         <div id="auth-alert"></div>
+        <button type="button" id="btn-google-auth" onclick="app.loginComGoogle()" class="btn btn-block" style="background:#fff;color:#1f1f1f;border:1px solid var(--border);margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:.6rem;font-weight:600">
+          <i class="fa-brands fa-google" style="color:#4285F4"></i> Continuar com Google
+        </button>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+          <span style="font-size:.72rem;color:var(--text-3)">ou</span>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+        </div>
         <form id="login-form">
           <div class="form-group"><label>Email</label><input id="login-email" type="email" autocomplete="email" required placeholder="seu@email.com"></div>
           <div class="form-group"><label>Senha</label><div style="position:relative"><input id="login-password" type="password" autocomplete="current-password" required placeholder="••••••••" style="padding-right:2.5rem"><button type="button" onclick="toggleSenha('login-password',this)" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-3);font-size:1rem"><i class="fas fa-eye"></i></button></div></div>
@@ -3130,19 +3138,7 @@ _isSyncing: false,
         showAlert('❌ '+(msgs[error.message]||error.message), true); return;
       }
       window.addBreadcrumb?.('login','auth');
-      const newUserId = data.user.id;
-      // Se usuário mudou, limpa dados locais do usuário anterior
-      const oldSess = localStorage.getItem(SESSION_KEY);
-      const oldUser = oldSess ? JSON.parse(oldSess) : null;
-      if(oldUser && oldUser.id !== newUserId){
-        // Limpa TODOS os dados locais ao trocar de conta (localStorage + IndexedDB)
-        await limparDadosLocaisUsuario();
-        this.state.data = this.getDefaultData();
-      }
-      this.state.user={id:newUserId,email:data.user.email,name:data.user.user_metadata?.name||data.user.email.split('@')[0]};
-      localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
-      try{ window.posthog?.identify(newUserId); window.Sentry?.setUser({id:newUserId}); }catch(e){}
-      this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); this.renderAll(); hideLoading(); this.carryOverTasks();
+      await this._finalizarLogin(data.user);
     });
 
     q('register-form').addEventListener('submit', async e=>{
@@ -3176,6 +3172,69 @@ _isSyncing: false,
     });
 
 
+  },
+
+  // Lógica de "pós-login" compartilhada entre login por senha e login com
+  // Google — garante que os dois caminhos deixem o usuário exatamente no
+  // mesmo estado (mesma limpeza de dados ao trocar de conta, mesmo
+  // identify no PostHog/Sentry, mesma sincronização). supaUser é o objeto
+  // `user` retornado pelo Supabase Auth (de signInWithPassword, signUp ou
+  // exchangeCodeForSession/OAuth — a forma é a mesma nos três casos).
+  async _finalizarLogin(supaUser){
+    const newUserId = supaUser.id;
+    // Se usuário mudou, limpa dados locais do usuário anterior
+    const oldSess = localStorage.getItem(SESSION_KEY);
+    const oldUser = oldSess ? JSON.parse(oldSess) : null;
+    if(oldUser && oldUser.id !== newUserId){
+      // Limpa TODOS os dados locais ao trocar de conta (localStorage + IndexedDB)
+      await limparDadosLocaisUsuario();
+      this.state.data = this.getDefaultData();
+    }
+    // Nome: contas por senha guardam em user_metadata.name (definido no
+    // cadastro). Contas Google trazem o nome em full_name (às vezes também
+    // em name) — cobre os dois formatos, com o email como último recurso.
+    const meta = supaUser.user_metadata || {};
+    const nome = meta.name || meta.full_name || supaUser.email.split('@')[0];
+    this.state.user={id:newUserId, email:supaUser.email, name:nome};
+    localStorage.setItem(SESSION_KEY, JSON.stringify(this.state.user));
+    try{ window.posthog?.identify(newUserId); window.Sentry?.setUser({id:newUserId}); }catch(e){}
+    this.showApp(); showLoading('Sincronizando...'); await this.syncRemote(); this.renderAll(); hideLoading(); this.carryOverTasks();
+  },
+
+  // Continuar com Google — funciona tanto para criar conta quanto para
+  // entrar: o Supabase Auth resolve automaticamente para o MESMO usuário se
+  // já existir uma conta confirmada com o mesmo email (Identity Linking),
+  // preservando todos os dados já existentes e sem duplicar perfil.
+  async loginComGoogle(){
+    const alertEl = q('auth-alert');
+    const showAlert=(msg,err)=>{ if(alertEl) alertEl.innerHTML=`<div style="padding:.65rem .9rem;border-radius:var(--radius-sm);background:${err?'rgba(248,113,113,.12)':'rgba(52,211,153,.12)'};color:${err?'var(--danger)':'var(--green)'};font-size:.85rem;margin-bottom:.875rem">${msg}</div>`; };
+    try{
+      window.addBreadcrumb?.('google_login_start','auth');
+      // Marca que o próximo retorno com "?code=" na URL veio de um fluxo
+      // OAuth (não de um link de recuperação de senha, que também usa
+      // "?code="). Fica só na sessionStorage desta aba — é lido de volta
+      // no carregamento da página após o redirect do Google.
+      sessionStorage.setItem('pm_oauth_pending','1');
+      const {error} = await window.supabaseClient.auth.signInWithOAuth({
+        provider:'google',
+        options:{
+          redirectTo: window.location.origin + window.location.pathname,
+          queryParams:{ prompt:'select_account' }
+        }
+      });
+      if(error){
+        sessionStorage.removeItem('pm_oauth_pending');
+        window.captureError?.(error,{operation:'google_oauth_start'});
+        showAlert('❌ Não foi possível iniciar o login com Google. Tente novamente.', true);
+      }
+      // Sem erro: o navegador já está sendo redirecionado ao Google — o
+      // retorno é tratado na inicialização da página (bloco de detecção de
+      // "?code=" mais abaixo).
+    }catch(e){
+      sessionStorage.removeItem('pm_oauth_pending');
+      window.captureError?.(e,{operation:'google_oauth_start'});
+      showAlert('❌ Erro ao conectar com Google. Tente novamente.', true);
+    }
   },
 
   showApp(){
@@ -5769,6 +5828,20 @@ const RealtimeManager = (() => {
       q('main-app').classList.add('hidden');
       q('reset-screen').classList.remove('hidden');
     }
+    // Retorno do "Continuar com Google": o próprio supabase-js
+    // (detectSessionInUrl:true) já detectou o "?code=" da URL e trocou por
+    // uma sessão sozinho — é isso que dispara o SIGNED_IN aqui. Só
+    // completamos com a mesma lógica de pós-login usada no login por
+    // senha. A marca na sessionStorage garante que isso só roda para quem
+    // realmente veio do botão do Google (login por senha/cadastro também
+    // disparam SIGNED_IN, mas sem essa marca, e já são tratados nos seus
+    // próprios formulários).
+    if(event === 'SIGNED_IN' && sessionStorage.getItem('pm_oauth_pending')==='1' && session?.user){
+      sessionStorage.removeItem('pm_oauth_pending');
+      history.replaceState(null, '', window.location.pathname);
+      window.addBreadcrumb?.('login_google','auth');
+      app._finalizarLogin(session.user);
+    }
     // Rede de segurança: se o Supabase encerrar a sessão sozinho (ex: refresh
     // token revogado/expirado com o app aberto), sem isso a interface ficava
     // "logada" mas silenciosamente parando de sincronizar (sessão zumbi).
@@ -5790,23 +5863,51 @@ const RealtimeManager = (() => {
   const hashType    = hashParams.get('type') || queryParams.get('type');
   const pkceCode    = queryParams.get('code');
   const isReset     = queryParams.get('reset') === '1';
+  // O retorno do login com Google usa o MESMO parâmetro "?code=" que o link
+  // de recuperação de senha (ambos passam pelo fluxo PKCE do Supabase). A
+  // única forma confiável de diferenciar é essa marca deixada na
+  // sessionStorage logo antes do redirect para o Google — ela só existe
+  // nessa mesma aba/sessão, então nunca aparece por engano ao clicar num
+  // link de recuperação recebido por email (fluxo totalmente separado).
+  const isOAuthReturn = sessionStorage.getItem('pm_oauth_pending')==='1';
 
   if(hashError){
+    sessionStorage.removeItem('pm_oauth_pending');
     history.replaceState(null, '', window.location.pathname);
     await app.init();
-    q('auth-alert').innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ O link de recuperação expirou. Clique em "Esqueci minha senha" para solicitar um novo.</div>';
+    if(isOAuthReturn){
+      q('auth-alert').innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">Login com Google cancelado ou não concluído. Tente novamente.</div>';
+    } else {
+      q('auth-alert').innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ O link de recuperação expirou. Clique em "Esqueci minha senha" para solicitar um novo.</div>';
+    }
 
   } else if(pkceCode){
-    // Novo fluxo PKCE — troca o code por sessão
-    const { data, error } = await window.supabaseClient.auth.exchangeCodeForSession(pkceCode);
-    history.replaceState(null, '', window.location.pathname);
-    if(!error && data?.session){
-      q('auth-screen').classList.add('hidden');
-      q('reset-screen').classList.remove('hidden');
-    } else {
-      await app.init();
-      q('auth-alert').innerHTML = '<div class="alert alert-error" style="margin-bottom:1rem">❌ Link inválido ou expirado. Solicite um novo.</div>';
-    }
+    // Existe um "?code=" na URL (link de recuperação OU retorno do Google).
+    // Com detectSessionInUrl:true, o próprio supabase-js já troca esse code
+    // por uma sessão sozinho, em segundo plano — o resultado chega pelos
+    // eventos 'PASSWORD_RECOVERY' ou 'SIGNED_IN' registrados no listener
+    // acima. NÃO chamamos exchangeCodeForSession aqui: um code PKCE só pode
+    // ser trocado uma única vez, então chamar os dois juntos faria um dos
+    // dois falhar por "code já usado" de forma imprevisível.
+    // Ainda assim rodamos o boot normal (mesmo padrão do ramo "isReset"
+    // abaixo) para deixar loadLocal/initAuthUI/initNavUI prontos — se for
+    // o Google, o SIGNED_IN chega logo em seguida e _finalizarLogin troca
+    // a tela sozinho; se for recuperação, o PASSWORD_RECOVERY faz o mesmo.
+    await app.init();
+    // Rede de segurança: se depois de alguns segundos o "?code=" ainda
+    // estiver na URL, é sinal de que a troca automática não completou
+    // (link expirado, já usado, ou inválido) — mostramos o erro.
+    setTimeout(()=>{
+      if(new URLSearchParams(window.location.search).get('code')){
+        history.replaceState(null, '', window.location.pathname);
+        const wasOAuth = sessionStorage.getItem('pm_oauth_pending')==='1';
+        sessionStorage.removeItem('pm_oauth_pending');
+        const msg = wasOAuth
+          ? '❌ Não foi possível concluir o login com Google. Tente novamente.'
+          : '❌ Link inválido ou expirado. Solicite um novo.';
+        const el = q('auth-alert'); if(el) el.innerHTML = `<div class="alert alert-error" style="margin-bottom:1rem">${msg}</div>`;
+      }
+    }, 4000);
 
   } else if(hashType === 'recovery'){
     // Fluxo antigo via hash
