@@ -3265,7 +3265,8 @@ _isSyncing: false,
     // só deve começar quando o usuário tocar "☀️ Iniciar meu dia"
     // (triggerDailyEntry), nunca automaticamente na abertura do app.
     if(typeof checkRecordes === 'function') setTimeout(checkRecordes, 4000);
-    if(typeof checkResumoDia === 'function') setTimeout(checkResumoDia, 5000);
+    // checkResumoDia não é mais disparado automaticamente na abertura —
+    // esse popup específico interrompia a entrada no app sem pedido.
     if(typeof addPCAccess === 'function') addPCAccess();
     if(typeof generateDailyChallenge === 'function') setTimeout(()=>{ generateDailyChallenge(); renderDesafioWidget(); renderPCWidget(); }, 1500);
   },
@@ -5949,7 +5950,8 @@ const RealtimeManager = (() => {
           q('auth-screen').classList.add('hidden');
           q('main-app').classList.remove('hidden');
           app.renderAll();
-          setTimeout(()=>{ if(typeof initTutorial==='function') setTimeout(initTutorial,800); if(typeof checkPeriodShareTrigger==='function') setTimeout(checkPeriodShareTrigger,2000); }, 100);
+          let tutTimer2=null;
+          const tutTimer = setTimeout(()=>{ if(typeof initTutorial==='function') tutTimer2=setTimeout(initTutorial,800); if(typeof checkPeriodShareTrigger==='function') setTimeout(checkPeriodShareTrigger,2000); }, 100);
           // Remove splash
           const splash = document.getElementById('splash-screen');
           if(splash){ splash.classList.add('hide'); setTimeout(()=>splash.remove(), 400); }
@@ -5958,6 +5960,8 @@ const RealtimeManager = (() => {
           // Confirma sessão com Supabase em background
           window.supabaseClient.auth.getSession().then(({data})=>{
             if(!data?.session){
+              clearTimeout(tutTimer); clearTimeout(tutTimer2);
+              if(typeof closeTutorialIfOpen==='function') closeTutorialIfOpen();
               app.state.user = null;
               localStorage.removeItem('pm18_session_v1');
               app.showAuth();
@@ -6155,6 +6159,18 @@ const TUTORIAL_STEPS = [
 
 let _tutStep = 0;
 let _tutActive = false;
+
+// Fecha o tutorial imediatamente, se estiver aberto — usado quando a sessão
+// otimista (mostrada na hora, antes de confirmar com o servidor) acaba
+// sendo invalidada e o app precisa voltar pra tela de login. Sem isso, o
+// tutorial ficava "grudado" por cima da tela de login, porque seus
+// elementos são inseridos direto no <body>, fora do container do app.
+function closeTutorialIfOpen(){
+  if(_tutActive){
+    _tutActive = false;
+    _tutBackdrop?.remove(); _tutSpotlight?.remove(); _tutBox?.remove();
+  }
+}
 let _tutBackdrop, _tutSpotlight, _tutBox;
 
 
@@ -6942,6 +6958,8 @@ function _newSeason(number, startedAt){
 }
 
 // Garante que existe uma temporada ativa; cria a Temporada 01 no primeiro uso.
+let _seasonRemoteCheckInFlight = false;
+
 function ensureSeason(){
   let s=loadSeason();
   if(!s){
@@ -6949,8 +6967,15 @@ function ensureSeason(){
     saveSeason(s);
   }
   const user=window.app?.state?.user;
-  if(user && !user.local && !s._remoteChecked){
-    s._remoteChecked=true; saveSeason(s); // evita disparar de novo a cada render antes da resposta voltar
+  if(user && !user.local && !s._remoteChecked && !_seasonRemoteCheckInFlight){
+    // _seasonRemoteCheckInFlight evita disparar a consulta de novo a cada
+    // render enquanto a primeira ainda está em voo — mas, diferente de
+    // antes, NÃO marca _remoteChecked até a resposta do servidor realmente
+    // chegar. Antes, _remoteChecked era gravado antes mesmo de saber se a
+    // consulta ia dar certo: se falhasse (rede instável, comum logo após
+    // trocar de conta), o placeholder local zerado ficava permanentemente
+    // "confirmado" e os pontos reais nunca voltavam a aparecer.
+    _seasonRemoteCheckInFlight=true;
     ensureSeasonRemote();
   }
   return s;
@@ -6962,7 +6987,7 @@ function ensureSeason(){
 // cliente só espelha isso pra tela responder rápido.
 async function ensureSeasonRemote(){
   const user=window.app?.state?.user;
-  if(!user||user.local) return;
+  if(!user||user.local){ _seasonRemoteCheckInFlight=false; return; }
   try{
     const {data,error}=await window.supabaseClient.rpc('ensure_season');
     if(error) throw error;
@@ -6974,7 +6999,14 @@ async function ensureSeasonRemote(){
     base._remoteChecked=true;
     saveSeason(base);
     renderSeasonWidgets();
-  }catch(e){ console.error('[Temporada] Falha ao sincronizar com o servidor:', e.message||e); }
+  }catch(e){
+    // Falhou: NÃO marca _remoteChecked — deixa a PRÓXIMA chamada de
+    // ensureSeason() tentar de novo, em vez de travar no placeholder
+    // zerado pra sempre.
+    console.error('[Temporada] Falha ao sincronizar com o servidor:', e.message||e);
+  }finally{
+    _seasonRemoteCheckInFlight=false;
+  }
 }
 
 function _seasonDaysElapsed(s){
@@ -7936,6 +7968,12 @@ function initTutorial(){
 
 function startTutorial(){
   if(_tutActive) return;
+  // Trava definitiva: não importa quantos timers encadeados levaram até
+  // aqui (initTutorial → setTimeout → startTutorial), se nesse exato
+  // momento não existe mais um usuário autenticado (sessão foi invalidada
+  // enquanto o timer esperava), o tutorial não abre. Evita ele aparecer
+  // "grudado" sobre a tela de login.
+  if(!window.app?.state?.user) return;
   _tutActive = true;
   _tutStep = 0;
   window.track?.('tutorial_started');
