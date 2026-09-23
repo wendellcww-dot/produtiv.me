@@ -2470,16 +2470,11 @@ document.addEventListener('visibilitychange', async ()=>{
     if(!window._lastVisible || now-window._lastVisible > 120000){
       if(app?.state?.user && !app.state.user.local){
         await app.syncRemote();
-        // Depois de muito tempo em segundo plano, o navegador costuma
-        // derrubar o WebSocket do Realtime sem avisar a tempo, e o
-        // reconnect automático (que também ficou "congelado" junto com os
-        // timers em background) demora a se estabilizar — isso é o que
-        // causa o pisca-pisca Online/Offline logo ao voltar pro app.
-        // Forçar reconexão limpa aqui evita essa instabilidade visível.
-        if(typeof RealtimeManager!=='undefined'){
-          await RealtimeManager.destroy();
-          RealtimeManager.init(app.state.user.id);
-        }
+        // A reconexão do Realtime não é mais feita aqui — o próprio
+        // RealtimeManager tem seu próprio listener de visibilitychange,
+        // que já verifica o estado da conexão e reconecta só se
+        // necessário. Ter dois listeners mexendo na mesma conexão causava
+        // reconexões duplicadas/concorrentes.
       }
     }
   }
@@ -5643,6 +5638,10 @@ const RealtimeManager = (() => {
     channel: null, userId: null, isSubscribed: false,
     isSyncing: false, reconnectTimer: null, reconnectAttempts: 0,
     debounceTimers: {}, destroyed: false,
+    // Novos: controlam o comportamento em segundo plano e evitam
+    // reconexões simultâneas/concorrentes.
+    reconnecting: false,      // uma reconexão de cada vez, nunca duas em paralelo
+    reconnectPending: false,  // "preciso reconectar assim que a aba voltar a ficar visível"
   };
 
   const delay = () => Math.min(1000 * 2 ** _s.reconnectAttempts, 30000) + Math.random() * 1000;
@@ -5706,31 +5705,54 @@ const RealtimeManager = (() => {
       .subscribe((status, err) => {
         console.log('[Realtime] status:', status, err||'');
         window.addBreadcrumb?.('realtime_status_'+status,'realtime');
-        if (status === 'SUBSCRIBED') { _s.isSubscribed = true; _s.reconnectAttempts = 0; setSyncStatus('online'); }
+        if (status === 'SUBSCRIBED') {
+          _s.isSubscribed = true; _s.reconnectAttempts = 0; _s.reconnectPending = false;
+          clearTimeout(_s.reconnectTimer); _s.reconnectTimer = null; // cancela timer antigo que ainda estivesse pendente
+          setSyncStatus('online');
+        }
         else if (['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)) {
           _s.isSubscribed = false; setSyncStatus(status==='CHANNEL_ERROR'?'error':'offline');
           if(status==='CHANNEL_ERROR') window.captureError?.(err||new Error('Realtime CHANNEL_ERROR'),{operation:'realtime_connection'});
-          if (!_s.destroyed) scheduleReconnect(userId);
+          if (_s.destroyed) return;
+          if (document.hidden) {
+            // Aba em segundo plano: não agenda timer nenhum (é exatamente
+            // isso que causava o loop CLOSED→reconectando→CLOSED — cada
+            // tentativa em segundo plano falhava de novo na hora). Só
+            // marca que precisa reconectar e espera o visibilitychange.
+            _s.reconnectPending = true;
+            console.log('[Realtime] Em segundo plano — reconexão adiada até a aba voltar.');
+            return;
+          }
+          scheduleReconnect(userId);
         }
       });
   }
 
   function scheduleReconnect(userId) {
     if (_s.destroyed) return;
+    if (document.hidden) { _s.reconnectPending = true; return; } // mesma trava também aqui, por segurança
     clearTimeout(_s.reconnectTimer);
     const d = delay(); _s.reconnectAttempts++;
     console.log(`[Realtime] Reconectando em ${Math.round(d/1000)}s (tentativa ${_s.reconnectAttempts})`);
     _s.reconnectTimer = setTimeout(async () => {
+      _s.reconnectTimer = null;
       if (_s.destroyed) return;
+      if (document.hidden) { _s.reconnectPending = true; return; } // aba escondeu enquanto o timer esperava
       if (!navigator.onLine) { window.addEventListener('online', () => reconnect(userId), {once:true}); return; }
       await reconnect(userId);
     }, d);
   }
 
   async function reconnect(userId) {
-    if (_s.channel) { try { await window.supabaseClient.removeChannel(_s.channel); } catch {} _s.channel = null; }
-    _s.isSubscribed = false;
-    _s.channel = buildChannel(userId);
+    if (_s.reconnecting) return; // nunca duas reconexões em paralelo
+    _s.reconnecting = true;
+    try {
+      if (_s.channel) { try { await window.supabaseClient.removeChannel(_s.channel); } catch {} _s.channel = null; }
+      _s.isSubscribed = false;
+      _s.channel = buildChannel(userId);
+    } finally {
+      _s.reconnecting = false;
+    }
   }
 
   // Registrado UMA ÚNICA VEZ (fora de init()) — antes, init() adicionava um
@@ -5739,22 +5761,53 @@ const RealtimeManager = (() => {
   // dinamicamente aqui (em vez de capturar o userId no fechamento) evita
   // esse vazamento por completo.
   window.addEventListener('online', () => {
-    if (_s.userId && !_s.isSubscribed && !_s.destroyed) reconnect(_s.userId);
+    if (_s.userId && !_s.isSubscribed && !_s.destroyed && !document.hidden) reconnect(_s.userId);
+  });
+
+  // Único listener de visibilitychange, registrado uma única vez pro ciclo
+  // de vida inteiro do módulo (não a cada init/reconnect — isso evita
+  // acumular listeners duplicados). Ele só toma decisão, nunca cria um
+  // canal novo sem necessidade:
+  //   - aba ficou oculta → cancela qualquer timer de reconexão pendente
+  //     (não faz sentido continuar contando enquanto ninguém está vendo);
+  //   - aba voltou a ficar visível → verifica o estado atual: se já está
+  //     inscrito (isSubscribed), não faz nada; se não está, faz UMA única
+  //     reconexão controlada (reconnect() já impede reconexões paralelas).
+  document.addEventListener('visibilitychange', () => {
+    if (!_s.userId || _s.destroyed) return;
+    if (document.hidden) {
+      clearTimeout(_s.reconnectTimer); _s.reconnectTimer = null;
+      return;
+    }
+    // Aba voltou a ficar visível
+    if (_s.isSubscribed && !_s.reconnectPending) {
+      console.log('[Realtime] Aba voltou — conexão já saudável, nada a fazer.');
+      return;
+    }
+    console.log('[Realtime] Aba voltou — reconectando (única tentativa controlada).');
+    _s.reconnectPending = false;
+    _s.reconnectAttempts = 0; // volta o backoff ao normal: isso não é uma falha repetida, é um retorno normal do usuário
+    reconnect(_s.userId);
   });
 
   return {
-    init(userId) {
+    async init(userId) {
       if (!userId) return;
       if (_s.channel && _s.userId === userId) { console.log('[Realtime] Já ativo.'); return; }
-      if (_s.channel && _s.userId !== userId) this.destroy();
+      // destroy() é assíncrono (precisa esperar o removeChannel do canal
+      // antigo) — sem o await aqui, a linha seguinte já criava o canal
+      // novo enquanto o destroy antigo ainda rodava, e quando ele
+      // terminava, zerava a referência do canal novo por cima.
+      if (_s.channel && _s.userId !== userId) await this.destroy();
       _s.userId = userId; _s.destroyed = false;
       _s.channel = buildChannel(userId);
     },
     async destroy() {
-      _s.destroyed = true; clearTimeout(_s.reconnectTimer);
+      _s.destroyed = true; clearTimeout(_s.reconnectTimer); _s.reconnectTimer = null;
       Object.values(_s.debounceTimers).forEach(clearTimeout); _s.debounceTimers = {};
       if (_s.channel) { try { await window.supabaseClient.removeChannel(_s.channel); } catch {} _s.channel = null; }
       _s.isSubscribed = false; _s.reconnectAttempts = 0; _s.userId = null;
+      _s.reconnecting = false; _s.reconnectPending = false;
       console.log('[Realtime] Destruído.');
     },
     get isConnected() { return _s.isSubscribed; },
