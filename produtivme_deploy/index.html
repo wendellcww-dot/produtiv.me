@@ -2007,6 +2007,14 @@ function closeJornadaPhoto(){
 window.closeJornadaPhoto=closeJornadaPhoto;
 
 function esc(t){ if(!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Para quando um valor entra numa string JS de aspas simples DENTRO de um
+// atributo onclick="...('valor')" — esc() sozinho não basta: ele protege o
+// atributo HTML (against " e <>), mas não protege contra uma aspa simples
+// no valor fechando a string JS mais cedo e injetando código (ex.: um nome
+// de amigo como  a'),alert(1),((' , vindo de conta Google ou de cadastro,
+// executaria ao renderizar o cartão de outro usuário). Escapa \ e ' antes
+// de aplicar o esc() de atributo.
+function escJsAttr(t){ return esc(String(t||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")); }
 function fmtDate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('pt-BR'); }catch(e){ return d; } }
 function fmtMoney(v){ return 'R$ '+(Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
@@ -7311,7 +7319,7 @@ function _renderAmigosSecoes(){
           <div style="font-weight:700;font-size:.85rem">${esc(f.other?.name||'Alguém')} quer ser seu amigo</div>
           <div style="font-size:.72rem;color:var(--text-3)">${esc(f.other?.public_id||'')}</div>
         </div>
-        <button class="btn btn-primary btn-xs" onclick="amigosResponderSolicitacao('${f.id}',true,'${esc(f.other?.public_id||'')}','${esc(f.other?.name||'Amigo')}')">Aceitar</button>
+        <button class="btn btn-primary btn-xs" onclick="amigosResponderSolicitacao('${f.id}',true,'${escJsAttr(f.other?.public_id||'')}','${escJsAttr(f.other?.name||'Amigo')}')">Aceitar</button>
         <button class="btn btn-ghost btn-xs" onclick="amigosResponderSolicitacao('${f.id}',false)">Recusar</button>
       </div>`;
     }).join('') : `<div style="text-align:center;padding:.6rem 0;color:var(--text-3);font-size:.8rem">Você não possui novas solicitações.</div>`);
@@ -7328,7 +7336,7 @@ function _renderAmigosSecoes(){
           <div style="font-weight:700;font-size:.85rem">${esc(f.other?.name||'Amigo')}</div>
           <div style="font-size:.72rem;color:var(--text-3)">${esc(f.other?.public_id||'')}</div>
         </div>
-        <button class="btn btn-primary btn-xs" onclick="amigosAbrirCriarDesafio('${esc(f.other?.public_id||'')}','${esc(f.other?.name||'Amigo')}')"><i class="fas fa-swords"></i> Desafiar</button>
+        <button class="btn btn-primary btn-xs" onclick="amigosAbrirCriarDesafio('${escJsAttr(f.other?.public_id||'')}','${escJsAttr(f.other?.name||'Amigo')}')"><i class="fas fa-swords"></i> Desafiar</button>
       </div>`).join('') : '';
   }
 }
@@ -9202,7 +9210,13 @@ const JORNADA_MARCOS=[
 function _jFile2B64(file){ return new Promise(r=>{ const rd=new FileReader(); rd.onload=e=>r(e.target.result); rd.readAsDataURL(file); }); }
 function _jResize(src,maxW,maxH){ return new Promise(r=>{ const img=new Image(); img.onload=()=>{ const ratio=Math.min(maxW/img.width,maxH/img.height,1); const c=document.createElement('canvas'); c.width=img.width*ratio; c.height=img.height*ratio; c.getContext('2d').drawImage(img,0,0,c.width,c.height); r(c.toDataURL('image/jpeg',.82)); }; img.src=src; }); }
 function _jStreak(){ return window.app?.computeStreak?.() || 0; }
-function _jEsc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+// _jEsc() antes fazia um round-trip via textContent/innerHTML, que escapa
+// &, < e > mas NÃO aspas duplas — isso permitia que uma legenda/descrição
+// de um evento da Jornada contendo " quebrasse fora de atributos como
+// alt="${_jEsc(...)}" e injetasse HTML/atributos novos (XSS entre
+// usuários, já que posts da Jornada são visíveis por amigos). Reaproveita
+// esc(), que escata & < > " corretamente para uso em atributo OU texto.
+function _jEsc(s){ return esc(s); }
 
 function _jDiasPerfeitos(){
   const routines=window.app?.state?.data?.routines||{};
