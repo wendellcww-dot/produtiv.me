@@ -6695,7 +6695,7 @@ function _chBuildContext(){
   const diasDesdeUltimaReflexao = reflexLog.length ? Math.floor((Date.now()-new Date(reflexLog[0].date+'T00:00:00').getTime())/86400000) : 999;
   // Temporada — usado pelos desafios que reagem ao momento do ciclo de 60 dias
   const season = typeof ensureSeason==='function' ? ensureSeason() : null;
-  const seasonDiasRestantes = season ? SEASON_LENGTH_DAYS - Math.min(_seasonDaysElapsed(season),SEASON_LENGTH_DAYS) : 99;
+  const seasonDiasRestantes = season ? _seasonDaysLeft(season) : 99;
   const seasonNextRank = season ? getNextSeasonRank(season.points) : null;
   const seasonPontosProxima = seasonNextRank ? seasonNextRank.min - season.points : null;
   const seasonRecorde = typeof _seasonRecordePessoal==='function' ? _seasonRecordePessoal() : 0;
@@ -6980,7 +6980,7 @@ function ensureSeason(){
     saveSeason(s);
   }
   const user=window.app?.state?.user;
-  if(user && !user.local && !s._remoteChecked && !_seasonRemoteCheckInFlight){
+  if(user && !user.local && (!s._remoteChecked || s.endsOn===undefined) && !_seasonRemoteCheckInFlight){
     // _seasonRemoteCheckInFlight evita disparar a consulta de novo a cada
     // render enquanto a primeira ainda está em voo — mas, diferente de
     // antes, NÃO marca _remoteChecked até a resposta do servidor realmente
@@ -7009,6 +7009,7 @@ async function ensureSeasonRemote(){
     const local=loadSeason();
     const base=(local && local.number===row.season_number) ? local : _newSeason(row.season_number,row.started_at);
     base.number=row.season_number; base.startedAt=row.started_at; base.points=row.final_points;
+    base.endsOn=row.ends_on||null; // fim da temporada = data global definida no servidor
     base._remoteChecked=true;
     saveSeason(base);
     renderSeasonWidgets();
@@ -7023,6 +7024,13 @@ async function ensureSeasonRemote(){
   }
 }
 
+// Dia de hoje no fuso de São Paulo — referência única da virada global de temporada
+function _seasonTodaySP(){ return new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}); }
+function _seasonTotalDays(s){ return (s&&s.endsOn&&s.startedAt) ? Math.max(1,Math.round((new Date(s.endsOn+'T00:00:00')-new Date(s.startedAt+'T00:00:00'))/86400000)) : SEASON_LENGTH_DAYS; }
+function _seasonDaysLeft(s){
+  if(s&&s.endsOn) return Math.max(0,Math.round((new Date(s.endsOn+'T00:00:00')-new Date(_seasonTodaySP()+'T00:00:00'))/86400000));
+  return SEASON_LENGTH_DAYS-Math.min(_seasonDaysElapsed(s),SEASON_LENGTH_DAYS);
+}
 function _seasonDaysElapsed(s){
   return Math.floor((new Date(todayKey()+'T00:00:00') - new Date(s.startedAt+'T00:00:00'))/86400000) + 1;
 }
@@ -7719,8 +7727,12 @@ async function endSeason(){
 // Roda a cada carregamento do app / virada de dia: se os 60 dias já passaram,
 // encerra e mostra a retrospectiva antes de seguir em frente.
 async function checkSeasonRollover(){
-  const s=ensureSeason();
-  if(_seasonDaysElapsed(s) > SEASON_LENGTH_DAYS){
+  let s=ensureSeason();
+  const _u=window.app?.state?.user, _remoto=!!(_u && !_u.local);
+  if(_remoto && (!s._remoteChecked || s.endsOn===undefined)){ await ensureSeasonRemote(); s=loadSeason()||s; }
+  // Com conta: a data de término é global (vem do servidor). Sem conta: regra local de 60 dias.
+  const _acabou = _remoto ? (!!s.endsOn && _seasonTodaySP() >= s.endsOn) : (_seasonDaysElapsed(s) > SEASON_LENGTH_DAYS);
+  if(_acabou){
     const finished=await endSeason();
     if(finished) setTimeout(()=>showSeasonRetrospectiva(finished), 900);
   }
@@ -7742,7 +7754,7 @@ function _seasonMaiorPatente(){
 function renderSeasonWidgets(){
   const s=ensureSeason();
   const rank=getSeasonRank(s.points), next=getNextSeasonRank(s.points);
-  const dia=Math.min(_seasonDaysElapsed(s), SEASON_LENGTH_DAYS);
+  const totalDias=_seasonTotalDays(s), dia=Math.min(_seasonDaysElapsed(s), totalDias);
   const prevMin=(SEASON_RANKS[SEASON_RANKS.indexOf(rank)-1]||{min:0}).min;
   const nextMin=next?next.min:rank.min+500;
   const pct=Math.min(100, Math.round(((s.points-prevMin)/(nextMin-prevMin))*100));
@@ -7751,7 +7763,7 @@ function renderSeasonWidgets(){
     el.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
         <div style="font-family:var(--font-display);font-weight:800;font-size:.95rem">Temporada ${String(s.number).padStart(2,'0')}</div>
-        <div style="font-size:.72rem;color:var(--text-3)">Dia ${dia} de ${SEASON_LENGTH_DAYS}</div>
+        <div style="font-size:.72rem;color:var(--text-3)">Dia ${dia} de ${totalDias}</div>
       </div>
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem">
         <span class="liga-badge" style="padding:.25rem .6rem;font-size:.78rem;background:var(--primary-glow);color:var(--primary)">${rank.icon} ${rank.name}</span>
@@ -7796,7 +7808,7 @@ function abrirModalPatentesTemporada(){
       <h3><i class="fas fa-flag-checkered" style="color:var(--primary);margin-right:.4rem"></i>Patentes da Temporada</h3>
       <button class="btn btn-icon" onclick="closeModal('ligas-temporada-modal')"><i class="fas fa-times"></i></button>
     </div>
-    <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Sua patente reseta a cada 60 dias — ${SEASON_LENGTH_DAYS-Math.min(_seasonDaysElapsed(s),SEASON_LENGTH_DAYS)} dias restantes nesta temporada.</div>
+    <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Sua patente reseta no fim da temporada, a mesma data para todos — ${_seasonDaysLeft(s)} dias restantes nesta temporada.</div>
     <div class="ligas-ladder">${html}</div>
   </div>`;
   modal.classList.add('active');
