@@ -6976,6 +6976,7 @@ function _newSeason(number, startedAt){
 
 // Garante que existe uma temporada ativa; cria a Temporada 01 no primeiro uso.
 let _seasonRemoteCheckInFlight = false;
+let _seasonSyncedThisLoad = false, _seasonSyncTryAt = 0; // reconcilia com o servidor 1x por abertura do app
 
 function ensureSeason(){
   let s=loadSeason();
@@ -6984,7 +6985,8 @@ function ensureSeason(){
     saveSeason(s);
   }
   const user=window.app?.state?.user;
-  if(user && !user.local && (!s._remoteChecked || s.endsOn===undefined) && !_seasonRemoteCheckInFlight){
+  if(user && !user.local && !_seasonRemoteCheckInFlight && (!s._remoteChecked || s.endsOn===undefined || (!_seasonSyncedThisLoad && Date.now()-_seasonSyncTryAt>30000))){
+    _seasonSyncTryAt=Date.now();
     // _seasonRemoteCheckInFlight evita disparar a consulta de novo a cada
     // render enquanto a primeira ainda está em voo — mas, diferente de
     // antes, NÃO marca _remoteChecked até a resposta do servidor realmente
@@ -7015,6 +7017,7 @@ async function ensureSeasonRemote(){
     base.number=row.season_number; base.startedAt=row.started_at; base.points=row.final_points;
     base.endsOn=row.ends_on||null; // fim da temporada = data global definida no servidor
     base._remoteChecked=true;
+    _seasonSyncedThisLoad=true;
     saveSeason(base);
     renderSeasonWidgets();
     checkSeasonRankUp();
