@@ -711,12 +711,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 .ligas-item-pts{font-size:.72rem;color:var(--text-3);margin-top:.1rem}
 .ligas-item-check{margin-left:auto;color:var(--green);font-size:.9rem;flex-shrink:0}
 .ligas-item-lock{margin-left:auto;color:var(--text-3);font-size:.8rem;flex-shrink:0}
-.liga-iniciante{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3);color:#4ade80}
-.liga-evolucao{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3);color:#60a5fa}
-.liga-consistente{background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.3);color:#fb923c}
-.liga-disciplinado{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.3);color:#a78bfa}
-.liga-mestre{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);color:#34d399}
-.liga-lendario{background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(239,68,68,.2));border-color:rgba(251,191,36,.5);color:#fbbf24}
 .pc-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;font-weight:700;color:var(--primary)}
 .escudo-badge{display:inline-flex;align-items:center;gap:.2rem;font-size:.85rem}
 .desafio-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:.75rem}
@@ -1538,18 +1532,6 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
   </div>
 </div>
 
-<!-- ══ MODAL: TODAS AS PATENTES ══ -->
-<div id="ligas-modal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3><i class="fas fa-medal" style="color:var(--primary);margin-right:.4rem"></i>Patentes de Consistência</h3>
-      <button class="btn btn-icon btn-sm" onclick="closeModal('ligas-modal')"><i class="fas fa-times"></i></button>
-    </div>
-    <div style="font-size:.78rem;color:var(--text-3);margin-bottom:.8rem">Ganhe Pontos de Consistência completando tarefas e hábitos todos os dias para subir de patente.</div>
-    <div class="ligas-ladder" id="ligas-ladder"></div>
-  </div>
-</div>
-
 <!-- MEU ID -->
 <div id="meu-id-modal" class="modal">
   <div class="modal-content">
@@ -1643,7 +1625,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         <div class="wd-pill" data-dur="30">30 dias</div>
       </div>
     </div>
-    <button class="btn btn-primary btn-block" onclick="amigosCriarDesafioGrupo()"><i class="fas fa-people-group"></i> Criar desafio</button>
+    <button id="cdg-submit" class="btn btn-primary btn-block" onclick="amigosCriarDesafioGrupo()"><i class="fas fa-people-group"></i> Criar desafio</button>
   </div>
 </div>
 
@@ -2149,7 +2131,7 @@ function getTodayEffectiveTasks(appRef){
       const matchesToday=(rec.weekDays||[]).includes(todayDow);
       const doneToday=!!(doneMap[t.id] && doneMap[t.id][today]);
       result.push(Object.assign({}, t, {
-        done: doneToday, __recurring:true, __weekDays:rec.weekDays||[], __matchesToday:matchesToday
+        timeTracking: tt_projectForDay(t.timeTracking, today), done: doneToday, __recurring:true, __weekDays:rec.weekDays||[], __matchesToday:matchesToday
       }));
     });
   });
@@ -2215,6 +2197,32 @@ function tt_computeTotalSec(sessions){
   },0);
 }
 
+// Dia local (YYYY-MM-DD) de um timestamp ISO
+function tt_dayKeyOf(iso){ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Tarefa recorrente tem UMA linha canônica para todos os dias: o cronômetro de cada dia é
+// uma "visão" só com as sessões daquele dia (o dado original nunca é apagado).
+function tt_projectForDay(tt, day){
+  if(!tt || tt.__projected) return tt;
+  const sessions=(tt.sessions||[]).filter(s=>tt_dayKeyOf(s.start)===day);
+  const open=sessions.length && !sessions[sessions.length-1].end;
+  const done=sessions.length && tt.doneDays && tt.doneDays[day];
+  return {enabled:tt.enabled, plannedMin:tt.plannedMin, sessions, __projected:true,
+    status: done?'done':(open?'running':(sessions.length?'paused':'idle')), totalSec:tt_computeTotalSec(sessions)};
+}
+function tt_view(task){
+  const tt=task?.timeTracking; if(!tt) return tt;
+  return (tt.__projected || !getTaskRecurrence(task.id)) ? tt : tt_projectForDay(tt, todayKey());
+}
+// Sessão deixada aberta em dia anterior (tarefa recorrente): fecha no fim daquele dia.
+function tt_closeStaleOpen(task){
+  const tt=task?.timeTracking; if(!tt||!tt.sessions||!tt.sessions.length) return;
+  const last=tt.sessions[tt.sessions.length-1];
+  if(last && !last.end && tt_dayKeyOf(last.start)<todayKey()){
+    const d=new Date(last.start); d.setHours(23,59,59,999); last.end=d.toISOString();
+    tt_saveSessionRemote(task.id,last); tt.status='paused';
+  }
+}
+
 function tt_ensure(task){
   if(!task.timeTracking) task.timeTracking={enabled:false,plannedMin:null,status:'idle',sessions:[]};
   return task.timeTracking;
@@ -2264,6 +2272,7 @@ function tt_finish(task){
     tt_saveSessionRemote(task.id, session);
   }
   tt.status='done';
+  tt.doneDays=tt.doneDays||{}; tt.doneDays[todayKey()]=true;
   tt.totalSec=tt_computeTotalSec(tt.sessions);
 }
 
@@ -3067,6 +3076,17 @@ _isSyncing: false,
   ttHealCompletedTasks(){
     const routines=this.state.data?.routines||{};
     let healed=false;
+    // Cópias de carry-over antigas herdaram as sessões do dia anterior (mesmo id de sessão em
+    // duas tarefas): a cópia mais nova perde só a referência; a tarefa original fica intacta.
+    const _owner={};
+    Object.keys(routines).sort().forEach(dk=>{ (routines[dk]||[]).forEach(task=>{
+      const tt=task.timeTracking; if(!tt||!tt.sessions||!tt.sessions.length) return;
+      const keep=[]; tt.sessions.forEach(x=>{ if(_owner[x.id] && _owner[x.id]!==task.id) return; _owner[x.id]=task.id; keep.push(x); });
+      if(keep.length!==tt.sessions.length){
+        tt.sessions=keep; tt.totalSec=tt_computeTotalSec(keep); delete tt.doneDays;
+        tt.status=!keep.length?'idle':(!keep[keep.length-1].end?'running':(task.done?'done':'paused')); healed=true;
+      }
+    }); });
     Object.keys(routines).forEach(dateKey=>{
       (routines[dateKey]||[]).forEach(task=>{
         if(task.done && tt_forceFinishIfActive(task)){
@@ -3255,7 +3275,7 @@ _isSyncing: false,
     this.initRealtimeSync();
     try{
       const pc=typeof loadPC==='function'?loadPC():{};
-      const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+      const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
       window.track?.('app_opened',{
         user_level: liga?.name||undefined,
         current_streak: typeof getPresenceStreak==='function'?getPresenceStreak():undefined,
@@ -3797,6 +3817,8 @@ _isSyncing: false,
           ...t,
           id:novoId,          // novo ID para o novo dia
           done:false,
+          // Cronômetro do novo dia começa ZERADO (antes a cópia herdava sessões e status do dia anterior)
+          timeTracking: t.timeTracking ? {enabled:!!t.timeTracking.enabled, plannedMin:t.timeTracking.plannedMin??null, status:'idle', sessions:[]} : t.timeTracking,
           date_key:today,
           updated_at:new Date().toISOString(),
           created_at:new Date().toISOString(),
@@ -3939,7 +3961,7 @@ _isSyncing: false,
     const chip=task.__recurring?weekDaysChip(task.__weekDays):'';
     const desc=task.description||'';
     const descTrunc=desc.length>90;
-    const tt=task.timeTracking;
+    const tt=tt_view(task);
     const ttBadge=(tt&&tt.enabled)?(()=>{
       const sec=tt_computeTotalSec(tt.sessions);
       const planned=tt.plannedMin?` / ${tt.plannedMin}min`:'';
@@ -4001,7 +4023,7 @@ _isSyncing: false,
 
   // Monta o widget de cronômetro (ou o resumo final, se já concluído)
   renderTTWidget(task){
-    const tt=task.timeTracking;
+    const tt=tt_view(task);
     if(!tt || !tt.enabled) return '';
     const sec=tt_computeTotalSec(tt.sessions);
     if(tt.status==='done'){
@@ -4026,6 +4048,7 @@ _isSyncing: false,
     const found=findTaskAnyDate(this, id); if(!found) return;
     const task=found.task;
     const tt=tt_ensure(task);
+    if(getTaskRecurrence(task.id)) tt_closeStaleOpen(task);
     if(action==='start') tt_start(task);
     else if(action==='pause') tt_pause(task);
     else if(action==='resume') tt_resume(task);
@@ -4046,7 +4069,7 @@ _isSyncing: false,
     _ttTickInterval=setInterval(()=>{
       if(!_ttOpenTaskId) return;
       const found=findTaskAnyDate(this, _ttOpenTaskId);
-      const tt=found?.task?.timeTracking;
+      const tt=found?.task?tt_view(found.task):null;
       if(!tt || tt.status!=='running'){ clearInterval(_ttTickInterval); return; }
       const el=q('tt-clock-'+_ttOpenTaskId);
       if(el) el.textContent=tt_fmtClock(tt_computeTotalSec(tt.sessions));
@@ -6570,37 +6593,8 @@ function deConcluir() {
 const PC_KEY = 'pm18_pc_v1';
 const DAILY_CHALLENGE_KEY = 'pm18_challenge_v1';
 
-const LIGAS = [
-  {id:'iniciante1',  icon:'🌱', name:'Iniciante I',              cls:'liga-iniciante',   min:0},
-  {id:'iniciante2',  icon:'🌱', name:'Iniciante II',             cls:'liga-iniciante',   min:50},
-  {id:'iniciante3',  icon:'🌱', name:'Iniciante III',            cls:'liga-iniciante',   min:120},
-  {id:'evolucao1',   icon:'📈', name:'Em Evolução I',            cls:'liga-evolucao',    min:220},
-  {id:'evolucao2',   icon:'📈', name:'Em Evolução II',           cls:'liga-evolucao',    min:360},
-  {id:'evolucao3',   icon:'📈', name:'Em Evolução III',          cls:'liga-evolucao',    min:550},
-  {id:'consist1',    icon:'🔥', name:'Consistente I',            cls:'liga-consistente', min:800},
-  {id:'consist2',    icon:'🔥', name:'Consistente II',           cls:'liga-consistente', min:1100},
-  {id:'consist3',    icon:'🔥', name:'Consistente III',          cls:'liga-consistente', min:1500},
-  {id:'discip1',     icon:'🏆', name:'Disciplinado I',           cls:'liga-disciplinado',min:2000},
-  {id:'discip2',     icon:'🏆', name:'Disciplinado II',          cls:'liga-disciplinado',min:2700},
-  {id:'discip3',     icon:'🏆', name:'Disciplinado III',         cls:'liga-disciplinado',min:3600},
-  {id:'mestre1',     icon:'💎', name:'Mestre da Consistência I', cls:'liga-mestre',      min:4800},
-  {id:'mestre2',     icon:'💎', name:'Mestre da Consistência II',cls:'liga-mestre',      min:6200},
-  {id:'mestre3',     icon:'💎', name:'Mestre da Consistência III',cls:'liga-mestre',     min:8000},
-  {id:'lendario',    icon:'👑', name:'Lendário da Produtividade',cls:'liga-lendario',    min:10000},
-];
-
-function loadPC(){ try{ return JSON.parse(localStorage.getItem(PC_KEY)||'{}'); }catch(e){ return {}; } }
-function savePC(d){ localStorage.setItem(PC_KEY, JSON.stringify(d)); }
-
-function getLiga(pc){
-  let liga = LIGAS[0];
-  for(const l of LIGAS){ if(pc >= l.min) liga = l; else break; }
-  return liga;
-}
-
-function getNextLiga(pc){
-  return LIGAS.find(l => l.min > pc) || null;
-}
+// Patente exibida no app = patente da TEMPORADA (SEASON_RANKS, mais abaixo) via getPatenteAtual().
+// A antiga tabela vitalícia de "ligas" (Consistente I/II/III etc.) foi removida: não existe mais lista paralela.
 
 // Confirma os pontos no servidor via função com SECURITY DEFINER — o cliente
 // nunca manda o valor, só o motivo e a referência (id da tarefa/hábito/meta,
@@ -6628,7 +6622,7 @@ async function awardPointsRemote(reason, refId, localAmount){
     // ter sido pago antes — o servidor devolve o total sem somar de novo).
     const d=loadPC(); d.total=row.total_pc; savePC(d); renderPCWidget();
     const s=loadSeason();
-    if(s && s.number===row.season_number){ s.points=row.season_points; saveSeason(s); renderSeasonWidgets(); }
+    if(s && s.number===row.season_number){ s.points=row.season_points; saveSeason(s); renderSeasonWidgets(); checkSeasonRankUp(); }
   }catch(e){
     // Falha de rede — mantém o valor otimista (não pune uso offline);
     // a próxima ação tenta validar de novo.
@@ -6660,16 +6654,6 @@ function addPC(amount, reason='', refId){
   // O que foi somado aqui é só otimista pra tela responder na hora; a resposta
   // do servidor abaixo é quem manda de verdade e corrige qualquer divergência.
   if(amount>0 && typeof awardPointsRemote==='function') awardPointsRemote(reason, refId, amount);
-  // Verifica mudança de liga
-  const ligaAntes = getLiga((d.total||0) - amount);
-  const ligaAgora = getLiga(d.total||0);
-  if(ligaAgora.id !== ligaAntes.id){
-    setTimeout(()=>{
-      showToast(`${ligaAgora.icon} Nova Liga: ${ligaAgora.name}!`,'gold',5000);
-      showAutoSharePopup('liga', `${ligaAgora.icon} ${ligaAgora.name}!`, 'Você subiu de liga! Compartilhar essa conquista?');
-    }, 1000);
-    if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('patente',`👑 Nova Liga: ${ligaAgora.icon} ${ligaAgora.name}`);
-  }
   // Popup visual premium
   const popup = document.createElement('div');
   popup.className = 'pc-popup ' + (amount > 0 ? 'gain' : 'loss');
@@ -6679,62 +6663,8 @@ function addPC(amount, reason='', refId){
   renderPCWidget();
 }
 
-function renderPCWidget(){
-  const d = loadPC();
-  const pc = d.total || 0;
-  const liga = getLiga(pc);
-  const next = getNextLiga(pc);
-  const escudos = d.escudos || 0;
-
-  // Painel principal
-  const elPc = document.getElementById('pc-total');
-  if(elPc) elPc.textContent = pc.toLocaleString('pt-BR') + ' pts';
-
-  const elLigaInline = document.getElementById('liga-badge-inline');
-  if(elLigaInline) elLigaInline.innerHTML = `<span class="liga-badge ${liga.cls}" style="padding:.2rem .5rem;font-size:.72rem">${liga.icon} ${liga.name}</span>`;
-
-  const elEscudo = document.getElementById('escudo-count');
-  if(elEscudo) elEscudo.innerHTML = escudos > 0 ? '🛡️'.repeat(escudos) + ' <span style="font-size:.65rem;color:var(--text-3)">' + (escudos===1?'escudo':'escudos') + '</span>' : '';
-
-  const elNext = document.getElementById('liga-next');
-  if(elNext && next) elNext.textContent = `↑ Faltam ${next.min - pc} pts`;
-
-  // Barra de progresso entre ligas
-  const prevLiga = LIGAS[LIGAS.indexOf(liga) - 1];
-  const prevMin = prevLiga ? prevLiga.min : 0;
-  const nextMin = next ? next.min : liga.min + 1000;
-  const pct = Math.round(((pc - prevMin) / (nextMin - prevMin)) * 100);
-  const bar = document.getElementById('pc-bar-fill');
-  if(bar) bar.style.width = Math.min(100, pct) + '%';
-
-  const elAtual = document.getElementById('pc-liga-atual');
-  if(elAtual) elAtual.textContent = liga.icon + ' ' + liga.name;
-  const elProx = document.getElementById('pc-liga-prox');
-  if(elProx && next) elProx.textContent = next.icon + ' ' + next.name;
-}
-
-function abrirModalLigas(){
-  const pc = loadPC().total || 0;
-  const liga = getLiga(pc);
-  const html = LIGAS.map(l=>{
-    const achieved = pc >= l.min;
-    const isCurrent = l.id === liga.id;
-    const faltam = l.min - pc;
-    return `<div class="ligas-item ${achieved?'achieved':''} ${isCurrent?'current':''}">
-      <div class="ligas-item-icon">${l.icon}</div>
-      <div>
-        <div class="ligas-item-name">${l.name}</div>
-        <div class="ligas-item-pts">${l.min.toLocaleString('pt-BR')} pts${!achieved?` · faltam ${faltam.toLocaleString('pt-BR')}`:''}</div>
-      </div>
-      ${isCurrent ? '<span class="ligas-item-check"><i class="fas fa-star"></i> Atual</span>' : achieved ? '<span class="ligas-item-check"><i class="fas fa-check-circle"></i></span>' : '<span class="ligas-item-lock"><i class="fas fa-lock"></i></span>'}
-    </div>`;
-  }).join('');
-  const el = document.getElementById('ligas-ladder');
-  if(el) el.innerHTML = html;
-  const m = document.getElementById('ligas-modal');
-  if(m) m.classList.add('active');
-}
-window.abrirModalLigas = abrirModalLigas;
+// Mantida só porque vários pontos do app a chamam; agora apenas atualiza o widget da temporada.
+function renderPCWidget(){ if(typeof renderSeasonWidgets==='function') renderSeasonWidgets(); }
 
 /* ══ DESAFIOS DIÁRIOS — Banco personalizado baseado nos dados reais do usuário ══ */
 function loadChallenge(){ try{ return JSON.parse(localStorage.getItem(DAILY_CHALLENGE_KEY)||'{}'); }catch(e){ return {}; } }
@@ -6966,10 +6896,9 @@ function addPCAccess(){
 /* ══════════════════════════════════════════════════════════════
    TEMPORADAS DE 60 DIAS
    ────────────────────────────────────────────────────────────
-   O sistema de Ligas acima (LIGAS/PC) é permanente e cumulativo —
-   isso continua existindo exatamente como antes (histórico
-   vitalício do usuário, nunca reseta). As Temporadas são uma
-   camada NOVA por cima: usam os MESMOS Pontos de Consistência
+   A tabela vitalícia de Ligas foi removida; o total vitalício de Pontos de
+   Consistência (PC) continua sendo guardado. A patente exibida vem só daqui:
+   as Temporadas usam os MESMOS Pontos de Consistência
    (cada addPC já alimenta a temporada atual automaticamente),
    mas contam só os pontos dos últimos 60 dias, resetando a cada
    ciclo. XP não é tocado — continua sendo usado só pro sistema
@@ -7004,6 +6933,29 @@ const SEASON_RANKS=[
 ];
 function getSeasonRank(pts){ let r=SEASON_RANKS[0]; for(const x of SEASON_RANKS){ if(pts>=x.min) r=x; else break; } return r; }
 function getNextSeasonRank(pts){ return SEASON_RANKS.find(x=>x.min>pts) || null; }
+
+// FONTE ÚNICA da patente exibida em qualquer lugar (popup, Jornada, cartões, analytics).
+function getPatenteAtual(){ const s=ensureSeason(); return getSeasonRank((s&&s.points)||0); }
+
+// Detecta subida de patente da temporada. Guarda em s.rankCelebrated o maior índice já
+// comemorado: a 1ª leitura só registra (sem popup) e nunca dispara com o placeholder
+// zerado de quem está logado antes do servidor responder.
+function checkSeasonRankUp(){
+  const s=loadSeason(); if(!s) return;
+  const user=window.app?.state?.user;
+  if(user && !user.local && !s._remoteChecked) return;
+  const idx=SEASON_RANKS.indexOf(getSeasonRank(s.points||0));
+  if(typeof s.rankCelebrated!=='number'){ s.rankCelebrated=idx; saveSeason(s); return; }
+  if(idx<=s.rankCelebrated) return;
+  s.rankCelebrated=idx; saveSeason(s);
+  const r=SEASON_RANKS[idx];
+  setTimeout(()=>{
+    showToast(`${r.icon} Nova patente: ${r.name}!`,'gold',5000);
+    showAutoSharePopup('liga', `${r.icon} ${r.name}!`, 'Você subiu de patente! Compartilhar essa conquista?');
+  },1000);
+  if(typeof jornadaAutoRegistrar==='function') jornadaAutoRegistrar('patente',`👑 Nova patente: ${r.icon} ${r.name}`);
+}
+window.checkSeasonRankUp=checkSeasonRankUp;
 
 function loadSeason(){ try{ return JSON.parse(localStorage.getItem(SEASON_KEY)||'null'); }catch(e){ return null; } }
 function saveSeason(s){ localStorage.setItem(SEASON_KEY, JSON.stringify(s)); }
@@ -7060,6 +7012,7 @@ async function ensureSeasonRemote(){
     base._remoteChecked=true;
     saveSeason(base);
     renderSeasonWidgets();
+    checkSeasonRankUp();
   }catch(e){
     // Falhou: NÃO marca _remoteChecked — deixa a PRÓXIMA chamada de
     // ensureSeason() tentar de novo, em vez de travar no placeholder
@@ -7103,6 +7056,7 @@ function _conviteDesafioTexto(nomeOuAlvo, duracaoDias){
   // próprio pedido orienta a fazer quando o link específico não existir.
   return `⚔️ Te desafiei no Produtiv.me!\n\nVamos ver quem consegue evoluir mais nos próximos *${duracaoDias} dias*? 🔥\n\nAceite meu desafio:\n${APP_URL}\n\n🚀 Ainda não tem o app? Entre aqui:\n${APP_URL}`;
 }
+let _dgListaAusente=false;
 let _amigosCache={friends:[], incoming:[], outgoing:[], active:[], pending:[]};
 
 function _amigosDisponivel(){
@@ -7224,10 +7178,17 @@ async function amigosCarregarTudo(){
     // vêm de get_my_challenge_profiles() — ambas SECURITY DEFINER, resolvendo
     // nome/avatar sem depender da policy de RLS de leitura cruzada em "profiles"
     // (precisam existir no banco — ver SQL fornecido).
-    const [{data:friendsData, error:friendsErr}, {data:challenges}] = await Promise.all([
+    const [{data:friendsData, error:friendsErr}, {data:challenges}, groupRes] = await Promise.all([
       window.supabaseClient.rpc('get_my_friends'),
-      window.supabaseClient.from('challenges').select('*').or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).in('status',['pending','active'])
+      window.supabaseClient.from('challenges').select('*').or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`).in('status',['pending','active']),
+      _dgListaAusente ? Promise.resolve({data:[],error:null}) : window.supabaseClient.rpc('get_my_group_challenges')
     ]);
+    // Desafios em grupo: se a função ainda não existe no banco, avisa uma vez e não repete a chamada.
+    if(groupRes.error){
+      if(groupRes.error.code==='PGRST202'){ _dgListaAusente=true; console.error('[Desafio em grupo] get_my_group_challenges ausente no banco — rode a migration.'); }
+      else window.captureError?.(groupRes.error,{where:'amigosCarregarTudo/get_my_group_challenges'});
+      _amigosCache.groupActive=[];
+    } else { _amigosCache.groupActive=Array.isArray(groupRes.data)?groupRes.data:[]; }
     if(friendsErr){ window.captureError?.(friendsErr,{where:'amigosCarregarTudo/get_my_friends'}); }
     const friendsList=friendsData||[];
 
@@ -7266,6 +7227,18 @@ function _renderAmigosSecoes(){
       </div>`;
     } else {
       const gruposHtml=grupos.map(c=>{
+        if(c.status==='pending'){
+          const parts=c.participantes||[], aceitos=parts.filter(p=>p.response==='accepted').length;
+          const souConvidado=c.my_response==='pending';
+          return `<div class="jshare-item" style="cursor:default">
+            <div class="jshare-thumb"><i class="fas fa-people-group"></i></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:.85rem">${esc(c.name||'Desafio em grupo')}</div>
+              <div style="font-size:.72rem;color:var(--text-3)">${c.duration_days} dias · ${aceitos}/${parts.length} aceitaram · ${souConvidado?'aguardando sua resposta':'aguardando os outros'}</div>
+            </div>
+            ${souConvidado?`<button class="btn btn-primary btn-xs" onclick="amigosResponderDesafioGrupo('${c.id}',true)">Aceitar</button><button class="btn btn-ghost btn-xs" onclick="amigosResponderDesafioGrupo('${c.id}',false)">Recusar</button>`:''}
+          </div>`;
+        }
         const msRest=new Date(c.ends_at)-new Date();
         const status = msRest<=0 ? `prazo encerrado, toque para ver o resultado` : `faltam ${_formatTempoRestante(msRest)}`;
         return `<div class="jshare-item" style="cursor:pointer" onclick="amigosVerDesafioGrupo('${c.id}')">
@@ -7359,11 +7332,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 });
 
+let _cdCriando=false;
 async function amigosCriarDesafio(){
+  if(_cdCriando) return;
   const friendId=q('cd-friend-public-id').value;
   const friendName=q('cd-nome-amigo').textContent;
   const durEl=document.querySelector('#cd-duracao-picker .wd-pill.selected');
   const duration=durEl?Number(durEl.dataset.dur):7;
+  _cdCriando=true;
   try{
     const {error}=await window.supabaseClient.rpc('create_challenge',{opponent_public_id:friendId, p_duration:duration});
     if(error) throw error;
@@ -7372,6 +7348,7 @@ async function amigosCriarDesafio(){
     window.track?.('challenge_created',{duration_days:duration});
     showToast('⚔️ Desafio enviado! Toque aqui para avisar por WhatsApp','success',5000,()=>amigosCompartilharDesafio(duration));
   }catch(e){ window.captureError?.(e,{operation:'challenge_create'}); showToast(e.message||'Não foi possível criar o desafio','error'); }
+  finally{ _cdCriando=false; }
 }
 window.amigosCriarDesafio=amigosCriarDesafio;
 
@@ -7421,27 +7398,51 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 
+let _dgCriando=false, _dgRpcAusente=false;
 async function amigosCriarDesafioGrupo(){
+  if(_dgCriando) return;
+  if(_dgRpcAusente){ showToast('Desafio em grupo indisponível no momento. Tente mais tarde.','error'); return; }
   const nome=q('cdg-nome').value.trim();
   if(!nome){ showToast('Digite um nome para o desafio','error'); return; }
   const ids=[...document.querySelectorAll('.dg-friend-check')].filter(c=>c.checked).map(c=>c.value).filter(Boolean);
   if(!ids.length){ showToast('Selecione pelo menos 1 amigo','error'); return; }
   if(ids.length>4){ showToast('Máximo de 4 amigos por desafio em grupo','error'); return; }
   const duracao=Number(q('cdg-duracao-picker').querySelector('.wd-pill.selected')?.dataset.dur||7);
+  const _btn=q('cdg-submit'); _dgCriando=true; if(_btn) _btn.disabled=true;
   try{
     const {error}=await window.supabaseClient.rpc('create_group_challenge',{p_name:nome, p_opponent_public_ids:ids, p_duration_days:duracao});
     if(error) throw error;
     closeModal('criar-desafio-grupo-modal');
     amigosCarregarTudo();
     window.track?.('challenge_created',{kind:'group',participants:ids.length+1,duration_days:duracao});
-    showToast('👥 Desafio em grupo criado!','success');
-  }catch(e){ window.captureError?.(e,{operation:'group_challenge_create'}); showToast(e.message||'Não foi possível criar o desafio','error'); }
+    showToast('👥 Convites enviados! O desafio começa quando todos aceitarem.','success',5000);
+  }catch(e){
+    if(e?.code==='PGRST202' || /Could not find the function/i.test(e?.message||'')){
+      _dgRpcAusente=true; // função não existe/assinatura diferente no banco: não adianta repetir
+      console.error('[Desafio em grupo] RPC create_group_challenge não encontrada no banco:', e.code, e.message, e.hint||'');
+      showToast('Desafio em grupo indisponível no momento. Tente mais tarde.','error');
+    } else { window.captureError?.(e,{operation:'group_challenge_create'}); showToast(e.message||'Não foi possível criar o desafio','error'); }
+  }finally{ _dgCriando=false; if(_btn) _btn.disabled=false; }
 }
 window.amigosCriarDesafioGrupo=amigosCriarDesafioGrupo;
 
+let _dgRespondendo=false;
+async function amigosResponderDesafioGrupo(id, accept){
+  if(_dgRespondendo) return;
+  _dgRespondendo=true;
+  try{
+    const {error}=await window.supabaseClient.rpc('respond_group_challenge',{p_challenge_id:id, p_accept:accept});
+    if(error) throw error;
+    showToast(accept?'⚔️ Você aceitou o desafio!':'Desafio recusado','default');
+    amigosCarregarTudo();
+  }catch(e){ showToast(e.message||'Não foi possível responder','error'); }
+  finally{ _dgRespondendo=false; }
+}
+window.amigosResponderDesafioGrupo=amigosResponderDesafioGrupo;
+
 async function amigosVerDesafioGrupo(id){
   const ch=(_amigosCache.groupActive||[]).find(c=>c.id===id);
-  if(!ch) return;
+  if(!ch || ch.status!=='active') return;
   q('ver-desafio-body').innerHTML='<div style="text-align:center;padding:1rem;color:var(--text-3)">Carregando placar...</div>';
   q('ver-desafio-modal').classList.add('active');
   try{
@@ -7653,6 +7654,8 @@ function addSeasonPoints(amount, reason){
   if(reason==='Desafio diário concluído') s.challengesCompleted=(s.challengesCompleted||0)+1;
   saveSeason(s);
   renderSeasonWidgets();
+  const _u=window.app?.state?.user;
+  if(!_u || _u.local) checkSeasonRankUp(); // com conta, só depois da confirmação do servidor
 }
 
 // Encerra a temporada atual, guarda a retrospectiva no histórico permanente,
@@ -8448,11 +8451,11 @@ function sm_buildContent(type){
   const streak=parseInt(document.getElementById('streak-count')?.textContent||'0');
   const lvl=parseInt(document.getElementById('xp-level-badge')?.textContent?.replace('Nv.','')||'1');
   const lvlName=document.getElementById('xp-level-name')?.textContent||'';
-  const pc=typeof loadPC==='function'?loadPC().total||0:0;
-  const liga=typeof getLiga==='function'?getLiga(pc):null;
+  const pc=(typeof ensureSeason==='function'?ensureSeason().points:0)||0;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const frase=typeof getNextShareFrase==='function'?getNextShareFrase():'Consistência supera intensidade.';
   if(type==='streak') return {kind:'hero',icon:'🔥',headline:streak,unit:'dias consecutivos',badge:liga?`${liga.icon} ${liga.name}`:'',sub:`Nível ${lvl} · ${(g.totalXp||0).toLocaleString('pt-BR')} XP`,stats:[{icon:'✅',label:'Tarefas',val:g.totalDone||0},{icon:'🔥',label:'Streak',val:streak},{icon:'⚡',label:'XP',val:g.totalXp||0}],frase,type};
-  if(type==='liga') return {kind:'hero',icon:liga?.icon||'🌱',headline:liga?.name||'Iniciante I',unit:'patente atual',badge:`${pc.toLocaleString('pt-BR')} Pontos de Consistência`,sub:`🔥 ${streak} dias · Nível ${lvl}`,stats:[{icon:'🔥',label:'Streak',val:streak},{icon:'✅',label:'Tarefas',val:g.totalDone||0},{icon:'⚡',label:'XP',val:g.totalXp||0}],frase,type};
+  if(type==='liga') return {kind:'hero',icon:liga?.icon||'🌱',headline:liga?.name||'Iniciante',unit:'patente atual',badge:`${pc.toLocaleString('pt-BR')} pontos na temporada`,sub:`🔥 ${streak} dias · Nível ${lvl}`,stats:[{icon:'🔥',label:'Streak',val:streak},{icon:'✅',label:'Tarefas',val:g.totalDone||0},{icon:'⚡',label:'XP',val:g.totalXp||0}],frase,type};
   if(type==='nivel') return {kind:'hero',icon:'⚡',headline:`Nível ${lvl}`,unit:lvlName||'',badge:liga?`${liga.icon} ${liga.name}`:'',sub:`${(g.totalXp||0).toLocaleString('pt-BR')} XP acumulados`,stats:[{icon:'⚡',label:'XP',val:g.totalXp||0},{icon:'🔥',label:'Streak',val:streak},{icon:'✅',label:'Tarefas',val:g.totalDone||0}],frase,type};
   if(type==='evolucao'){ const ci=typeof loadCheckin==='function'?loadCheckin():{}; const map={pessimo:1,mal:2,ok:3,bem:4,otimo:5}; const vals=Object.values(ci.history||{}).map(h=>map[h]).filter(Boolean); const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):3; const mood=['','😞','😕','😐','🙂','😄'][avg]||'😐'; return {kind:'stats',title:'Minha Evolução',icon:'📈',rows:[{icon:'✅',label:'Tarefas',val:g.totalDone||0},{icon:'🔥',label:'Streak',val:`${streak} dias`},{icon:'⚡',label:'XP',val:g.totalXp||0},{icon:'😊',label:'Humor',val:mood}],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type}; }
   if(type==='semanal'){ const wk=typeof getWeekTasks==='function'?getWeekTasks(0):{done:0,total:0}; const now2=new Date(); const sW=new Date(now2); sW.setDate(now2.getDate()-now2.getDay()); const eW=new Date(sW); eW.setDate(sW.getDate()+6); const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); return {kind:'stats',title:`${fmt(sW)} – ${fmt(eW)}`,icon:'📊',rows:[{icon:'✅',label:'Tarefas na semana',val:wk.done},{icon:'🔥',label:'Streak',val:`${streak} dias`},{icon:'⚡',label:'XP',val:g.totalXp||0}],badge:liga?`${liga.icon} ${liga.name}`:'',frase,type}; }
@@ -8708,7 +8711,7 @@ function _askSaveJornada(thumbB64){
   // Perguntar se quer salvar na Jornada
   const g    = typeof loadGamify==='function'?loadGamify():{};
   const pc   = typeof loadPC==='function'?loadPC():{};
-  const liga = typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const descMap={
     streak:`🔥 ${_jStreak?_jStreak():0} dias consecutivos`,
     evolucao:'📈 Minha Evolução',
@@ -9288,12 +9291,15 @@ async function jornadaTrocarAvatar(){
 window.jornadaTrocarAvatar=jornadaTrocarAvatar;
 
 /* ── Auto-registrar ── */
+// Nomes salvos de um sistema antigo de patentes não são exibidos (o dado no banco permanece intacto).
+function _jLigaValida(n){ return !!n && SEASON_RANKS.some(r=>r.name===n); }
+
 function jornadaAutoRegistrar(type,desc,opts={}){
   const hoje=todayKey(), evs=loadJornada();
   if(evs.some(e=>e.type===type&&e.desc===desc&&e.ts.startsWith(hoje))) return;
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,auto:true,
     title:opts.title||undefined};
@@ -9353,7 +9359,7 @@ function _jSnapshotHoje(){
   const hoje=todayKey();
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const ci=typeof loadCheckin==='function'?loadCheckin():{};
   const moodMap={pessimo:'😞',mal:'😕',ok:'😐',bem:'🙂',otimo:'😄'};
   const mood=ci.history?.[hoje]?moodMap[ci.history[hoje]]||null:null;
@@ -9389,7 +9395,7 @@ function jornadaRegistrarReflexao(qas){
   }
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type:'reflexao',desc:'🧠 Reflexão registrada',ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:false,hasReflexao:true,auto:true};
   evs.unshift(ev); saveJornada(evs);
@@ -9518,7 +9524,7 @@ async function jornadaSalvarEvento(){
   const type=document.getElementById('jornada-ev-type')?.value||'conquista';
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type,desc,ts:new Date().toISOString(),streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,hasPhoto:!!_jevPhoto,auto:false};
   if(_jevPhotoFile){
@@ -9657,7 +9663,7 @@ async function postEdFinalizar(action){
   if(!caption && !title && !_postEdPhoto && !_postEdVideo){ showToast('Escreva algo ou adicione uma mídia','error'); return; }
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type:'post',desc:title||caption.slice(0,60)||'Novo post',ts:new Date().toISOString(),
     streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,
@@ -9749,7 +9755,7 @@ async function adFinalizar(action){
   const diasEntre=_adDiasEntre();
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const id='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id,type:'antes_depois',desc:caption||'Antes e Depois',ts:new Date().toISOString(),
     streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,
@@ -9855,7 +9861,7 @@ function capsulaAbrir(id){
   saveCapsulaRemote(cap);
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const evId='ev_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   const ev={id:evId,type:'capsula',desc:'⏳ Cápsula do Tempo aberta',ts:new Date().toISOString(),
     streak:_jStreak(),liga:liga?.name||'',xp:g.totalXp||0,capsulaAberta:true,auto:true,
@@ -10078,7 +10084,7 @@ window.renderJornada=renderJornada;
 function _renderJornadaHero(){
   const g=typeof loadGamify==='function'?loadGamify():{};
   const pc=typeof loadPC==='function'?loadPC():{};
-  const liga=typeof getLiga==='function'?getLiga(pc.total||0):null;
+  const liga=typeof getPatenteAtual==='function'?getPatenteAtual():null;
   const streak=_jStreak(), maxStreak=g.records?.maxStreak||streak, dp=_jDiasPerfeitos();
   const user=window.app?.state?.user;
   const nome=user?.name||(user?.email?user.email.split('@')[0]:'Minha Jornada');
@@ -10087,7 +10093,7 @@ function _renderJornadaHero(){
   const entradaEl=document.getElementById('jornada-entrada');
   if(entradaEl) entradaEl.textContent=entrada?'Jornada iniciada em '+_jFmtDate(entrada):'';
   const ligaEl=document.getElementById('jornada-liga-badge');
-  if(ligaEl&&liga) ligaEl.innerHTML=`<span class="liga-badge ${liga.cls}">${liga.icon} ${liga.name}</span>`;
+  if(ligaEl&&liga) ligaEl.innerHTML=`<span class="liga-badge" style="background:var(--primary-glow);color:var(--primary)">${liga.icon} ${liga.name}</span>`;
   const stats=[
     {val:streak+'🔥',lbl:'Streak'},{val:maxStreak,lbl:'Recorde'},
     {val:dp,lbl:'Dias Perfeitos'},{val:g.totalXp||0,lbl:'XP Total'},
@@ -10147,7 +10153,7 @@ function _renderJornadaMomentos(){
   const pf=(fin.goals||[]).find(g=>g.reached||g.done);
   if(pf) momentos.push({icon:'💰',txt:'Primeira meta financeira',sub:pf.name||'Meta financeira'});
   if((g.totalDone||0)>=100) momentos.push({icon:'🚀',txt:'100 tarefas concluídas',sub:'Marco de produtividade'});
-  if((pc.total||0)>=2000) momentos.push({icon:'🏅',txt:'Patente Disciplinado alcançada',sub:'2000+ Pontos de Consistência'});
+  { const _mp=typeof _seasonMaiorPatente==='function'?_seasonMaiorPatente():null, _pa=typeof getPatenteAtual==='function'?getPatenteAtual():null; const _m=(_mp&&_pa)?(_mp.min>=_pa.min?_mp:_pa):(_mp||_pa); if(_m&&_m.min>0) momentos.push({icon:'🏅',txt:`Patente ${_m.name} alcançada`,sub:'Melhor patente em uma temporada'}); }
   if((pc.total||0)>=4800) momentos.push({icon:'💎',txt:'Mestre da Consistência',sub:'4800+ Pontos de Consistência'});
   if((pc.total||0)>=10000) momentos.push({icon:'👑',txt:'Lendário da Produtividade',sub:'O topo da consistência'});
   if(dp>=10) momentos.push({icon:'🌠',txt:'10 Dias Perfeitos',sub:'Consistência excepcional'});
@@ -10192,7 +10198,7 @@ async function _renderJornadaTimeline(filtroMes='all'){
       ${bodyHtml}
       <div class="jtl-meta">
         ${ev.streak?`<span class="badge" style="background:rgba(251,146,60,.1);color:var(--orange)">🔥 ${ev.streak} dias</span>`:''}
-        ${ev.liga?`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">${_jEsc(ev.liga)}</span>`:''}
+        ${_jLigaValida(ev.liga)?`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">${_jEsc(ev.liga)}</span>`:''}
         ${ev.xp?`<span class="badge" style="background:rgba(251,191,36,.1);color:var(--gold)">⚡ ${ev.xp} XP</span>`:''}
       </div>
       ${mediaHtml}
