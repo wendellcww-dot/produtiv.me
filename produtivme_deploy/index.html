@@ -1256,6 +1256,13 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
         </div>
         <div id="insights-list"></div>
         <div id="tt-week-card"></div>
+        <div class="card" id="weekly-card">
+          <div class="card-title"><i class="fas fa-chart-line"></i>Evolução semanal</div>
+          <div style="font-size:.78rem;color:var(--text-3);margin:-.25rem 0 .75rem">Acompanhe como sua produtividade evoluiu nos últimos 7 dias.</div>
+          <div id="weekly-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem;margin-bottom:.75rem"></div>
+          <div class="chart-container"><canvas id="weekly-chart"></canvas></div>
+          <div id="weekly-compare" style="font-size:.78rem;color:var(--text-2);margin-top:.6rem"></div>
+        </div>
         <div class="card">
           <div class="card-title"><i class="fas fa-chart-bar"></i>Evolução Mensal</div>
           <div class="chart-container"><canvas id="monthly-chart"></canvas></div>
@@ -2922,20 +2929,86 @@ function getAllFrases(){ return [...FRASES_DEFAULT,...loadCustomFrases()]; }
 
 // ── Favoritas ──
 const FRASE_FAV_KEY = 'pm18_frase_favs_v1';
-function loadFraseFavs(){ try{ return JSON.parse(localStorage.getItem(FRASE_FAV_KEY)||'[]'); }catch(e){ return []; } }
-function saveFraseFavs(l){ localStorage.setItem(FRASE_FAV_KEY, JSON.stringify(l)); }
+// Armazenamento local: {ids:[...], ts:<ms da última alteração>, dirty:<bool: alteração ainda não confirmada no servidor>}.
+// Remoto: coluna profiles.frase_favs (jsonb) com {ids:[...], ts:<ms>}. Last-write-wins por `ts`,
+// então uma lista local antiga nunca sobrescreve uma remota mais nova.
+function _normFavIds(a){
+  const out=[], seen=new Set();
+  (Array.isArray(a)?a:[]).forEach(x=>{ const s=(typeof x==='string'||typeof x==='number')?String(x):''; if(s&&!seen.has(s)){ seen.add(s); out.push(s); } });
+  return out;
+}
+function _loadFraseFavState(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(FRASE_FAV_KEY)||'null');
+    if(Array.isArray(raw)) return {ids:_normFavIds(raw),ts:0,dirty:false}; // formato antigo (só array)
+    if(raw && typeof raw==='object') return {ids:_normFavIds(raw.ids),ts:Number(raw.ts)||0,dirty:!!raw.dirty};
+  }catch(e){}
+  return {ids:[],ts:0,dirty:false};
+}
+function _saveFraseFavState(s){
+  try{ localStorage.setItem(FRASE_FAV_KEY, JSON.stringify({ids:_normFavIds(s.ids),ts:Number(s.ts)||0,dirty:!!s.dirty})); return true; }
+  catch(e){ return false; }
+}
+function loadFraseFavs(){ return _loadFraseFavState().ids; }
+function saveFraseFavs(l){ // alteração local do usuário: marca como pendente de sync
+  const ok=_saveFraseFavState({ids:l,ts:Date.now(),dirty:true});
+  pushFraseFavsRemote();
+  return ok;
+}
 function toggleFraseFav(id){
+  id=String(id);
   const favs=loadFraseFavs();
-  const idx=favs.indexOf(id);
-  if(idx===-1) favs.push(id); else favs.splice(idx,1);
-  saveFraseFavs(favs);
-  return idx===-1; // true = acabou de favoritar
+  const has=favs.includes(id);
+  const next=has?favs.filter(x=>x!==id):[...favs,id];
+  saveFraseFavs(next);
+  return !has; // true = acabou de favoritar
+}
+let _favPushTimer=null, _favPushing=false;
+function pushFraseFavsRemote(){
+  clearTimeout(_favPushTimer);
+  _favPushTimer=setTimeout(async ()=>{
+    const user=window.app?.state?.user;
+    if(!user||user.local||!window.supabaseClient) return;
+    if(_favPushing){ pushFraseFavsRemote(); return; }
+    const st=_loadFraseFavState();
+    if(!st.dirty) return;
+    _favPushing=true;
+    try{
+      const {error}=await window.supabaseClient.from('profiles').update({frase_favs:{ids:st.ids,ts:st.ts}}).eq('id',user.id);
+      if(error) throw error;
+      const cur=_loadFraseFavState();
+      if(cur.ts===st.ts) _saveFraseFavState({ids:cur.ids,ts:cur.ts,dirty:false}); // só limpa se não mudou durante o envio
+      else pushFraseFavsRemote();
+    }catch(e){ console.warn('[Frases] favoritos pendentes de sync:',e?.message||e); }
+    finally{ _favPushing=false; }
+  },400);
+}
+// Remoto primeiro: se o remoto é mais novo, vence; se o local tem alteração pendente e mais nova, envia.
+async function loadFraseFavsRemote(){
+  const user=window.app?.state?.user;
+  if(!user||user.local) return;
+  const {data,error}=await window.supabaseClient.from('profiles').select('frase_favs').eq('id',user.id).maybeSingle();
+  if(error) throw error; // coluna ausente / rede: mantém o local e deixa pendente
+  const loc=_loadFraseFavState();
+  let remote=data?.frase_favs, rIds=null, rTs=0;
+  if(Array.isArray(remote)){ rIds=_normFavIds(remote); rTs=0; }
+  else if(remote && typeof remote==='object'){ rIds=_normFavIds(remote.ids); rTs=Number(remote.ts)||0; }
+  if(rIds===null){ // nada no servidor ainda
+    if(loc.ids.length){ _saveFraseFavState({ids:loc.ids,ts:loc.ts||Date.now(),dirty:true}); pushFraseFavsRemote(); }
+    return;
+  }
+  if(loc.dirty && loc.ts>rTs){ pushFraseFavsRemote(); return; }
+  if(rTs>=loc.ts){ _saveFraseFavState({ids:rIds,ts:rTs,dirty:false}); }
+  else if(loc.ts>rTs){ _saveFraseFavState({ids:loc.ids,ts:loc.ts,dirty:true}); pushFraseFavsRemote(); }
 }
 
 // ── Frase do dia (rotação determinística — muda todo dia, igual pra quem abrir no mesmo dia) ──
+// Usa só as frases padrão: antes usava getAllFrases(), então adicionar/carregar frases
+// personalizadas mudava o índice e a "frase do dia" trocava no meio do dia (coração apontando outra frase).
 function getFraseDoDia(){
-  const all=getAllFrases(); if(!all.length) return null;
-  const dayOfYear=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0).getTime())/86400000);
+  const all=FRASES_DEFAULT; if(!all.length) return null;
+  const [y,m,d]=todayKey().split('-').map(Number);
+  const dayOfYear=Math.floor((Date.UTC(y,m-1,d)-Date.UTC(y,0,0))/86400000);
   return all[dayOfYear % all.length];
 }
 
@@ -3366,6 +3439,7 @@ _isSyncing: false,
     if(error||!data) return;
     const local=loadGamify();
     const merged={
+      ...local, // preserva presenceDays, records etc. (antes eram apagados a cada sync)
       totalXp:Math.max(local.totalXp||0,data.total_xp||0),
       totalDone:Math.max(local.totalDone||0,data.total_done||0),
       medals:local.medals||[],
@@ -3421,7 +3495,7 @@ _isSyncing: false,
       // allSettled em vez de all: uma entidade falhando (rede, RLS, coluna
       // ainda não migrada, etc.) não pode impedir que as outras 13, que
       // carregaram com sucesso, sejam salvas localmente neste ciclo.
-      const _syncLabels=['tarefas','metas','financas','habitos','humor','respostas','frases','gamificacao','diario','custom','entradaDiaria','jornada','jshares','presence'];
+      const _syncLabels=['tarefas','metas','financas','habitos','humor','respostas','frases','frasesFav','gamificacao','diario','custom','entradaDiaria','jornada','jshares','presence'];
       const results = await Promise.allSettled([
         this.loadTasksRemote(),
         this.loadGoalsRemote(),
@@ -3430,6 +3504,7 @@ _isSyncing: false,
         this.loadMoodRemote(),
         this.loadAnswersRemote(),
         this.loadFrasesRemote(),
+        loadFraseFavsRemote(),
         this.loadGamifyRemote(),
         this.loadDiarioRemote(),
         this.loadCustomQRemote(),
@@ -3445,6 +3520,7 @@ _isSyncing: false,
       }
       this.ttHealCompletedTasks();
       this.saveLocal();
+      try{ if(q('frases-list')) this.renderFrases(); }catch(e){}
       setSyncStatus(anyFailed?'error':'online');
     }catch(e){ console.error('[Sync]',e); window.captureError?.(e,{operation:'sync_remote'}); setSyncStatus('error'); }
     finally{ this._isSyncing = false; }
@@ -3506,21 +3582,18 @@ _isSyncing: false,
     saveJShares(merged);
   },
 
-  // Une os dias de presença locais com os do Supabase (nunca perde dias de nenhum aparelho)
-  // e, se o merge trouxer dias novos que o Supabase ainda não tinha, já reenvia atualizado.
+  // Ordem: remoto → une com o local → normaliza → registra hoje se faltar → recalcula → salva → UI.
+  // Une (nunca substitui), então dois aparelhos não se sobrescrevem. Se o remoto falhar, mantém os dias locais.
   async loadPresenceRemote(){
     if(!this.state.user||this.state.user.local) return;
     const {data,error}=await window.supabaseClient
       .from('profiles').select('presence_days').eq('id',this.state.user.id).maybeSingle();
-    if(error) return;
-    const local=loadPresence();
-    const localDays=local.days||[];
-    const remoteDays=data?.presence_days||[];
-    const merged=Array.from(new Set([...localDays,...remoteDays])).sort();
-    if(merged.length===localDays.length && merged.length===remoteDays.length) return; // já igual, nada a fazer
-    local.days=merged;
-    savePresence(local);
-    if(merged.length!==remoteDays.length) savePresenceRemote(merged);
+    if(error) throw error;
+    const remoteDays=normalizePresenceDays(data?.presence_days);
+    const merged=normalizePresenceDays([...(loadPresence().days||[]),...remoteDays,spDateKey()]);
+    _applyPresence(merged);
+    if(merged.length!==remoteDays.length) await savePresenceRemote(merged); // só envia se o remoto estiver faltando dias
+    refreshPresenceUI();
   },
 
   async loadFrasesRemote(){
@@ -3528,8 +3601,11 @@ _isSyncing: false,
     const {data,error}=await window.supabaseClient
       .from('frases_custom').select('*').eq('user_id',this.state.user.id);
     if(error||!data) return;
-    const frases=data.map(f=>({id:f.id,text:f.text,author:f.author||'Desconhecido',cat:f.cat||'produtividade'}));
-    saveCustomFrases(frases);
+    // Mescla em vez de substituir: as frases personalizadas só existiam localmente (nunca são
+    // enviadas ao servidor), então substituir apagava todas a cada sync — e os favoritos delas sumiam junto.
+    const frases=data.map(f=>({id:String(f.id),text:f.text,author:f.author||'Desconhecido',cat:f.cat||'produtividade'}));
+    const byId={}; loadCustomFrases().forEach(f=>{ byId[f.id]=f; }); frases.forEach(f=>{ byId[f.id]=f; });
+    saveCustomFrases(Object.values(byId));
   },
 
   // Carrega hábitos do Supabase
@@ -5127,7 +5203,7 @@ _isSyncing: false,
     if(q('analytics-xp')) q('analytics-xp').textContent=g.totalXp;
     if(q('analytics-best')) q('analytics-best').textContent=this.getBestDay();
     const insights=[], streak=this.computeStreak();
-    const presStreak = typeof getPresenceStreak==='function' ? getPresenceStreak() : 0;
+    const presTotal = typeof getPresenceTotal==='function' ? getPresenceTotal() : 0;
     const gState = getGamifyState();
     const records = loadGamify().records || {};
     const today2 = todayKey();
@@ -5137,7 +5213,7 @@ _isSyncing: false,
     const habsDone2 = habs2.filter(h=>(h.days||[]).includes(today2)).length;
 
     if(streak>0) insights.push({icon:'🔥',text:`${streak} dia${streak>1?'s':''} consecutivos de tarefas. Continue!`});
-    if(presStreak>0) insights.push({icon:'📅',text:`${presStreak} dia${presStreak>1?'s':''} acessando o app. Consistência real.`});
+    if(presTotal>0) insights.push({icon:'📅',text:`${presTotal} dia${presTotal>1?'s':''} acessando o app. Consistência real.`});
     if(todayDone2>0) insights.push({icon:'✅',text:`Hoje: ${todayDone2} tarefa${todayDone2>1?'s':''} concluída${todayDone2>1?'s':''}${habsDone2>0?' e '+habsDone2+' hábito'+(habsDone2>1?'s':''):''}.`});
     if(records.maxStreak>0 && streak===records.maxStreak) insights.push({icon:'🏆',text:`Recorde pessoal de streak: ${streak} dias!`});
     if(records.maxStreak>0 && streak===records.maxStreak-1) insights.push({icon:'⚡',text:`Falta 1 dia para bater seu recorde de ${records.maxStreak} dias!`});
@@ -5152,7 +5228,7 @@ _isSyncing: false,
     if(finInc>0) insights.push({icon:'💰',text:`Finanças do mês: ${fmtMoney(finInc-finExp)} de saldo`});
     const il=q('insights-list');
     if(il) il.innerHTML=insights.map(i=>`<div class="insight-card"><div class="insight-icon">${i.icon}</div><div class="insight-text">${i.text}</div></div>`).join('');
-    this.renderMonthlyChart(); this.renderFocusChart();
+    this.renderWeeklyChart(); this.renderMonthlyChart(); this.renderFocusChart();
   },
 
   getBestDay(){
@@ -5163,6 +5239,39 @@ _isSyncing: false,
       if(pct>bestPct){ bestPct=pct; best=new Date(day+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}); }
     });
     return best;
+  },
+
+  // Evolução semanal: taxa de conclusão por dia (feitas ÷ total do dia, mesma lógica do gráfico mensal)
+  // nos últimos 7 dias incluindo hoje. Dia sem tarefas = sem dado (null), nunca 0%.
+  renderWeeklyChart(){
+    const ctx=q('weekly-chart'); if(!ctx) return;
+    if(this.state.charts['weekly']){ this.state.charts['weekly'].destroy(); delete this.state.charts['weekly']; }
+    const routines=this.state.data.routines||{};
+    const keyOf=n=>{ const d=new Date(n*86400000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); };
+    const [ty,tm,td]=todayKey().split('-').map(Number);
+    const t0=Math.round(Date.UTC(ty,tm-1,td)/86400000);
+    const stat=k=>{ const ts=routines[k]||[]; return {total:ts.length,done:ts.filter(t=>t.done).length}; };
+    const win=(start)=>Array.from({length:7},(_,i)=>{ const k=keyOf(start+i), s=stat(k); return {key:k,total:s.total,done:s.done,pct:s.total?Math.round(s.done/s.total*100):null}; });
+    const cur=win(t0-6), prev=win(t0-13);
+    const wd=['dom','seg','ter','qua','qui','sex','sáb'];
+    const labels=cur.map(d=>{ const [y,m,dd]=d.key.split('-').map(Number); return wd[new Date(Date.UTC(y,m-1,dd)).getUTCDay()]+' '+String(dd).padStart(2,'0')+'/'+String(m).padStart(2,'0'); });
+    const withData=cur.filter(d=>d.pct!==null), prevData=prev.filter(d=>d.pct!==null);
+    const avgOf=a=>a.length?Math.round(a.reduce((s,d)=>s+d.pct,0)/a.length):null;
+    const avg=avgOf(withData), prevAvg=avgOf(prevData);
+    const doneWeek=cur.reduce((s,d)=>s+d.done,0);
+    const best=withData.reduce((b,d)=>(!b||d.pct>b.pct)?d:b,null);
+    const bestLbl=best?labels[cur.indexOf(best)].split(' ')[0]+' ('+best.pct+'%)':'—';
+    const box=(label,val)=>`<div style="background:var(--surface3);border-radius:var(--radius-sm);padding:.55rem .7rem;text-align:center"><div style="font-size:.66rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.04em">${label}</div><div style="font-size:1.05rem;font-weight:800;color:var(--primary);margin-top:.1rem">${val}</div></div>`;
+    const sum=q('weekly-summary');
+    if(sum) sum.innerHTML=box('Concluídas',doneWeek)+box('Taxa média',avg===null?'—':avg+'%')+box('Melhor dia',bestLbl);
+    const cmp=q('weekly-compare');
+    if(cmp){
+      if(avg===null||prevAvg===null) cmp.textContent='Dados insuficientes para comparar com os 7 dias anteriores.';
+      else{ const diff=avg-prevAvg; cmp.textContent=diff===0?'Mesma taxa dos 7 dias anteriores.':(diff>0?'▲ +':'▼ ')+diff+' p.p. em relação aos 7 dias anteriores.'; }
+    }
+    this.state.charts['weekly']=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'% Concluído',data:cur.map(d=>d.pct),borderColor:'rgba(167,139,250,1)',backgroundColor:'rgba(167,139,250,.12)',tension:.35,fill:true,spanGaps:true,pointRadius:4,pointBackgroundColor:'rgba(167,139,250,1)'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>{ const d=cur[items[0].dataIndex]; return fmtDate(d.key); },label:c=>{ const d=cur[c.dataIndex]; return d.pct===null?'Sem tarefas':d.pct+'% ('+d.done+'/'+d.total+' tarefas)'; }}}},
+      scales:{y:{beginAtZero:true,max:100,ticks:{color:'#6a6390',callback:v=>v+'%'},grid:{color:'rgba(167,139,250,.08)'}},x:{ticks:{color:'#6a6390',maxRotation:0,autoSkip:false,font:{size:10}},grid:{display:false}}}}});
   },
 
   renderMonthlyChart(){
@@ -6416,7 +6525,7 @@ function renderDeStep() {
   const overlay = document.getElementById('daily-entry');
   if (!overlay) return;
   const streak = window.app?.computeStreak?.() || 0;
-  const presStreak = typeof getPresenceStreak === 'function' ? getPresenceStreak() : 0;
+  const presTotal = typeof getPresenceTotal === 'function' ? getPresenceTotal() : 0;
   const prog = getProgressoRecente();
   const proximo = getProximoObjetivo();
   const diaPerfeito = getDiaPerfeito();
@@ -6433,9 +6542,9 @@ function renderDeStep() {
     html = `
       <div style="text-align:center;margin-bottom:1rem">
         <div style="font-size:3rem;margin-bottom:.5rem">🔥</div>
-        <div class="de-streak-number">${streak || presStreak}</div>
-        <div class="de-streak-label">${streak > 0 ? 'DIAS CONSECUTIVOS' : 'DIAS DE PRESENÇA'}</div>
-        <div class="de-streak-msg">"${getStreakMsg(streak || presStreak)}"</div>
+        <div class="de-streak-number">${streak > 0 ? streak : presTotal}</div>
+        <div class="de-streak-label">${streak > 0 ? 'DIAS CONSECUTIVOS' : 'DIAS NO PRODUTIV.ME'}</div>
+        <div class="de-streak-msg">"${streak > 0 ? getStreakMsg(streak) : (presTotal<=1 ? 'Você começa hoje. Tudo que é grande começou assim.' : `Você já esteve presente em ${presTotal} dias. Cada dia conta.`)}"</div>
       </div>
       <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
     `;
@@ -7907,52 +8016,83 @@ function saveCheckin(d){ localStorage.setItem(CHECKIN_KEY, JSON.stringify(d)); }
 function loadPresence(){ try{ return JSON.parse(localStorage.getItem(PRESENCE_KEY)||'{}'); }catch(e){ return {}; } }
 function savePresence(d){ localStorage.setItem(PRESENCE_KEY, JSON.stringify(d)); }
 
-// Sincroniza a lista de dias de presença com o Supabase (mesma coluna jsonb usada no merge do sync)
+// ── Presença diária ──
+// Fonte única de "hoje": fuso America/Sao_Paulo (antes: toISOString() em UTC, que vira o dia às 21h de Brasília).
+function spDateKey(d){
+  try{
+    const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d||new Date());
+    const g=t=>p.find(x=>x.type===t).value;
+    return g('year')+'-'+g('month')+'-'+g('day');
+  }catch(e){ return todayKey(); }
+}
+// Número de dia absoluto a partir de 'YYYY-MM-DD' (sem Date local → sem deslocamento de fuso/DST).
+function _dayNum(k){ const [y,m,d]=k.split('-').map(Number); return Math.round(Date.UTC(y,m-1,d)/86400000); }
+function normalizePresenceDays(arr){
+  const set=new Set();
+  (Array.isArray(arr)?arr:[]).forEach(x=>{ if(typeof x==='string' && /^\d{4}-\d{2}-\d{2}$/.test(x)) set.add(x); });
+  return Array.from(set).sort();
+}
+// total = dias distintos; streak = dias seguidos terminando hoje (ou ontem, se hoje ainda não registrou).
+function computePresenceStats(days,todayK){
+  const ds=normalizePresenceDays(days);
+  const total=ds.length;
+  if(!total) return {total:0,streak:0,days:ds};
+  const set=new Set(ds), t=_dayNum(todayK||spDateKey());
+  const keyOf=n=>{ const d=new Date(n*86400000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); };
+  let cur=set.has(keyOf(t))?t:(set.has(keyOf(t-1))?t-1:null), streak=0;
+  if(cur!==null){ while(set.has(keyOf(cur))){ streak++; cur--; } }
+  return {total,streak,days:ds};
+}
+function getPresenceTotal(){ return computePresenceStats(loadPresence().days).total; }
+function getPresenceStreak(){ return computePresenceStats(loadPresence().days).streak; } // calculado ao vivo: nunca fica "preso" num valor antigo
+
+// Grava no servidor a UNIÃO dos dias (nunca substitui): lê o remoto, une com o local e só então atualiza.
+// Se falhar, os dias ficam salvos localmente e são reenviados no próximo syncRemote (loadPresenceRemote).
+let _presPushing=false;
 async function savePresenceRemote(days){
   const user=window.app?.state?.user;
-  if(!user||user.local) return;
+  if(!user||user.local||!window.supabaseClient) return false;
+  if(_presPushing) return false;
+  _presPushing=true;
   try{
-    const {error}=await window.supabaseClient.from('profiles').update({presence_days:days}).eq('id',user.id);
+    const {data,error:e1}=await window.supabaseClient.from('profiles').select('presence_days').eq('id',user.id).maybeSingle();
+    if(e1) throw e1;
+    const union=normalizePresenceDays([...(data?.presence_days||[]),...(days||[])]);
+    const {error}=await window.supabaseClient.from('profiles').update({presence_days:union}).eq('id',user.id);
     if(error) throw error;
-  }catch(e){ /* sincroniza de novo no próximo syncRemote */ }
+    return true;
+  }catch(e){ console.warn('[Presença] sync pendente:',e?.message||e); return false; }
+  finally{ _presPushing=false; }
 }
 window.savePresenceRemote=savePresenceRemote;
 
-function registerDailyPresence(){
-  const today = new Date().toISOString().split('T')[0];
-  const p = loadPresence();
-  if(p.lastDay === today) return; // já registrou hoje
-  
-  const days = p.days || [];
-  if(!days.includes(today)) days.push(today);
-  
-  // Calcula streak de presença
-  let streak = 0;
-  let cur = new Date(today+'T00:00:00');
-  const sorted = [...days].sort().reverse();
-  for(const d of sorted){
-    const diff = Math.round((cur.getTime()-new Date(d+'T00:00:00').getTime())/86400000);
-    if(diff === streak) streak++;
-    else if(diff > streak) break;
-  }
-  
-  p.lastDay = today;
-  p.days = days;
-  p.streak = streak;
-  p.totalDays = days.length;
+// Recalcula e persiste total/streak a partir dos dias, e reconstrói gamify.presenceDays (sem tocar em XP/pontos/tarefas/hábitos).
+function _applyPresence(days){
+  const st=computePresenceStats(days);
+  const p=loadPresence();
+  p.days=st.days; p.totalDays=st.total; p.streak=st.streak; p.lastDay=st.days[st.days.length-1]||null;
   savePresence(p);
-  savePresenceRemote(days);
-
-  // Atualiza presenceDays no gamify
-  const g = loadGamify();
-  g.presenceDays = days.length;
-  saveGamify(g);
-  
-  return streak;
+  const g=loadGamify();
+  if(g.presenceDays!==st.total){ g.presenceDays=st.total; saveGamify(g); }
+  return st;
 }
-
-function getPresenceStreak(){
-  return loadPresence().streak || 0;
+function refreshPresenceUI(){
+  try{
+    const el=document.getElementById('presence-days-count'); if(el) el.textContent=getPresenceTotal();
+    if(window.app && document.getElementById('analytics-screen')?.classList.contains('active')) window.app.renderAnalytics();
+  }catch(e){}
+}
+// Idempotente: abrir o app/recarregar/reabrir o check-in várias vezes no mesmo dia não soma nada.
+function registerDailyPresence(){
+  const today=spDateKey();
+  const p=loadPresence();
+  const days=normalizePresenceDays(p.days);
+  const had=days.includes(today);
+  if(!had) days.push(today);
+  const st=_applyPresence(days);
+  if(!had) savePresenceRemote(st.days);
+  refreshPresenceUI();
+  return st.streak;
 }
 
 function showCheckinModal(){
@@ -8012,7 +8152,6 @@ function checkResumoDia(){
 function checkRecordes(){
   const g = loadGamify();
   const streak = app?.computeStreak?.() || 0;
-  const presStreak = getPresenceStreak();
   const records = g.records || {};
   const alerts = [];
   
@@ -8027,7 +8166,7 @@ function checkRecordes(){
   }
   
   // Recorde de tarefas
-  const today = new Date().toISOString().split('T')[0];
+  const today = spDateKey();
   const todayDone = (Object.values(app?.state?.data?.routines||{}).flat()||[]).filter((t)=>t.done && t.updated_at?.startsWith(today)).length;
   if(todayDone > 0 && todayDone === (records.maxTasksDay||0)){
     alerts.push(`⚡ Você está perto do seu recorde diário de tarefas (${records.maxTasksDay})!`);
@@ -9262,7 +9401,7 @@ function _jHumorMedio(){
 }
 function _jPresenceDays(){
   const p=typeof loadPresence==='function'?loadPresence():{};
-  return (p.days||[]).length||Object.keys(window.app?.state?.data?.routines||{}).length;
+  return normalizePresenceDays(p.days).length||Object.keys(window.app?.state?.data?.routines||{}).length;
 }
 function _jDataEntrada(){
   const p=typeof loadPresence==='function'?loadPresence():{};
