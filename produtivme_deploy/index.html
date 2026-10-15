@@ -940,7 +940,11 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
               <button onclick="if(typeof openShareModal==='function')openShareModal('liga')" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:.8rem;padding:0" title="Compartilhar"><i class="fas fa-share-alt"></i></button>
             </div>
           </div>
-          <div style="font-size:.74rem;color:var(--text-3);margin-top:-.35rem;margin-bottom:.5rem">📅 <span id="presence-days-count">0</span> dias de presença</div>
+          <div style="font-size:.74rem;color:var(--text-3);margin-top:-.35rem;margin-bottom:.5rem">
+            <div id="access-streak-line" style="color:var(--text-2);font-weight:600">🔥 verificando…</div>
+            <div id="shield-info" style="margin-top:.15rem"></div>
+            <div style="margin-top:.15rem">📅 <span id="presence-days-count">0</span> dias acessados no total</div>
+          </div>
           <div class="xp-bar"><div class="xp-fill" id="xp-bar-fill" style="width:0%"></div></div>
           <div id="pc-panel" style="margin-top:.5rem">
             <div class="season-widget"></div>
@@ -3588,11 +3592,12 @@ _isSyncing: false,
     if(!this.state.user||this.state.user.local) return;
     const {data,error}=await window.supabaseClient
       .from('profiles').select('presence_days').eq('id',this.state.user.id).maybeSingle();
-    if(error) throw error;
+    if(error){ await syncAccessStreak(); throw error; } // mesmo sem ler os dias, tenta confirmar o streak no servidor
     const remoteDays=normalizePresenceDays(data?.presence_days);
     const merged=normalizePresenceDays([...(loadPresence().days||[]),...remoteDays,spDateKey()]);
     _applyPresence(merged);
     if(merged.length!==remoteDays.length) await savePresenceRemote(merged); // só envia se o remoto estiver faltando dias
+    await syncAccessStreak(); // streak/escudo: servidor é a fonte de verdade (idempotente)
     refreshPresenceUI();
   },
 
@@ -4420,7 +4425,7 @@ _isSyncing: false,
     if(q('xp-next')) q('xp-next').textContent=lv.xpNext;
     if(q('xp-bar-fill')) q('xp-bar-fill').style.width=lv.pct+'%';
     if(q('stat-total-xp')) q('stat-total-xp').textContent=g.totalXp;
-    if(q('presence-days-count')) q('presence-days-count').textContent=typeof _jPresenceDays==='function'?_jPresenceDays():0;
+    if(typeof renderAccessUI==='function') renderAccessUI();
   },
 
   /* ── MEDALHAS ── */
@@ -5204,6 +5209,7 @@ _isSyncing: false,
     if(q('analytics-best')) q('analytics-best').textContent=this.getBestDay();
     const insights=[], streak=this.computeStreak();
     const presTotal = typeof getPresenceTotal==='function' ? getPresenceTotal() : 0;
+    const accInfo = typeof getAccessInfo==='function' ? getAccessInfo() : {hasState:false,streak:0};
     const gState = getGamifyState();
     const records = loadGamify().records || {};
     const today2 = todayKey();
@@ -5213,7 +5219,8 @@ _isSyncing: false,
     const habsDone2 = habs2.filter(h=>(h.days||[]).includes(today2)).length;
 
     if(streak>0) insights.push({icon:'🔥',text:`${streak} dia${streak>1?'s':''} consecutivos de tarefas. Continue!`});
-    if(presTotal>0) insights.push({icon:'📅',text:`${presTotal} dia${presTotal>1?'s':''} acessando o app. Consistência real.`});
+    if(accInfo.hasState && accInfo.streak>0) insights.push({icon:'📅',text:`${accInfo.streak} dia${accInfo.streak>1?'s':''} consecutivo${accInfo.streak>1?'s':''} acessando o app. Consistência real.`});
+    if(presTotal>0) insights.push({icon:'🗓️',text:`${presTotal} dia${presTotal>1?'s':''} acessados no total.`});
     if(todayDone2>0) insights.push({icon:'✅',text:`Hoje: ${todayDone2} tarefa${todayDone2>1?'s':''} concluída${todayDone2>1?'s':''}${habsDone2>0?' e '+habsDone2+' hábito'+(habsDone2>1?'s':''):''}.`});
     if(records.maxStreak>0 && streak===records.maxStreak) insights.push({icon:'🏆',text:`Recorde pessoal de streak: ${streak} dias!`});
     if(records.maxStreak>0 && streak===records.maxStreak-1) insights.push({icon:'⚡',text:`Falta 1 dia para bater seu recorde de ${records.maxStreak} dias!`});
@@ -5821,6 +5828,8 @@ const RealtimeManager = (() => {
         p => onTableChange('financas_metas', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'humor_logs', filter:`user_id=eq.${userId}` },
         p => onTableChange('humor_logs', p))
+      .on('postgres_changes', { event:'*', schema:'public', table:'streak_acesso', filter:`user_id=eq.${userId}` },
+        p => onTableChange('streak_acesso', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'gamificacao', filter:`user_id=eq.${userId}` },
         p => onTableChange('gamificacao', p))
       .on('postgres_changes', { event:'*', schema:'public', table:'frases_custom', filter:`user_id=eq.${userId}` },
@@ -6525,7 +6534,7 @@ function renderDeStep() {
   const overlay = document.getElementById('daily-entry');
   if (!overlay) return;
   const streak = window.app?.computeStreak?.() || 0;
-  const presTotal = typeof getPresenceTotal === 'function' ? getPresenceTotal() : 0;
+  const acc = getAccessInfo();
   const prog = getProgressoRecente();
   const proximo = getProximoObjetivo();
   const diaPerfeito = getDiaPerfeito();
@@ -6542,9 +6551,10 @@ function renderDeStep() {
     html = `
       <div style="text-align:center;margin-bottom:1rem">
         <div style="font-size:3rem;margin-bottom:.5rem">🔥</div>
-        <div class="de-streak-number">${streak > 0 ? streak : presTotal}</div>
-        <div class="de-streak-label">${streak > 0 ? 'DIAS CONSECUTIVOS' : 'DIAS NO PRODUTIV.ME'}</div>
-        <div class="de-streak-msg">"${streak > 0 ? getStreakMsg(streak) : (presTotal<=1 ? 'Você começa hoje. Tudo que é grande começou assim.' : `Você já esteve presente em ${presTotal} dias. Cada dia conta.`)}"</div>
+        <div class="de-streak-number">${acc.hasState ? acc.streak : '…'}</div>
+        <div class="de-streak-label">${acc.streak === 1 ? 'DIA CONSECUTIVO' : 'DIAS CONSECUTIVOS'}</div>
+        <div class="de-streak-msg">"${acc.hasState && acc.streak > 0 ? getStreakMsg(acc.streak) : 'Verificando seu streak…'}"</div>
+        <div style="margin-top:.6rem;font-size:.78rem;color:var(--text-3)">🛡️ ${acc.shields > 0 ? acc.shields + (acc.shields === 1 ? ' escudo disponível' : ' escudos disponíveis') : 'sem escudo disponível'}</div>
       </div>
       <button class="btn btn-primary" style="width:200px;margin-top:1.5rem" onclick="deNext()">Continuar</button>
     `;
@@ -6751,16 +6761,7 @@ function addPC(amount, reason='', refId){
   d.history.push({ amount, reason, date: todayKey(), ts: Date.now() });
   if(d.history.length > 100) d.history = d.history.slice(-100);
   if(typeof addSeasonPoints==='function') addSeasonPoints(amount, reason);
-  // Verifica escudo a cada 15 dias de streak
-  const streak = window.app?.computeStreak?.() || 0;
-  if(streak > 0 && streak % 15 === 0){
-    const lastEscudoStreak = d.lastEscudoStreak || 0;
-    if(streak !== lastEscudoStreak){
-      d.escudos = Math.min(3, (d.escudos || 0) + 1);
-      d.lastEscudoStreak = streak;
-      setTimeout(()=>showToast('🛡️ Escudo de Consistência ganho!','gold',4000), 1500);
-    }
-  }
+  // (O Escudo de Streak agora é concedido/consumido no servidor — ver register_access / syncAccessStreak.)
   savePC(d);
   // Valida e confirma os pontos no servidor (função com SECURITY DEFINER —
   // o valor em si nunca é enviado pelo cliente, só o motivo + referência).
@@ -8044,7 +8045,151 @@ function computePresenceStats(days,todayK){
   return {total,streak,days:ds};
 }
 function getPresenceTotal(){ return computePresenceStats(loadPresence().days).total; }
-function getPresenceStreak(){ return computePresenceStats(loadPresence().days).streak; } // calculado ao vivo: nunca fica "preso" num valor antigo
+
+/* ══ STREAK DE ACESSO + ESCUDO ══
+   Autenticado: o servidor (RPC register_access, tabela streak_acesso) é a fonte de verdade — atômico e idempotente,
+   então dois aparelhos nunca contam o dia nem consomem o escudo duas vezes. O localStorage é só cache de exibição.
+   Sem conta (modo local): o mesmo algoritmo roda aqui (accessAdvance). */
+const ACCESS_KEY = 'pm18_access_streak_v1';
+const SHIELD_MAX = 3, SHIELD_EVERY = 15;
+function _accessEmpty(){ return {current_streak:0,best_streak:0,last_day:null,shields:0,last_award_streak:0,shield_log:[],notice_seen:null}; }
+function loadAccess(){
+  try{
+    const a=JSON.parse(localStorage.getItem(ACCESS_KEY)||'null');
+    const uid=window.app?.state?.user?.id||null;
+    if(a && a.state && (a.uid||null)===uid) return a;
+  }catch(e){}
+  return null;
+}
+function saveAccess(a){ try{ localStorage.setItem(ACCESS_KEY, JSON.stringify(a)); }catch(e){} }
+// Mesmo algoritmo da função SQL (usado só no modo local e como espelho para testes).
+function accessAdvance(st, today){
+  const r=Object.assign(_accessEmpty(),st||{}); r.shield_log=(r.shield_log||[]).slice();
+  const out={state:r,registered:false,notice:null,shield_used:0,shield_granted:false};
+  if(r.last_day && r.last_day>=today) return out;
+  out.registered=true;
+  if(!r.last_day) r.current_streak=1;
+  else{
+    const missed=_dayNum(today)-_dayNum(r.last_day)-1;
+    if(missed<=0) r.current_streak+=1;
+    else if(r.current_streak>0 && r.shields>=missed){
+      r.shields-=missed; out.shield_used=missed; r.current_streak+=1;
+      r.shield_log.push({type:'used',day_protected:_dayKey(_dayNum(today)-1),days:missed,on:today,shields_left:r.shields});
+      out.notice={id:'n'+Date.now(),kind:'protected',prev_streak:r.current_streak-1,streak:r.current_streak,missed,day:today,shields:r.shields};
+    }else{
+      const prev=r.current_streak; r.current_streak=1; r.last_award_streak=0;
+      if(prev>0) out.notice={id:'n'+Date.now(),kind:'broken',prev_streak:prev,streak:1,missed,day:today,shields:r.shields};
+    }
+  }
+  r.last_day=today; r.best_streak=Math.max(r.best_streak,r.current_streak);
+  if(r.current_streak>0 && r.current_streak%SHIELD_EVERY===0 && r.current_streak!==r.last_award_streak && r.shields<SHIELD_MAX){
+    r.shields+=1; r.last_award_streak=r.current_streak; out.shield_granted=true;
+    r.shield_log.push({type:'granted',streak:r.current_streak,on:today,shields_left:r.shields});
+  }
+  if(r.shield_log.length>50) r.shield_log=r.shield_log.slice(-50);
+  return out;
+}
+function _dayKey(n){ const d=new Date(n*86400000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
+
+let _accessSyncing=false;
+// status: 'verifying' (ainda não confirmou hoje) | 'synced' | 'offline' (falhou; mostra o último valor confirmado) | 'local' (sem conta)
+function getAccessInfo(){
+  const a=loadAccess(), st=a?.state||_accessEmpty();
+  const user=window.app?.state?.user;
+  let status=(!user||user.local)?'local':(a?.verified_day===spDateKey()?'synced':(a?.failed?'offline':'verifying'));
+  return {streak:st.current_streak||0,best:st.best_streak||0,shields:st.shields||0,lastDay:st.last_day,log:st.shield_log||[],status,hasState:!!a};
+}
+function getPresenceStreak(){ return getAccessInfo().streak; }
+
+async function syncAccessStreak(){
+  const user=window.app?.state?.user;
+  if(!user) return;
+  const today=spDateKey();
+  if(user.local){
+    let a=loadAccess()||{uid:null,state:null};
+    if(!a.state){ // semeia a partir dos dias de presença já guardados (antes de hoje)
+      const days=normalizePresenceDays(loadPresence().days).filter(d=>d<today);
+      const stt=computePresenceStats(days,days.length?days[days.length-1]:today);
+      const last=days[days.length-1]||null;
+      a.state=Object.assign(_accessEmpty(),{last_day:last,current_streak:(last&&_dayNum(today)-_dayNum(last)<=1)?stt.streak:0,best_streak:stt.streak});
+    }
+    const res=accessAdvance(a.state,today);
+    a.state=res.state; a.verified_day=today; a.failed=false; saveAccess(a);
+    _afterAccess(res,{local:true});
+    return;
+  }
+  if(_accessSyncing||!window.supabaseClient) return;
+  _accessSyncing=true;
+  try{
+    const {data,error}=await window.supabaseClient.rpc('register_access');
+    if(error) throw error;
+    const d=Array.isArray(data)?data[0]:data;
+    if(!d) throw new Error('resposta vazia');
+    const prev=loadAccess();
+    saveAccess({uid:user.id,verified_day:today,failed:false,state:{current_streak:d.current_streak,best_streak:d.best_streak,last_day:d.last_day,shields:d.shields,shield_log:d.shield_log||[],notice_seen:null}});
+    _afterAccess({notice:d.notice||null,shield_used:d.shield_used,shield_granted:d.shield_granted,registered:d.registered},{local:false});
+  }catch(e){
+    // Sem rede/função ausente: NÃO conclui que o streak foi perdido — mantém o último valor confirmado e marca como não sincronizado.
+    const a=loadAccess(); if(a){ a.failed=true; saveAccess(a); }
+    else saveAccess({uid:user.id,verified_day:null,failed:true,state:_accessEmpty()});
+    console.warn('[Streak] não foi possível verificar agora:',e?.message||e);
+    renderAccessUI();
+  }finally{ _accessSyncing=false; }
+}
+window.syncAccessStreak=syncAccessStreak;
+
+function _afterAccess(res,opts){
+  renderAccessUI();
+  if(res.shield_granted) setTimeout(()=>showToast('🛡️ Você ganhou um Escudo de Streak!','gold',4000),1200);
+  if(res.notice) showStreakNotice(res.notice,opts);
+  try{ if(window.app && document.getElementById('analytics-screen')?.classList.contains('active')) window.app.renderAnalytics(); }catch(e){}
+}
+let _noticeShown=null;
+function showStreakNotice(n,opts){
+  if(!n||!n.id||_noticeShown===n.id) return;
+  if(opts?.local){ const a=loadAccess(); if(a?.state?.notice_seen===n.id) return; }
+  _noticeShown=n.id;
+  // marca como exibido ANTES: não reaparece em reload nem no outro aparelho
+  if(opts?.local){ const a=loadAccess(); if(a){ a.state.notice_seen=n.id; saveAccess(a); } }
+  else window.supabaseClient?.rpc('ack_streak_notice',{p_id:n.id}).then(({error})=>{ if(error) console.warn('[Streak] ack falhou:',error.message); });
+  const pl=(v,s,p)=>v+' '+(v===1?s:p);
+  let icon,title,body,btn;
+  if(n.kind==='protected'){
+    icon='🛡️'; title='Seu escudo protegeu sua sequência!';
+    body=`Você ficou ${pl(n.missed,'dia','dias')} sem acessar, mas o escudo manteve seus ${pl(n.streak,'dia consecutivo','dias consecutivos')}. Escudos restantes: ${n.shields}.`; btn='Continuar 🔥';
+  }else{
+    icon='🔥'; title='Seu streak foi interrompido.';
+    body=`Você estava há ${pl(n.prev_streak,'dia consecutivo','dias consecutivos')} no Produtiv.me. ${n.missed===1?'Ontem':'Nos últimos '+n.missed+' dias'} não houve registro de acesso. Não havia escudo disponível, então sua nova sequência começou em 1 dia.`; btn='Recomeçar 💪';
+  }
+  const popup=document.createElement('div');
+  popup.id='streak-notice';
+  popup.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9100;display:flex;align-items:center;justify-content:center;padding:1rem';
+  popup.innerHTML=`<div style="background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:min(360px,95vw);text-align:center">
+    <div style="font-size:2rem;margin-bottom:.5rem">${icon}</div>
+    <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin-bottom:.6rem">${title}</div>
+    <div style="font-size:.85rem;color:var(--text-2);line-height:1.6;margin-bottom:1.1rem">${body}</div>
+    <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('streak-notice')?.remove()">${btn}</button></div>`;
+  document.body.appendChild(popup);
+}
+function renderAccessUI(){
+  try{
+    const i=getAccessInfo();
+    const el=document.getElementById('access-streak-line');
+    const tag={synced:'<span style="color:var(--green)">✓ sincronizado</span>',verifying:'⟳ verificando…',offline:'<span style="color:var(--danger)">⚠ não sincronizado</span>',local:''}[i.status];
+    const pl=(v,s,p)=>v+' '+(v===1?s:p);
+    if(el){
+      const shieldTxt=i.shields>0?`🛡️ ${pl(i.shields,'escudo disponível','escudos disponíveis')}`:'🛡️ sem escudo disponível';
+      el.innerHTML=`🔥 ${i.hasState||i.status==='local'?pl(i.streak,'dia consecutivo','dias consecutivos'):'verificando…'} · ${shieldTxt}${tag?' · '+tag:''}`;
+    }
+    const sh=document.getElementById('shield-info');
+    if(sh){
+      const used=[...i.log].reverse().find(l=>l.type==='used');
+      const usedTxt=used?` Último uso: ${fmtDate(used.on)}.`:'';
+      sh.textContent=(i.shields>0?`Você possui ${pl(i.shields,'escudo disponível','escudos disponíveis')}.`:'Você não possui escudo disponível.')+usedTxt+` Ganhe 1 a cada ${SHIELD_EVERY} dias consecutivos (máx. ${SHIELD_MAX}).`;
+    }
+    const tot=document.getElementById('presence-days-count'); if(tot) tot.textContent=getPresenceTotal();
+  }catch(e){}
+}
 
 // Grava no servidor a UNIÃO dos dias (nunca substitui): lê o remoto, une com o local e só então atualiza.
 // Se falhar, os dias ficam salvos localmente e são reenviados no próximo syncRemote (loadPresenceRemote).
@@ -8078,7 +8223,7 @@ function _applyPresence(days){
 }
 function refreshPresenceUI(){
   try{
-    const el=document.getElementById('presence-days-count'); if(el) el.textContent=getPresenceTotal();
+    renderAccessUI();
     if(window.app && document.getElementById('analytics-screen')?.classList.contains('active')) window.app.renderAnalytics();
   }catch(e){}
 }
@@ -8091,6 +8236,8 @@ function registerDailyPresence(){
   if(!had) days.push(today);
   const st=_applyPresence(days);
   if(!had) savePresenceRemote(st.days);
+  // Usuário local: roda o streak aqui. Autenticado: o streak é registrado no servidor por loadPresenceRemote (depois da união dos dias).
+  if(window.app?.state?.user?.local) syncAccessStreak();
   refreshPresenceUI();
   return st.streak;
 }
