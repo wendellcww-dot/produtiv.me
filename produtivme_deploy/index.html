@@ -651,9 +651,42 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
 #share-modal.active{display:flex}
 #share-modal .share-inner{background:var(--surface);border-radius:var(--radius);padding:1.1rem;width:min(370px,96vw);max-height:92vh;overflow-y:auto}
 #share-canvas-wrap{display:flex;justify-content:center;margin-bottom:.75rem}
-#share-canvas-wrap .sm-crop-box{position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4);width:170px;aspect-ratio:9/16;transition:aspect-ratio .25s ease}
+#share-canvas-wrap{--sm-w:170px}
+#share-canvas-wrap .sm-crop-box{position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4);width:var(--sm-w);aspect-ratio:9/16;transition:aspect-ratio .25s ease}
 #share-canvas-wrap .sm-crop-box.sm-feed{aspect-ratio:4/5}
-#share-canvas-wrap canvas{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:auto}
+#share-canvas-wrap canvas{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:var(--sm-w);height:auto}
+/* ══ Editor visual do Studio ══ */
+#sm-ov{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:var(--sm-w);aspect-ratio:9/16;pointer-events:none}
+#sm-ov .sm-box{position:absolute;box-sizing:border-box;border:1px dashed rgba(167,139,250,.45);border-radius:4px;cursor:move;pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent}
+#sm-ov .sm-box.sel{border:2px solid var(--primary);background:rgba(167,139,250,.14)}
+#sm-ov .sm-handle{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:var(--primary);border:2px solid #fff;pointer-events:auto;touch-action:none;cursor:ew-resize;z-index:4;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+#share-modal.sm-editing #share-canvas-wrap{--sm-w:min(62vw,250px)}
+#sm-edit-panel{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:.65rem;margin-bottom:.65rem;font-size:.78rem}
+#sm-edit-panel .smp-sel{font-weight:700;color:var(--primary);margin-bottom:.45rem;font-size:.78rem}
+#sm-edit-panel #smp-ctrls.off{opacity:.45;pointer-events:none}
+#sm-edit-panel .smp-l{display:inline-block;min-width:54px;color:var(--text-3);font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em}
+#sm-edit-panel textarea{width:100%;box-sizing:border-box;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.4rem .5rem;font:inherit;resize:vertical;margin-bottom:.15rem}
+#sm-edit-panel textarea:disabled{opacity:.6}
+#sm-edit-panel .smp-row{display:flex;align-items:center;gap:.5rem;margin:.4rem 0;flex-wrap:wrap}
+#sm-edit-panel input[type=range]{flex:1;min-width:90px;height:28px;accent-color:var(--primary)}
+#sm-edit-panel output{min-width:46px;text-align:right;font-weight:700;color:var(--text)}
+#sm-edit-panel input[type=color]{width:38px;height:32px;padding:0;border:1px solid var(--border);border-radius:8px;background:none}
+#sm-edit-panel select{background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.3rem .4rem;min-height:34px}
+#sm-edit-panel .smp-seg{display:flex;gap:.2rem}
+#sm-edit-panel .smp-seg button{width:38px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface3);color:var(--text-2);cursor:pointer}
+#sm-edit-panel .smp-seg button.active{background:var(--primary);border-color:var(--primary);color:#fff}
+#sm-edit-panel .smp-sw{display:flex;gap:.3rem;flex-wrap:wrap}
+#sm-edit-panel .smp-sw button{width:28px;height:28px;border-radius:50%;border:2px solid var(--border2,var(--border));cursor:pointer;padding:0}
+#sm-edit-panel .smp-btns{display:flex;gap:.3rem;flex-wrap:wrap}
+#sm-edit-panel .smp-btns .share-photo-btn{min-height:36px;padding:.3rem .6rem}
+#sm-edit-panel .smp-btns .share-photo-btn:disabled{opacity:.4;cursor:not-allowed}
+#sm-edit-panel .smp-note{font-size:.68rem;color:var(--text-3);margin:.15rem 0}
+@media (min-width:820px){
+  #share-modal.sm-editing .share-inner{width:min(900px,96vw)}
+  #share-modal.sm-editing #sm-stage{display:flex;gap:1rem;align-items:flex-start}
+  #share-modal.sm-editing #share-canvas-wrap{--sm-w:300px;flex:0 0 auto}
+  #share-modal.sm-editing #sm-edit-panel{flex:1;min-width:0}
+}
 .share-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem}
 .share-header-title{font-family:var(--font-display);font-weight:800;font-size:.92rem;letter-spacing:.04em;color:var(--primary)}
 .share-tpl-bar{display:flex;gap:.28rem;overflow-x:auto;padding-bottom:.35rem;margin-bottom:.55rem;scrollbar-width:none}
@@ -1943,10 +1976,47 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     </div>
 
     <!-- Canvas preview -->
-    <div id="share-canvas-wrap"><div class="sm-crop-box" id="sm-crop-box"><canvas id="share-canvas" width="1080" height="1920"></canvas></div></div>
+    <div id="sm-stage">
+    <div id="share-canvas-wrap"><div class="sm-crop-box" id="sm-crop-box"><canvas id="share-canvas" width="1080" height="1920"></canvas><div id="sm-ov"></div></div></div>
+
+    <!-- Editor visual: painel de controles do texto selecionado -->
+    <div id="sm-edit-panel" style="display:none">
+      <div class="smp-sel" id="smp-sel">Toque em um texto da imagem para editar</div>
+      <div id="smp-ctrls" class="off">
+        <label class="smp-l" for="smp-text">Texto</label>
+        <textarea id="smp-text" rows="2" maxlength="240"></textarea>
+        <div class="smp-note" id="smp-text-note"></div>
+        <div class="smp-row"><label class="smp-l" for="smp-size">Fonte</label><input type="range" id="smp-size" min="12" max="300" step="1"><output id="smp-size-v"></output></div>
+        <div class="smp-row"><label class="smp-l" for="smp-w">Largura</label><input type="range" id="smp-w" min="15" max="100" step="1"><output id="smp-w-v"></output></div>
+        <div class="smp-row"><span class="smp-l">Alinhar</span>
+          <div class="smp-seg"><button data-a="left" title="Esquerda"><i class="fas fa-align-left"></i></button><button data-a="center" title="Centro"><i class="fas fa-align-center"></i></button><button data-a="right" title="Direita"><i class="fas fa-align-right"></i></button></div>
+          <select id="smp-weight" title="Peso da fonte"><option value="400">Normal</option><option value="500">Médio</option><option value="600">Semi</option><option value="700">Negrito</option><option value="800">Extra</option></select>
+        </div>
+        <div class="smp-row"><label class="smp-l" for="smp-color">Cor</label><input type="color" id="smp-color" value="#ffffff">
+          <div class="smp-sw"><button data-c="#ffffff" style="background:#fff" title="Branco"></button><button data-c="#a78bfa" style="background:#a78bfa" title="Roxo"></button><button data-c="#fb923c" style="background:#fb923c" title="Laranja"></button><button data-c="#34d399" style="background:#34d399" title="Verde"></button><button data-c="#f87171" style="background:#f87171" title="Vermelho"></button><button data-c="#fbbf24" style="background:#fbbf24" title="Dourado"></button><button data-c="#111111" style="background:#111" title="Preto"></button></div>
+        </div>
+        <div class="smp-btns">
+          <button class="share-photo-btn" id="smp-front"><i class="fas fa-layer-group"></i> Frente</button>
+          <button class="share-photo-btn" id="smp-back"><i class="fas fa-clone"></i> Trás</button>
+          <button class="share-photo-btn" id="smp-center"><i class="fas fa-arrows-alt-h"></i> Centralizar</button>
+          <button class="share-photo-btn" id="smp-dup"><i class="fas fa-copy"></i> Duplicar</button>
+          <button class="share-photo-btn danger" id="smp-remove"><i class="fas fa-eye-slash"></i> Ocultar</button>
+          <button class="share-photo-btn" id="smp-reset1"><i class="fas fa-undo"></i> Restaurar item</button>
+        </div>
+      </div>
+      <div class="smp-btns" style="margin-top:.5rem">
+        <button class="share-photo-btn" id="smp-add"><i class="fas fa-plus"></i> Adicionar texto</button>
+        <button class="share-photo-btn" id="smp-undo"><i class="fas fa-undo-alt"></i> Desfazer</button>
+        <button class="share-photo-btn danger" id="smp-reset"><i class="fas fa-redo"></i> Restaurar arte</button>
+      </div>
+      <div id="smp-hidden"></div>
+      <div class="smp-note" style="margin-top:.4rem">As edições valem para este modelo (cada modelo guarda as suas) e ficam só nesta sessão do Studio.</div>
+    </div>
+    </div>
 
     <!-- Actions -->
     <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+      <button class="btn btn-ghost" id="sm-edit-toggle" onclick="smEd_toggle()"><i class="fas fa-pen"></i> Editar imagem</button>
       <button class="btn btn-primary" style="flex:1" onclick="doShare()"><i class="fas fa-share-alt"></i> Compartilhar</button>
       <button class="btn btn-ghost" onclick="downloadShareImage()" title="Baixar"><i class="fas fa-download"></i></button>
     </div>
@@ -8559,13 +8629,15 @@ let _shareType = 'streak';
 
 function openShareModal(type='streak'){
   _shareType = type;
+  smEd_resetAll(); smEd_setMode(false); // nada de edições de um compartilhamento anterior
   document.getElementById('share-modal').classList.add('active');
   renderShareTypeButtons();
-  generateShareCard(type);
+  generateShareCard(type,false);
 }
 
 function closeShareModal(){
   document.getElementById('share-modal').classList.remove('active');
+  smEd_setMode(false); smEd_resetAll();
   window._shareTaskData=null;
   window._shareMedalData=null;
   window._shareFraseData=null;
@@ -8587,7 +8659,7 @@ function renderShareTypeButtons(){
     {id:'comp_mensal', label:'📆 Comparação Mensal'},
   ];
   const el = document.getElementById('share-type-btns');
-  el.innerHTML = types.map(t=>`<button class="btn btn-sm ${_shareType===t.id?'btn-primary':'btn-ghost'}" onclick="generateShareCard('${t.id}')">${t.label}</button>`).join('');
+  el.innerHTML = types.map(t=>`<button class="btn btn-sm ${_shareType===t.id?'btn-primary':'btn-ghost'}" onclick="sm_switchType('${t.id}')">${t.label}</button>`).join('');
 }
 
 /* ══════════════════════════════════════════════════
@@ -8605,7 +8677,7 @@ const SM_W=1080, SM_H=1920, SM_SAFE_TOP=140, SM_SAFE_BOT=280;
 
 // ── Template selector ──
 function sm_setTpl(tpl,btn){
-  _smTpl=tpl;
+  _smTpl=tpl; _smEd.sel=null; // edições são guardadas por modelo; a seleção não atravessa modelos
   document.querySelectorAll('.share-tpl').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   sm_render();
@@ -8717,11 +8789,13 @@ function smT(ctx,text,x,y,typo,color,align,maxW){
   let sz=typo.size; ctx.font=`${typo.weight} ${sz}px ${typo.font}`;
   while(sz>18 && ctx.measureText(String(text)).width>maxW){ sz-=2; ctx.font=`${typo.weight} ${sz}px ${typo.font}`; }
   const yClamped=Math.min(y, SM_H-SM_SAFE_BOT-10); // nunca desenha em cima do rodapé/marca d'água
+  if(_smRec) _smRec.meta={maxW:maxW/0.94}; // largura original (editor visual)
   ctx.fillText(String(text),x,yClamped);
   return sz*typo.lh;
 }
 
 function smWrap(ctx,text,x,y,maxW,typo,color,align,maxLines){
+  const _g=smRec_groupBegin(text,x,y,maxW); // editor visual: o parágrafo inteiro é um elemento
   align=align||'center'; maxLines=maxLines||3; maxW=maxW*0.94;
   ctx.textAlign=align; ctx.fillStyle=color;
   let sz=typo.size; ctx.font=`${typo.weight} ${sz}px ${typo.font}`;
@@ -8731,6 +8805,7 @@ function smWrap(ctx,text,x,y,maxW,typo,color,align,maxLines){
   const lh=sz*typo.lh;
   const maxY=SM_H-SM_SAFE_BOT-10;
   lines.slice(0,maxLines).forEach((l,i)=>{ const ly=y+i*lh; if(ly<=maxY) ctx.fillText(l,x,ly); });
+  smRec_groupEnd(_g,lh);
   return lh*Math.min(lines.length,maxLines);
 }
 
@@ -8970,22 +9045,475 @@ function _tplApple(ctx,c){
 }
 
 // ── Main dispatch ──
-function generateShareCard(type){
+// reuse=true: re-render do MESMO compartilhamento (foto, modelo, edição) — reaproveita o conteúdo.
+// Antes, cada re-render pedia outra frase (getNextShareFrase), então a frase trocava a cada ajuste de foto.
+function generateShareCard(type,reuse){
   _shareType=type;
   if(typeof renderShareTypeButtons==='function') renderShareTypeButtons();
   const canvas=document.getElementById('share-canvas'); if(!canvas) return;
   const ctx=canvas.getContext('2d'); canvas.width=SM_W; canvas.height=SM_H;
-  const c=sm_buildContent(type);
-  switch(_smTpl){
-    case 'premium':  _tplPremium(ctx,c);  break;
-    case 'glass':    _tplGlass(ctx,c);    break;
-    case 'polaroid': _tplPolaroid(ctx,c); break;
-    case 'timeline': _tplTimeline(ctx,c); break;
-    case 'apple':    _tplApple(ctx,c);    break;
-    default:         _tplClassic(ctx,c);
+  let c;
+  if(reuse&&_smContentCache&&_smContentCache.type===type) c=_smContentCache.c;
+  else{ c=sm_buildContent(type); _smContentCache={type,c}; }
+  smRec_begin(ctx,c); // captura os textos; smRec_end redesenha os editados por cima e publica os itens do editor
+  try{
+    switch(_smTpl){
+      case 'premium':  _tplPremium(ctx,c);  break;
+      case 'glass':    _tplGlass(ctx,c);    break;
+      case 'polaroid': _tplPolaroid(ctx,c); break;
+      case 'timeline': _tplTimeline(ctx,c); break;
+      case 'apple':    _tplApple(ctx,c);    break;
+      default:         _tplClassic(ctx,c);
+    }
+  } finally { smRec_end(); }
+}
+function sm_render(){ generateShareCard(_shareType,true); }
+
+/* ══════════════════════════════════════════════════
+   EDITOR VISUAL DO STUDIO (editar textos direto na imagem)
+   Arquitetura:
+   1) Render base: os modelos atuais continuam desenhando no #share-canvas.
+   2) Estado editável: cada texto desenhado é capturado (smRec_*) como um elemento com id estável;
+      as edições ficam em _smEd.byTpl[modelo] (posição em proporção 0–1 da arte, tamanho, cor, etc.).
+   3) Interação: camada HTML (#sm-ov) só para selecionar/arrastar — nunca entra na exportação.
+   4) Composição final: os textos editados/adicionados são redesenhados NO MESMO canvas (smRec_end),
+      portanto sm_getExportCanvas() já exporta tudo, sem captura de tela.
+══════════════════════════════════════════════════ */
+const SMED_MARGIN = 24;
+let _smEd = { mode:false, sel:null, undo:[], byTpl:{}, items:[], gesture:false, drag:null };
+let _smContentCache = null;   // conteúdo do compartilhamento atual (evita trocar a frase a cada re-render)
+let _smRec = null;            // gravador ativo durante um render
+
+function smEd_state(tpl){ tpl=tpl||_smTpl; return _smEd.byTpl[tpl]||(_smEd.byTpl[tpl]={over:{},custom:[],seq:0}); }
+function smEd_isMod(ov){ return !!ov && Object.keys(ov).length>0; }
+function smEd_hasEdits(){ return Object.values(_smEd.byTpl).some(s=>Object.keys(s.over).length>0||s.custom.length>0); }
+function smEd_resetAll(){ _smEd.byTpl={}; _smEd.sel=null; _smEd.undo=[]; _smEd.gesture=false; _smContentCache=null; }
+
+/* ── Fonte ── */
+function smEd_parseFont(f){
+  const m=/^(?:(italic|oblique)\s+)?(?:(normal|bold|\d{3})\s+)?(?:(?:normal|small-caps)\s+)?(\d+(?:\.\d+)?)px\s+(.+)$/.exec(String(f).trim());
+  if(!m) return {size:30,weight:'400',italic:false,family:'Inter,sans-serif'};
+  return {italic:!!m[1],weight:m[2]==='bold'?'700':(!m[2]||m[2]==='normal'?'400':m[2]),size:parseFloat(m[3]),family:m[4]};
+}
+function smEd_fontStr(p){ return (p.italic?'italic ':'')+p.weight+' '+p.size+'px '+p.family; }
+
+/* ── Gravador: captura cada texto desenhado pelos modelos ── */
+function smRec_begin(ctx,c){
+  const values=new Set();
+  if(c.kind==='hero') values.add(String(c.headline));
+  (c.rows||[]).forEach(r=>values.add(String(r.val)));
+  (c.stats||[]).forEach(r=>values.add(String(r.val)));
+  if(c.kind==='comp'){ values.add(String(c.valA)); values.add(String(c.valB)); }
+  const rec={ctx,c,values,list:[],counts:{},group:null,meta:null,deferred:[],st:smEd_state(),orig:CanvasRenderingContext2D.prototype.fillText};
+  _smRec=rec;
+  ctx.fillText=function(text,x,y){
+    text=String(text);
+    if(rec.group){ rec.group.lines.push(text); if(rec.group.suppress) return; return rec.orig.call(ctx,text,x,y); }
+    if(!ctx.getTransform().isIdentity) return rec.orig.call(ctx,text,x,y);
+    const el=smRec_makeEl(rec,'line',text,x,y,rec.meta?{maxW:rec.meta.maxW}:null);
+    rec.meta=null;
+    if(smEd_isMod(rec.st.over[el.id])){ rec.deferred.push(el); return; } // redesenhado no fim, com as edições
+    return rec.orig.call(ctx,text,x,y);
+  };
+}
+function smRec_ident(rec,text){ const k=text.slice(0,40); const n=(rec.counts[k]=(rec.counts[k]||0)+1); return 't:'+k+'#'+n; }
+function smRec_makeEl(rec,kind,text,x,y,extra){
+  const ctx=rec.ctx, f=smEd_parseFont(ctx.font);
+  const al=ctx.textAlign==='start'?'left':ctx.textAlign==='end'?'right':ctx.textAlign;
+  const el=Object.assign({id:smRec_ident(rec,text),kind,text,x,y,size:f.size,weight:f.weight,italic:f.italic,family:f.family,
+    color:typeof ctx.fillStyle==='string'?ctx.fillStyle:'#ffffff',align:al,alpha:ctx.globalAlpha,lh:1.25},extra||{});
+  smRec_classify(rec,el); rec.list.push(el); return el;
+}
+function smRec_groupBegin(text,x,y,maxW){
+  const rec=_smRec; if(!rec) return null; text=String(text);
+  const id=smRec_ident(rec,text);
+  rec.group={id,text,x,y,maxW,lines:[],suppress:smEd_isMod(rec.st.over[id])};
+  return rec.group;
+}
+function smRec_groupEnd(g,lh){
+  const rec=_smRec; if(!rec||!g) return; rec.group=null;
+  const ctx=rec.ctx, f=smEd_parseFont(ctx.font);
+  const al=ctx.textAlign==='start'?'left':ctx.textAlign==='end'?'right':ctx.textAlign;
+  const el={id:g.id,kind:'para',text:g.text,x:g.x,y:g.y,size:f.size,weight:f.weight,italic:f.italic,family:f.family,
+    color:typeof ctx.fillStyle==='string'?ctx.fillStyle:'#ffffff',align:al,alpha:ctx.globalAlpha,lh:lh/f.size,maxW:g.maxW,lines:g.lines.slice()};
+  smRec_classify(rec,el); rec.list.push(el);
+  if(g.suppress) rec.deferred.push(el);
+}
+// role: 'text' (editável) | 'value' (dado dinâmico: não altera o texto) | 'brand' (marca: não oculta nem altera o texto)
+function smRec_classify(rec,el){
+  const c=rec.c, t=el.text;
+  el.role='text'; el.label=null;
+  const T_=(s)=>t===s;
+  if(/^(⚡\s*)?produtiv[.-]me(\.vercel\.app)?$/i.test(t)){ el.role='brand'; el.label='Marca produtiv.me'; return; }
+  if(el.kind==='para'){ el.label=t.startsWith('"')?'Frase':'Texto'; return; }
+  const isRowVal=(c.rows||[]).concat(c.stats||[]).some(r=>t.length>String(r.val).length&&t.endsWith(String(r.val))&&t.includes(String(r.label)));
+  if(rec.values.has(t)||/^[↑↓]\s?\d+ tarefas?$/.test(t)||isRowVal){ el.role='value'; el.label=(c.kind==='hero'&&t===String(c.headline))?'Número principal':'Valor'; return; }
+  if(T_(`${c.icon} ${c.title}`)||T_(`${c.icon} ${c.headline}`)||T_(`${c.icon} ${c.title||c.unit}`)){ el.label='Título'; return; }
+  if(c.unit&&T_(c.unit)){ el.label='Unidade'; return; }
+  if(c.badge&&T_(c.badge)){ el.label='Selo'; return; }
+  if(c.sub&&T_(c.sub)){ el.label='Subtítulo'; return; }
+  if(c.labelA&&(T_(String(c.labelA))||T_(String(c.labelB)))){ el.label='Legenda: '+t; return; }
+  for(const r of (c.rows||[]).concat(c.stats||[])){
+    if(T_(String(r.label))||T_(`${r.icon} ${r.label}`)){ el.label='Rótulo: '+t; return; }
+    if(T_(String(r.icon))){ el.label='Ícone'; return; }
+  }
+  if(t==='tarefas'||t==='VS'){ el.label='Legenda: '+t; return; }
+  if(t.length<=3&&!/[a-z0-9]/i.test(t)){ el.label='Ícone'; return; }
+  el.label=t.length>26?t.slice(0,25)+'…':t;
+}
+function smEd_linesFor(el,ov){
+  const reflow=ov&&(ov.size!=null||ov.boxW!=null||ov.text!=null||ov.weight!=null);
+  if(reflow) return null;
+  return el.kind==='para'?el.lines:[el.text];
+}
+function smEd_resolve(el,ov){
+  ov=ov||{};
+  return {id:el.id,text:ov.text!=null?ov.text:el.text,x:ov.fx!=null?ov.fx*SM_W:el.x,y:ov.fy!=null?ov.fy*SM_H:el.y,
+    size:ov.size!=null?ov.size:el.size,weight:ov.weight||el.weight,italic:el.italic,family:el.family,
+    color:ov.color||el.color,align:ov.align||el.align,alpha:el.alpha,lh:el.lh,boxW:ov.boxW!=null?ov.boxW:(el.maxW||SM_W-120)};
+}
+function smEd_resolveCustom(cu){
+  return {id:cu.id,text:cu.text,x:cu.fx*SM_W,y:cu.fy*SM_H,size:cu.size,weight:cu.weight,italic:false,family:cu.family,color:cu.color,align:cu.align,alpha:1,lh:1.25,boxW:cu.boxW};
+}
+let _smMeasure=null;
+// Só se o bloco de texto não couber na arte (largura de uma palavra ou altura total) a fonte é reduzida o mínimo
+// necessário — dentro desse limite o tamanho escolhido pelo usuário é sempre respeitado.
+function smEd_layout(p,fixedLines,_try){
+  _try=_try||0;
+  const m=_smMeasure||(_smMeasure=document.createElement('canvas').getContext('2d'));
+  const maxW=SM_W-2*SMED_MARGIN, maxH=SM_H-16;
+  m.font=smEd_fontStr(p);
+  let lines=fixedLines;
+  if(!lines){
+    lines=[];
+    String(p.text).split('\n').forEach(par=>{
+      let cur=''; par.split(' ').forEach(w=>{ const t=cur?cur+' '+w:w; if(m.measureText(t).width>p.boxW&&cur){ lines.push(cur); cur=w; } else cur=t; });
+      lines.push(cur);
+    });
+  }
+  let w=0; lines.forEach(l=>{ w=Math.max(w,m.measureText(l).width); });
+  const lh=p.size*p.lh, h=(lines.length-1)*lh+p.size*1.1;
+  if((w>maxW||h>maxH)&&_try<12&&p.size>10){
+    const f=Math.min(maxW/w,maxH/h,0.96);
+    return smEd_layout(Object.assign({},p,{size:Math.max(10,Math.floor(p.size*f))}),fixedLines,_try+1);
+  }
+  const left=p.align==='left'?p.x:p.align==='right'?p.x-w:p.x-w/2;
+  const top=p.y-p.size*0.85;
+  return {lines,lh,w,h,left,top,right:left+w,bottom:top+h,p};
+}
+function smEd_drawText(ctx,p,fixedLines){
+  const L=smEd_layout(p,fixedLines), q=L.p;
+  ctx.save(); ctx.globalAlpha=p.alpha; ctx.fillStyle=p.color; ctx.textAlign=p.align; ctx.textBaseline='alphabetic';
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0; ctx.font=smEd_fontStr(q);
+  L.lines.forEach((l,i)=>ctx.fillText(l,p.x,p.y+i*L.lh));
+  ctx.restore(); return L;
+}
+// mantém a caixa do texto dentro da arte
+function smEd_clampXY(p,fixedLines){
+  const L=smEd_layout(p,fixedLines); let dx=0,dy=0;
+  if(L.left<SMED_MARGIN) dx=SMED_MARGIN-L.left; else if(L.right>SM_W-SMED_MARGIN) dx=SM_W-SMED_MARGIN-L.right;
+  if(L.top<8) dy=8-L.top; else if(L.bottom>SM_H-8) dy=SM_H-8-L.bottom;
+  return {x:p.x+dx,y:p.y+dy};
+}
+
+// Fim do render: redesenha editados/adicionados (por camada) e publica os itens para a interface
+function smRec_end(){
+  const rec=_smRec; if(!rec) return; const ctx=rec.ctx;
+  delete ctx.fillText; // volta ao fillText nativo
+  const st=rec.st, draws=[];
+  rec.deferred.forEach(el=>{ const ov=st.over[el.id]; if(!ov.hidden) draws.push({z:ov.z||0,p:smEd_resolve(el,ov),lines:smEd_linesFor(el,ov)}); });
+  st.custom.forEach(cu=>{ if(!cu.hidden) draws.push({z:cu.z==null?1:cu.z,p:smEd_resolveCustom(cu),lines:null}); });
+  draws.sort((a,b)=>a.z-b.z).forEach(d=>smEd_drawText(ctx,d.p,d.lines));
+  const items=[];
+  rec.list.forEach(el=>{
+    const ov=st.over[el.id], p=smEd_resolve(el,ov), L=smEd_layout(p,smEd_linesFor(el,ov));
+    items.push({id:el.id,el,custom:false,role:el.role,label:el.label,hidden:!!(ov&&ov.hidden),p,box:L,z:(ov&&ov.z)||0,mod:smEd_isMod(ov),baseSize:el.size});
+  });
+  st.custom.forEach(cu=>{
+    const p=smEd_resolveCustom(cu), L=smEd_layout(p,null);
+    items.push({id:cu.id,el:null,custom:true,role:'custom',label:'Texto: '+(cu.text.length>20?cu.text.slice(0,19)+'…':cu.text||'(vazio)'),hidden:!!cu.hidden,p,box:L,z:cu.z==null?1:cu.z,mod:true,baseSize:64});
+  });
+  _smEd.items=items; _smRec=null;
+  smEd_renderOverlay(); smEd_syncPanel();
+}
+
+/* ── Consultas / edição de propriedades ── */
+function smEd_item(id){ return _smEd.items.find(i=>i.id===id)||null; }
+function smEd_snapshot(){ return JSON.stringify(_smEd.byTpl); }
+function smEd_commit(){ // guarda estado para "Desfazer"
+  const s=smEd_snapshot();
+  if(_smEd.undo[_smEd.undo.length-1]===s) return;
+  _smEd.undo.push(s); if(_smEd.undo.length>40) _smEd.undo.shift();
+}
+function smEd_undo(){
+  if(!_smEd.undo.length){ showToast('Nada para desfazer','default'); return; }
+  _smEd.byTpl=JSON.parse(_smEd.undo.pop());
+  if(_smEd.sel&&!smEd_hasId(_smEd.sel)) _smEd.sel=null;
+  sm_render();
+}
+function smEd_fixed(it){ return (!it||it.custom||!it.el)?null:smEd_linesFor(it.el,smEd_state().over[it.id]); }
+function smEd_hasId(id){ const st=smEd_state(); return st.custom.some(c=>c.id===id)||_smEd.items.some(i=>i.id===id); }
+// patch: {text,size,color,align,weight,boxW,fx,fy,hidden,z}; para originais gravamos só o que mudou
+function smEd_set(id,patch){
+  const it=smEd_item(id); if(!it) return;
+  const st=smEd_state();
+  if(it.custom){
+    const cu=st.custom.find(c=>c.id===id); if(!cu) return;
+    Object.assign(cu,patch);
+  }else{
+    const ov=st.over[id]||(st.over[id]={});
+    Object.assign(ov,patch);
   }
 }
-function sm_render(){ generateShareCard(_shareType); }
+function smEd_apply(id,patch,opts){
+  opts=opts||{};
+  const it=smEd_item(id); if(!it) return;
+  if(patch.align&&patch.align!==it.p.align){ // troca de alinhamento sem o texto "pular": preserva a caixa visual
+    const b=it.box, na=patch.align, nx=na==='left'?b.left:na==='right'?b.right:(b.left+b.right)/2;
+    patch.fx=nx/SM_W; patch.fy=it.p.y/SM_H;
+  }
+  smEd_set(id,patch);
+  sm_render(); // atualiza itens com o novo layout
+  if(patch.size!=null||patch.boxW!=null||patch.text!=null){ // se o bloco não coube na arte, guarda o tamanho realmente usado
+    const f=smEd_item(id); if(f&&f.box.p.size<(patch.size!=null?patch.size:f.p.size)-0.5) smEd_set(id,{size:f.box.p.size});
+  }
+  // depois de mudar tamanho/largura/texto/alinhamento: mantém dentro da arte
+  if(!opts.noClamp){
+    const it2=smEd_item(id); if(!it2) return;
+    const c=smEd_clampXY(it2.p,smEd_fixed(it2));
+    if(Math.abs(c.x-it2.p.x)>0.5||Math.abs(c.y-it2.p.y)>0.5){ smEd_set(id,{fx:c.x/SM_W,fy:c.y/SM_H}); sm_render(); }
+  }
+}
+
+/* ── Ações ── */
+function smEd_setMode(on){
+  _smEd.mode=!!on;
+  document.getElementById('share-modal')?.classList.toggle('sm-editing',_smEd.mode);
+  const panel=document.getElementById('sm-edit-panel'); if(panel) panel.style.display=_smEd.mode?'':'none';
+  const b=document.getElementById('sm-edit-toggle');
+  if(b) b.innerHTML=_smEd.mode?'<i class="fas fa-check"></i> Concluir edição':'<i class="fas fa-pen"></i> Editar imagem';
+  if(!_smEd.mode) _smEd.sel=null;
+  smEd_renderOverlay(); smEd_syncPanel();
+}
+function smEd_toggle(){ smEd_setMode(!_smEd.mode); }
+function smEd_select(id){ _smEd.sel=id; smEd_renderOverlay(); smEd_syncPanel(); }
+function smEd_addText(){
+  const st=smEd_state();
+  if(st.custom.length>=12){ showToast('Limite de 12 textos adicionados','error'); return; }
+  smEd_commit();
+  const id='c'+(++st.seq);
+  const top=Math.max(0,...st.custom.map(c=>c.z==null?1:c.z),...Object.values(st.over).map(o=>o.z||0))+1;
+  st.custom.push({id,text:'Novo texto',fx:.5,fy:.5,size:64,color:'#ffffff',align:'center',weight:'700',family:'Inter,sans-serif',boxW:SM_W-200,z:top});
+  _smEd.sel=id; sm_render();
+  const ta=document.getElementById('smp-text'); if(ta){ ta.focus(); ta.select(); }
+}
+function smEd_duplicate(){
+  const it=smEd_item(_smEd.sel); if(!it||it.role==='value'||it.role==='brand') return;
+  const st=smEd_state();
+  if(st.custom.length>=12){ showToast('Limite de 12 textos adicionados','error'); return; }
+  smEd_commit();
+  const id='c'+(++st.seq), p=it.p, off=40;
+  const cu={id,text:p.text,fx:Math.min(.95,(p.x+off)/SM_W),fy:Math.min(.97,(p.y+off)/SM_H),size:p.size,color:p.color.startsWith('#')?p.color:smEd_toHex(p.color),
+    align:p.align,weight:p.weight,family:p.family,boxW:it.custom?p.boxW:Math.min(SM_W-100,Math.max(p.boxW,it.box.w+20)),z:Math.max(0,...st.custom.map(c=>c.z==null?1:c.z))+1};
+  st.custom.push(cu); _smEd.sel=id; sm_render();
+}
+function smEd_remove(){ // custom → exclui; original opcional → oculta
+  const it=smEd_item(_smEd.sel); if(!it) return;
+  if(it.role==='value'||it.role==='brand'){ showToast('Esse elemento faz parte da informação e não pode ser ocultado','default'); return; }
+  smEd_commit();
+  const st=smEd_state();
+  if(it.custom) st.custom=st.custom.filter(c=>c.id!==it.id); else smEd_set(it.id,{hidden:true});
+  _smEd.sel=null; sm_render();
+}
+function smEd_unhide(id){ smEd_commit(); const st=smEd_state(); if(st.over[id]){ delete st.over[id].hidden; if(!smEd_isMod(st.over[id])) delete st.over[id]; } _smEd.sel=id; sm_render(); }
+function smEd_resetOne(){
+  const it=smEd_item(_smEd.sel); if(!it||it.custom) return;
+  smEd_commit(); delete smEd_state().over[it.id]; sm_render();
+}
+function smEd_resetAllEdits(){
+  if(!smEd_state().custom.length&&!Object.keys(smEd_state().over).length){ showToast('A arte já está no original','default'); return; }
+  if(!confirm('Restaurar a arte original deste modelo? Suas edições de texto serão descartadas (dá para desfazer).')) return;
+  smEd_commit(); _smEd.byTpl[_smTpl]={over:{},custom:[],seq:0}; _smEd.sel=null; sm_render();
+}
+function smEd_order(dir){
+  const it=smEd_item(_smEd.sel); if(!it) return;
+  smEd_commit();
+  const zs=_smEd.items.filter(i=>!i.hidden&&(i.mod||i.custom)).map(i=>i.z);
+  const z=dir>0?Math.max(0,...zs)+1:Math.min(0,...zs)-1;
+  smEd_set(it.id,{z}); sm_render();
+}
+function smEd_centerH(){
+  const it=smEd_item(_smEd.sel); if(!it) return;
+  smEd_commit();
+  const cx=(it.box.left+it.box.right)/2;
+  smEd_set(it.id,{fx:(it.p.x+(SM_W/2-cx))/SM_W,fy:it.p.y/SM_H}); sm_render();
+}
+function smEd_toHex(col){
+  if(/^#[0-9a-f]{6}$/i.test(col)) return col.toLowerCase();
+  if(/^#[0-9a-f]{3}$/i.test(col)) return '#'+col.slice(1).split('').map(x=>x+x).join('');
+  const m=/rgba?\(\s*(\d+)[ ,]+(\d+)[ ,]+(\d+)/.exec(col);
+  if(m) return '#'+[m[1],m[2],m[3]].map(n=>(+n).toString(16).padStart(2,'0')).join('');
+  return '#ffffff';
+}
+// troca de tipo de compartilhamento (conteúdo novo): avisa antes de descartar edições
+function sm_switchType(type){
+  if(type===_shareType) return;
+  if(smEd_hasEdits()&&!confirm('Trocar o tipo de compartilhamento descarta as edições de texto atuais. Continuar?')) return;
+  smEd_resetAll(); generateShareCard(type,false);
+}
+window.sm_switchType=sm_switchType;
+
+/* ── Camada de interação (overlay) ── */
+function smEd_renderOverlay(){
+  const ov=document.getElementById('sm-ov'); if(!ov) return;
+  ov.classList.toggle('on',_smEd.mode);
+  if(!_smEd.mode){ ov.innerHTML=''; return; }
+  const cv=document.getElementById('share-canvas');
+  const cssW=(cv&&cv.getBoundingClientRect().width)||170;
+  const vis=_smEd.items.filter(i=>!i.hidden).sort((a,b)=>(b.box.w*b.box.h)-(a.box.w*a.box.h));
+  const keep=new Set();
+  vis.forEach(i=>{
+    keep.add(i.id);
+    let d=ov.querySelector('[data-id="'+CSS.escape(i.id)+'"]');
+    if(!d){
+      d=document.createElement('div'); d.className='sm-box'; d.dataset.id=i.id;
+      d.addEventListener('pointerdown',e=>smEd_dragStart(e,i.id,'move'));
+      ov.appendChild(d);
+    }
+    const b=i.box, minW=34*SM_W/cssW, minH=34*SM_W/cssW; // 34px na tela
+    const w=Math.max(b.w+16,minW), h=Math.max(b.h+10,minH);
+    const cx=(b.left+b.right)/2, cy=(b.top+b.bottom)/2;
+    d.style.left=((cx-w/2)/SM_W*100)+'%'; d.style.top=((cy-h/2)/SM_H*100)+'%';
+    d.style.width=(w/SM_W*100)+'%'; d.style.height=(h/SM_H*100)+'%';
+    d.classList.toggle('sel',i.id===_smEd.sel);
+    d.title=i.label||'';
+    d.style.zIndex=i.id===_smEd.sel?3:1;
+  });
+  ov.querySelectorAll('.sm-box').forEach(d=>{ if(!keep.has(d.dataset.id)) d.remove(); });
+  // alça de largura do texto selecionado
+  let hdl=ov.querySelector('.sm-handle');
+  const sel=_smEd.sel?_smEd.items.find(i=>i.id===_smEd.sel&&!i.hidden):null;
+  if(!sel){ if(hdl) hdl.remove(); return; }
+  if(!hdl){ hdl=document.createElement('div'); hdl.className='sm-handle'; hdl.title='Arraste para ajustar a largura do texto'; hdl.addEventListener('pointerdown',e=>smEd_dragStart(e,_smEd.sel,'width')); ov.appendChild(hdl); }
+  const b=sel.box, onRight=sel.p.align!=='right';
+  const hx=onRight?b.right+8:b.left-8, hy=(b.top+b.bottom)/2;
+  hdl.style.left=(hx/SM_W*100)+'%'; hdl.style.top=(hy/SM_H*100)+'%';
+}
+function smEd_dragStart(e,id,mode){
+  if(!_smEd.mode) return;
+  e.preventDefault(); e.stopPropagation();
+  if(_smEd.sel!==id) smEd_select(id);
+  const it=smEd_item(id); if(!it) return;
+  const cv=document.getElementById('share-canvas');
+  const cssW=cv.getBoundingClientRect().width||170;
+  _smEd.drag={mode,id,sx:e.clientX,sy:e.clientY,scale:SM_W/cssW,x:it.p.x,y:it.p.y,boxW:it.p.boxW,w:it.box.w,align:it.p.align,committed:false,raf:0,lx:e.clientX,ly:e.clientY,pid:e.pointerId};
+  try{ e.target.setPointerCapture(e.pointerId); }catch(_){}
+}
+function smEd_dragMove(e){
+  const d=_smEd.drag; if(!d||e.pointerId!==d.pid) return;
+  e.preventDefault(); d.lx=e.clientX; d.ly=e.clientY;
+  if(!d.committed){ if(Math.hypot(d.lx-d.sx,d.ly-d.sy)<3) return; smEd_commit(); d.committed=true; }
+  if(d.raf) return;
+  d.raf=requestAnimationFrame(()=>{
+    d.raf=0; const it=smEd_item(d.id); if(!it||!_smEd.drag) return;
+    const dx=(d.lx-d.sx)*d.scale, dy=(d.ly-d.sy)*d.scale;
+    if(d.mode==='move'){
+      const p=Object.assign({},it.p,{x:d.x+dx,y:d.y+dy});
+      const c=smEd_clampXY(p,smEd_fixed(it));
+      smEd_set(d.id,{fx:c.x/SM_W,fy:c.y/SM_H});
+    }else{
+      // largura = distância do âncora até a alça (centrado: dos dois lados)
+      let bw=d.align==='center'?(d.w/2+dx)*2:(d.align==='right'?(d.w-dx):(d.w+dx));
+      bw=Math.max(120,Math.min(SM_W-2*SMED_MARGIN,bw));
+      smEd_set(d.id,{boxW:bw});
+    }
+    sm_render();
+  });
+}
+function smEd_dragEnd(e){
+  const d=_smEd.drag; if(!d||(e&&e.pointerId!==d.pid)) return;
+  if(d.raf) cancelAnimationFrame(d.raf);
+  _smEd.drag=null; sm_render();
+}
+
+/* ── Painel de controles ── */
+function smEd_syncPanel(){
+  const panel=document.getElementById('sm-edit-panel'); if(!panel||!_smEd.mode) return;
+  const it=_smEd.sel?smEd_item(_smEd.sel):null;
+  const $=id=>document.getElementById(id);
+  const ctr=$('smp-ctrls'); ctr.classList.toggle('off',!it);
+  $('smp-sel').textContent=it?('Selecionado: '+(it.label||'texto')):'Toque em um texto da imagem para editar';
+  const ta=$('smp-text');
+  if(it){
+    const locked=(it.role==='value'||it.role==='brand');
+    if(document.activeElement!==ta) ta.value=it.p.text;
+    ta.disabled=locked;
+    $('smp-text-note').textContent=locked?(it.role==='brand'?'Marca do produto: o texto é fixo.':'Valor dinâmico do app: o texto é calculado automaticamente.'):'';
+    const lo=it.custom?16:Math.max(12,Math.round(it.baseSize*.3)), hi=it.custom?220:Math.min(320,Math.round(it.baseSize*3));
+    const sz=$('smp-size'); sz.min=lo; sz.max=hi; sz.value=Math.round(it.box.p.size);
+    $('smp-size-v').textContent=Math.round(it.box.p.size)+' px';
+    const w=$('smp-w'); w.value=Math.round(it.p.boxW/SM_W*100); $('smp-w-v').textContent=Math.round(it.p.boxW/SM_W*100)+'%';
+    panel.querySelectorAll('[data-a]').forEach(b=>b.classList.toggle('active',b.dataset.a===it.p.align));
+    $('smp-color').value=smEd_toHex(it.p.color);
+    $('smp-weight').value=['400','500','600','700','800'].includes(String(it.p.weight))?String(it.p.weight):'700';
+    const locked2=locked;
+    $('smp-remove').innerHTML=it.custom?'<i class="fas fa-trash"></i> Excluir':'<i class="fas fa-eye-slash"></i> Ocultar';
+    $('smp-remove').disabled=locked2;
+    $('smp-dup').disabled=locked2;
+    $('smp-reset1').disabled=it.custom||!it.mod;
+  }
+  // ocultos
+  const hid=_smEd.items.filter(i=>i.hidden);
+  const hb=$('smp-hidden');
+  hb.innerHTML=hid.length?('<div class="smp-note">Ocultos (toque para mostrar):</div>'+hid.map(i=>'<button class="share-photo-btn" data-unhide="'+i.id.replace(/"/g,'&quot;')+'"><i class="fas fa-eye"></i> '+esc(i.label||'texto')+'</button>').join(' ')):'';
+  hb.querySelectorAll('[data-unhide]').forEach(b=>b.addEventListener('click',()=>smEd_unhide(b.dataset.unhide)));
+  $('smp-undo').disabled=!_smEd.undo.length;
+}
+function smEd_initPanel(){
+  const $=id=>document.getElementById(id); if(!$('smp-text')||$('smp-text').dataset.bound) return;
+  $('smp-text').dataset.bound='1';
+  const gesture=fn=>e=>{ if(!_smEd.gesture){ smEd_commit(); _smEd.gesture=true; } fn(e); };
+  const end=()=>{ _smEd.gesture=false; };
+  $('smp-text').addEventListener('input',gesture(e=>{ if(_smEd.sel) smEd_apply(_smEd.sel,{text:e.target.value},{}); }));
+  $('smp-text').addEventListener('change',end);
+  $('smp-text').addEventListener('blur',()=>{ end(); const it=smEd_item(_smEd.sel); if(it&&it.custom&&!it.p.text.trim()){ smEd_apply(it.id,{text:'Texto'}); } });
+  $('smp-size').addEventListener('input',gesture(e=>{ if(_smEd.sel) smEd_apply(_smEd.sel,{size:+e.target.value}); }));
+  $('smp-size').addEventListener('change',end);
+  $('smp-w').addEventListener('input',gesture(e=>{ if(_smEd.sel) smEd_apply(_smEd.sel,{boxW:Math.round(+e.target.value/100*SM_W)}); }));
+  $('smp-w').addEventListener('change',end);
+  $('smp-color').addEventListener('input',gesture(e=>{ if(_smEd.sel) smEd_apply(_smEd.sel,{color:e.target.value},{noClamp:true}); }));
+  $('smp-color').addEventListener('change',end);
+  $('smp-weight').addEventListener('change',e=>{ if(_smEd.sel){ smEd_commit(); smEd_apply(_smEd.sel,{weight:e.target.value}); } });
+  document.querySelectorAll('#sm-edit-panel [data-a]').forEach(b=>b.addEventListener('click',()=>{ if(_smEd.sel){ smEd_commit(); smEd_apply(_smEd.sel,{align:b.dataset.a}); } }));
+  document.querySelectorAll('#sm-edit-panel [data-c]').forEach(b=>b.addEventListener('click',()=>{ if(_smEd.sel){ smEd_commit(); smEd_apply(_smEd.sel,{color:b.dataset.c},{noClamp:true}); } }));
+  $('smp-front').addEventListener('click',()=>smEd_order(1));
+  $('smp-back').addEventListener('click',()=>smEd_order(-1));
+  $('smp-center').addEventListener('click',smEd_centerH);
+  $('smp-dup').addEventListener('click',smEd_duplicate);
+  $('smp-remove').addEventListener('click',smEd_remove);
+  $('smp-reset1').addEventListener('click',smEd_resetOne);
+  $('smp-add').addEventListener('click',smEd_addText);
+  $('smp-undo').addEventListener('click',smEd_undo);
+  $('smp-reset').addEventListener('click',smEd_resetAllEdits);
+  // arraste: ouvimos na janela (pointer capture no elemento recebe os eventos mesmo se ele for recriado)
+  window.addEventListener('pointermove',smEd_dragMove,{passive:false});
+  window.addEventListener('pointerup',smEd_dragEnd);
+  window.addEventListener('pointercancel',smEd_dragEnd);
+  // toque no vazio = desmarca
+  const box=$('sm-crop-box'); if(box) box.addEventListener('pointerdown',e=>{ if(_smEd.mode&&!e.target.closest('.sm-box,.sm-handle')) smEd_select(null); });
+  // setas movem o texto selecionado
+  document.addEventListener('keydown',e=>{
+    if(!_smEd.mode||!_smEd.sel||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    const k={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key]; if(!k) return;
+    e.preventDefault(); const it=smEd_item(_smEd.sel); if(!it) return; const s=e.shiftKey?20:4;
+    smEd_commit(); const c=smEd_clampXY(Object.assign({},it.p,{x:it.p.x+k[0]*s,y:it.p.y+k[1]*s}),smEd_fixed(it));
+    smEd_set(it.id,{fx:c.x/SM_W,fy:c.y/SM_H}); sm_render();
+  });
+  window.addEventListener('resize',debounce(()=>smEd_renderOverlay(),150));
+}
+document.addEventListener('DOMContentLoaded',smEd_initPanel);
+Object.assign(window,{smEd_toggle,smEd_setMode,smEd_initPanel});
+
 
 
 async function doShare(){
