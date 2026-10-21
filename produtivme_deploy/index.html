@@ -1711,7 +1711,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
     </div>
 
     <div class="form-group">
-      <label>📅 Dias da Semana <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(deixe em branco para uma tarefa única de hoje)</span></label>
+      <label>📅 Dias da Semana <span style="font-size:.7rem;color:var(--text-3);font-weight:400">(opcional — sem dias marcados, vale todos os dias entre início e fim)</span></label>
       <div class="wd-picker" id="task-weekdays">
         <div class="wd-pill" data-day="1">Seg</div>
         <div class="wd-pill" data-day="2">Ter</div>
@@ -1992,6 +1992,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface2);border-top
           <div class="smp-seg"><button data-a="left" title="Esquerda"><i class="fas fa-align-left"></i></button><button data-a="center" title="Centro"><i class="fas fa-align-center"></i></button><button data-a="right" title="Direita"><i class="fas fa-align-right"></i></button></div>
           <select id="smp-weight" title="Peso da fonte"><option value="400">Normal</option><option value="500">Médio</option><option value="600">Semi</option><option value="700">Negrito</option><option value="800">Extra</option></select>
         </div>
+        <div class="smp-row"><label class="smp-l" for="smp-op">Opacid.</label><input type="range" id="smp-op" min="5" max="100" step="1"><output id="smp-op-v"></output></div>
         <div class="smp-row"><label class="smp-l" for="smp-color">Cor</label><input type="color" id="smp-color" value="#ffffff">
           <div class="smp-sw"><button data-c="#ffffff" style="background:#fff" title="Branco"></button><button data-c="#a78bfa" style="background:#a78bfa" title="Roxo"></button><button data-c="#fb923c" style="background:#fb923c" title="Laranja"></button><button data-c="#34d399" style="background:#34d399" title="Verde"></button><button data-c="#f87171" style="background:#f87171" title="Vermelho"></button><button data-c="#fbbf24" style="background:#fbbf24" title="Dourado"></button><button data-c="#111111" style="background:#111" title="Preto"></button></div>
         </div>
@@ -2113,6 +2114,59 @@ function pruneTaskTombstones(){
   if(changed) saveTaskTombstones(m);
 }
 
+// ── Disponibilidade por datas (início / fim / dias da semana) ───────────────
+// Fonte única da regra. Todas as datas são chaves locais 'YYYY-MM-DD' (mesma
+// base de todayKey()), comparadas como texto — sem new Date(string) / UTC,
+// logo sem deslocamento de fuso. Estados:
+//   scheduled       hoje < início          → visível, bloqueada, fora das contas
+//   ended           hoje > data final      → fora da lista de hoje (regra atual)
+//   weekday_locked  dia da semana não marcado → visível, bloqueada (regra atual)
+//   available       pode ser executada/concluída hoje
+function normDateKey(v){
+  if(!v) return '';
+  const m=/^(\d{4}-\d{2}-\d{2})/.exec(String(v));
+  return m?m[1]:'';
+}
+function dowOfKey(key){ const [y,m,d]=key.split('-').map(Number); return new Date(y,m-1,d).getDay(); }
+function addDaysToKey(key,n){
+  const [y,m,d]=key.split('-').map(Number); const dt=new Date(y,m-1,d+n);
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+function fmtDateKeyBR(key){ const k=normDateKey(key); if(!k) return ''; const [y,m,d]=k.split('-'); return d+'/'+m; }
+function getTaskAvailability(rec, bucketKey, today){
+  today=today||todayKey();
+  if(!rec) return {state:'available'};
+  const start=normDateKey(rec.startDate)||normDateKey(bucketKey)||today;
+  const end=normDateKey(rec.endDate)||'';
+  if(today<start) return {state:'scheduled', start, end};
+  if(end && today>end) return {state:'ended', start, end};
+  const wd=rec.weekDays||[];
+  if(wd.length && !wd.includes(dowOfKey(today))) return {state:'weekday_locked', start, end};
+  return {state:'available', start, end};
+}
+// Rótulo da próxima data em que a tarefa fica disponível (considera início, fim e dias da semana)
+function nextAvailableLabel(rec, bucketKey, today){
+  today=today||todayKey();
+  if(!rec) return '';
+  const start=normDateKey(rec.startDate)||normDateKey(bucketKey)||today;
+  const end=normDateKey(rec.endDate)||'';
+  const wd=rec.weekDays||[];
+  let from=start>today?start:addDaysToKey(today,1);
+  for(let i=0;i<7;i++){
+    const k=addDaysToKey(from,i);
+    if(end && k>end) return '';
+    if(!wd.length || wd.includes(dowOfKey(k))){
+      if(k===addDaysToKey(today,1)) return 'amanhã ('+fmtDateKeyBR(k)+')';
+      return WD_NAMES[dowOfKey(k)]+' ('+fmtDateKeyBR(k)+')';
+    }
+  }
+  return '';
+}
+// Todas as tarefas de buckets até hoje — buckets futuros (tarefas agendadas) nunca entram em estatísticas
+function flatTasksUpToToday(routines){
+  const t=todayKey(); return Object.keys(routines||{}).filter(k=>k<=t).flatMap(k=>routines[k]||[]);
+}
+
 function getRecurrenceMap(){ try{ return JSON.parse(localStorage.getItem(TASK_RECUR_KEY)||'{}'); }catch(e){ return {}; } }
 function saveRecurrenceMap(m){ localStorage.setItem(TASK_RECUR_KEY, JSON.stringify(m)); }
 function setTaskRecurrence(id, cfg){ const m=getRecurrenceMap(); m[id]=cfg; saveRecurrenceMap(m); }
@@ -2177,7 +2231,7 @@ function weekDaysChip(weekDays){
 
 function nextRecurrenceLabel(weekDays){
   if(!weekDays || !weekDays.length) return '';
-  const todayDow=new Date().getDay();
+  const todayDow=dowOfKey(todayKey());
   for(let i=1;i<=7;i++){
     const d=(todayDow+i)%7;
     if(weekDays.includes(d)) return i===1?`amanhã (${WD_NAMES[d]})`:WD_NAMES[d];
@@ -2190,7 +2244,6 @@ function nextRecurrenceLabel(weekDays){
 // de data estiverem armazenadas.
 function getTodayEffectiveTasks(appRef){
   const today=todayKey();
-  const todayDow=new Date(today+'T00:00:00').getDay();
   const routines=(appRef.state.data.routines)||{};
   const recMap=getRecurrenceMap();
   const doneMap=getRecurringDoneMap();
@@ -2205,14 +2258,15 @@ function getTodayEffectiveTasks(appRef){
         return;
       }
       seen.add(t.id);
-      const start=rec.startDate||dateKey;
-      const end=rec.endDate||null;
-      if(today<start) return;
-      if(end && today>end) return;
-      const matchesToday=(rec.weekDays||[]).includes(todayDow);
-      const doneToday=!!(doneMap[t.id] && doneMap[t.id][today]);
+      const av=getTaskAvailability(rec, dateKey, today);
+      if(av.state==='ended') return; // período encerrado: sai da lista de hoje (histórico permanece nos registros)
+      const matchesToday=(av.state==='available');
+      const scheduled=(av.state==='scheduled');
+      // Tarefa agendada nunca aparece como concluída, mesmo que haja registro indevido de data futura
+      const doneToday=scheduled?false:!!(doneMap[t.id] && doneMap[t.id][today]);
       result.push(Object.assign({}, t, {
-        timeTracking: tt_projectForDay(t.timeTracking, today), done: doneToday, __recurring:true, __weekDays:rec.weekDays||[], __matchesToday:matchesToday
+        timeTracking: tt_projectForDay(t.timeTracking, today), done: doneToday, __recurring:true, __weekDays:rec.weekDays||[], __matchesToday:matchesToday,
+        __scheduled:scheduled, __startDate:av.start, __rec:rec, __bucket:dateKey
       }));
     });
   });
@@ -2646,9 +2700,14 @@ const offlineQueue = {
       try{
 
         if(a.type==='upsert_task'){
-          await window.supabaseClient
+          let {error:_upErr}=await window.supabaseClient
             .from('tarefas')
             .upsert([a.payload],{onConflict:'id'});
+          if(_upErr && isMissingColumnError(_upErr)){
+            // migração das colunas de recorrência ainda não aplicada: reenvia sem elas
+            const {dias_semana,data_inicio,data_fim,concluidas_recorrencia,...basePayload}=a.payload;
+            await window.supabaseClient.from('tarefas').upsert([basePayload],{onConflict:'id'});
+          }
         }
 
         else if(a.type==='delete_task'){
@@ -3798,14 +3857,26 @@ _isSyncing: false,
       newRoutines[dateKey].push(task);
     });
 
+    const prevRecMap=getRecurrenceMap();
+    // Se a tabela remota ainda não tem as colunas, o agendamento vive só neste aparelho — não apagar.
+    const recColsMissing = data.length>0 && !('data_inicio' in data[0]);
     data.forEach(t=>{
       if(tombstones[t.id]) return;
-      if(t.dias_semana && Array.isArray(t.dias_semana) && t.dias_semana.length){
-        newRecMap[t.id]={weekDays:t.dias_semana, startDate:t.data_inicio||(t.date_key||todayKey()), endDate:t.data_fim||''};
+      const wdRemote=Array.isArray(t.dias_semana)?t.dias_semana.map(Number).filter(n=>n>=0&&n<=6):[];
+      // Tem agendamento = dias da semana OU data de início/fim (período sem dias = todos os dias)
+      if(wdRemote.length || t.data_inicio || t.data_fim){
+        newRecMap[t.id]={weekDays:wdRemote, startDate:normDateKey(t.data_inicio)||normDateKey(t.date_key)||todayKey(), endDate:normDateKey(t.data_fim)};
       }
       if(t.concluidas_recorrencia && typeof t.concluidas_recorrencia==='object'){
         newDoneMap[t.id]=t.concluidas_recorrencia;
       }
+    });
+
+    // Edição local ainda não confirmada no servidor vence a leitura remota (inclusive o agendamento dela)
+    Object.keys(byId).forEach(id=>{
+      const e=byId[id];
+      if(e && e.task._synced===false){ if(prevRecMap[id]) newRecMap[id]=prevRecMap[id]; else delete newRecMap[id]; }
+      else if(recColsMissing && prevRecMap[id] && !newRecMap[id]) newRecMap[id]=prevRecMap[id];
     });
 
     this.state.data.routines=newRoutines;
@@ -3857,13 +3928,20 @@ _isSyncing: false,
       time_tracking_enabled: !!(task.timeTracking && task.timeTracking.enabled),
       goal_id: task.linkedGoalId || null,
       alarm_time: alarmIso,
-      date_key: dateKey || new Date().toISOString().split('T')[0],
+      date_key: dateKey || todayKey(), // data LOCAL (toISOString() é UTC e vira o dia errado à noite)
       created_at: task.created_at || nowIso,
       updated_at: task.updated_at || nowIso,
     };
 
     if(!_isOnline){
-      offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload});
+      // Inclui início/fim/dias da semana na fila offline — antes eles se perdiam e o outro aparelho via a tarefa sem agendamento.
+      const offlinePayload = _recurColumnsAvailable===false ? payload : {
+        ...payload,
+        dias_semana: rec?rec.weekDays:null,
+        data_inicio: rec?rec.startDate:null,
+        data_fim: (rec&&rec.endDate)?rec.endDate:null
+      };
+      offlineQueue.push({type:'upsert_task',id:task.id,user_id:this.state.user.id,payload:offlinePayload});
       setSyncStatus('offline');
       return;
     }
@@ -3957,8 +4035,12 @@ _isSyncing: false,
     const tombstones=getTaskTombstones();
     let added=0;
 
+    const recForCarry=getRecurrenceMap();
     lastTasks.forEach(t=>{
       if(tombstones[t.id]) return; // tarefa excluída — nunca reaparece via carry-over
+      // Tarefa com agendamento (início/fim/dias da semana) já é projetada todo dia por
+      // getTodayEffectiveTasks. Clonar criaria uma cópia comum, sem datas, que burlaria o bloqueio.
+      if(recForCarry[t.id]) return;
       // Não duplica se já existe tarefa com mesmo título hoje
       if(!todayTitles.has(t.title)){
         // ID determinístico (não aleatório) — se outro aparelho também rodar o
@@ -4080,11 +4162,13 @@ _isSyncing: false,
     if(!tasks.length){
       list.innerHTML='<div class="empty-state"><i class="fas fa-sun"></i><p>Nenhuma tarefa hoje</p><small>Toque em "+ Nova" para começar seu dia</small></div>';
     } else {
-      const pending=tasks.filter(t=>!t.done), finished=tasks.filter(t=>t.done);
+      const live=tasks.filter(t=>!t.__scheduled), sched=tasks.filter(t=>t.__scheduled);
+      const pending=live.filter(t=>!t.done), finished=live.filter(t=>t.done);
       let html='';
       if(pending.length) html+=pending.map(t=>this.taskHTML(t)).join('');
       if(finished.length && pending.length) html+=`<div class="section-label">Concluídas</div>`;
       if(finished.length) html+=finished.map(t=>this.taskHTML(t)).join('');
+      if(sched.length) html+=`<div class="section-label sched-label">Agendadas</div>`+sched.map(t=>this.taskHTML(t)).join('');
       list.innerHTML=html;
     }
 
@@ -4131,7 +4215,9 @@ _isSyncing: false,
           ${chip?`<span class="badge badge-recur">${chip}</span>`:''}
           ${ttBadge}
         </div>
-        ${locked?`<div class="task-locked-hint"><i class="fas fa-lock"></i> Próxima execução: ${nextRecurrenceLabel(task.__weekDays)}</div>`:''}
+        ${locked?(task.__scheduled
+          ?`<div class="task-locked-hint"><i class="fas fa-lock"></i> Agendada · disponível ${nextAvailableLabel(task.__rec, task.__bucket)||('a partir de '+fmtDateKeyBR(task.__startDate))}</div>`
+          :`<div class="task-locked-hint"><i class="fas fa-lock"></i> Próxima execução: ${nextAvailableLabel(task.__rec, task.__bucket)||nextRecurrenceLabel(task.__weekDays)}</div>`):''}
       </div>
       ${task.done?`<button class="task-share-btn" onclick="event.stopPropagation();app.shareTask('${task.id}')" title="Compartilhar"><i class="fas fa-paper-plane"></i></button>`:''}
     </div>`;
@@ -4143,7 +4229,8 @@ _isSyncing: false,
     if(!found) return;
     const task=found.task;
     const rec=getTaskRecurrence(id);
-    const locked=rec && !(rec.weekDays||[]).includes(new Date().getDay());
+    const av=getTaskAvailability(rec, found.dateKey);
+    const locked=!!rec && (av.state==='scheduled' || av.state==='weekday_locked');
     const priLabels={alta:'🔴 Alta prioridade',media:'🟡 Média prioridade',baixa:'🟢 Baixa prioridade'};
 
     let html=`<div class="task-sheet-handle"></div>
@@ -4151,13 +4238,14 @@ _isSyncing: false,
       <div class="task-meta" style="margin-top:.5rem">
         <span class="badge ${{alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'}[task.priority||'media']}">${priLabels[task.priority||'media']}</span>
         ${task.focus?`<span class="badge badge-focus">${esc(task.focus)}</span>`:''}
-        ${rec?`<span class="badge badge-recur">${weekDaysChip(rec.weekDays)}</span>`:''}
+        ${rec?`<span class="badge badge-recur">${weekDaysChip(rec.weekDays)||'📅 Todos os dias'}</span>`:''}
+        ${av.state==='scheduled'?`<span class="badge badge-recur">🗓️ Agendada</span>`:''}
       </div>`;
 
     if(task.description) html+=`<div class="task-sheet-row"><i class="fas fa-align-left"></i><div><div class="task-sheet-row-label">Descrição</div><div class="task-sheet-row-val">${esc(task.description)}</div></div></div>`;
     html+=`<div class="task-sheet-row"><i class="fas fa-calendar-day"></i><div><div class="task-sheet-row-label">Data</div><div class="task-sheet-row-val">${_jFmtDate(found.dateKey+'T12:00:00')}${rec?` <span style="color:var(--text-3);font-size:.78rem">(início da recorrência)</span>`:''}</div></div></div>`;
     if(task.alarmTime) html+=`<div class="task-sheet-row"><i class="fas fa-bell"></i><div><div class="task-sheet-row-label">Horário</div><div class="task-sheet-row-val">${esc(task.alarmTime)}</div></div></div>`;
-    if(rec) html+=`<div class="task-sheet-row"><i class="fas fa-repeat"></i><div><div class="task-sheet-row-label">Recorrência</div><div class="task-sheet-row-val">${weekDaysChip(rec.weekDays)}${locked?` · <span style="color:var(--text-3)">${nextRecurrenceLabel(rec.weekDays)}</span>`:''}${rec.endDate?` · até ${_jFmtDate(rec.endDate+'T12:00:00')}`:''}</div></div></div>`;
+    if(rec) html+=`<div class="task-sheet-row"><i class="fas fa-repeat"></i><div><div class="task-sheet-row-label">Recorrência</div><div class="task-sheet-row-val">${weekDaysChip(rec.weekDays)||'📅 Todos os dias'}${av.state==='scheduled'?` · <span style="color:var(--text-3)">começa em ${_jFmtDate(av.start+'T12:00:00')}</span>`:''}${locked?` · <span style="color:var(--text-3)">disponível ${nextAvailableLabel(rec, found.dateKey)}</span>`:''}${rec.endDate?` · até ${_jFmtDate(normDateKey(rec.endDate)+'T12:00:00')}`:''}</div></div></div>`;
 
     html+=`<div id="tt-widget-slot">${this.renderTTWidget(task)}</div>`;
 
@@ -4200,6 +4288,11 @@ _isSyncing: false,
     const found=findTaskAnyDate(this, id); if(!found) return;
     const task=found.task;
     const tt=tt_ensure(task);
+    const _recAv=getTaskRecurrence(task.id);
+    if(_recAv && getTaskAvailability(_recAv, found.dateKey).state==='scheduled'){
+      showToast('🔒 Tarefa agendada — o cronômetro libera a partir de '+fmtDateKeyBR(getTaskAvailability(_recAv, found.dateKey).start),'default');
+      return;
+    }
     if(getTaskRecurrence(task.id)) tt_closeStaleOpen(task);
     if(action==='start') tt_start(task);
     else if(action==='pause') tt_pause(task);
@@ -4240,8 +4333,15 @@ _isSyncing: false,
     const today=todayKey();
     const rec=getTaskRecurrence(id);
     if(rec){
-      const todayDow=new Date(today+'T00:00:00').getDay();
-      if(!(rec.weekDays||[]).includes(todayDow)) return; // bloqueada hoje
+      // Trava de negócio (não depende do botão desabilitado): só conclui/desmarca
+      // quando a tarefa está disponível HOJE — respeita início, data final e dias da semana.
+      const foundGuard=findTaskAnyDate(this,id);
+      const av=getTaskAvailability(rec, foundGuard?foundGuard.dateKey:null, today);
+      if(av.state!=='available'){
+        if(av.state==='scheduled') showToast('🔒 Tarefa agendada — disponível a partir de '+fmtDateKeyBR(av.start),'default');
+        this.renderDashboard(); // desfaz qualquer marcação visual indevida
+        return;
+      }
       const doneMap=getRecurringDoneMap();
       doneMap[id]=doneMap[id]||{};
       const wasDone=!!doneMap[id][today];
@@ -4305,7 +4405,7 @@ _isSyncing: false,
       newEl.classList.add('just-done');
       setTimeout(()=>newEl.classList.remove('just-done'),350);
 
-      let label=list.querySelector('.section-label');
+      let label=list.querySelector('.section-label:not(.sched-label)');
       if(task.done){
         if(!label){
           label=document.createElement('div');
@@ -4313,7 +4413,8 @@ _isSyncing: false,
           label.textContent='Concluídas';
           list.appendChild(label);
         }
-        list.appendChild(newEl); // vai para o fim, dentro do grupo "Concluídas"
+        const schedLbl=list.querySelector('.sched-label');
+        if(schedLbl) list.insertBefore(newEl, schedLbl); else list.appendChild(newEl); // fim do grupo "Concluídas"
       } else if(label){
         list.insertBefore(newEl, label); // volta para o grupo de pendentes
         const aindaTemConcluida=Array.from(list.children).some(c=>c!==label && c.classList.contains('task-done'));
@@ -4378,8 +4479,8 @@ _isSyncing: false,
     q('task-alarm').value=task.alarmTime||'';
     const rec=getTaskRecurrence(id);
     setTaskWeekdayPicker(rec?rec.weekDays:[]);
-    q('task-start-date').value=rec?rec.startDate:(found.dateKey||todayKey());
-    q('task-end-date').value=rec?(rec.endDate||''):'';
+    q('task-start-date').value=rec?(normDateKey(rec.startDate)||found.dateKey||todayKey()):(found.dateKey||todayKey());
+    q('task-end-date').value=rec?normDateKey(rec.endDate):'';
     const tt=task.timeTracking||{};
     q('task-tt-enabled').checked=!!tt.enabled;
     q('task-tt-planned-wrap').style.display=tt.enabled?'block':'none';
@@ -4418,7 +4519,11 @@ _isSyncing: false,
     const weekDays=getTaskWeekdayPicker();
     const startDate=q('task-start-date').value||today;
     const endDate=q('task-end-date').value||'';
-    const newRec = weekDays.length ? {weekDays, startDate, endDate} : null;
+    if(endDate && endDate<startDate){ showToast('A data final não pode ser anterior à data de início','error'); return; }
+    // As datas valem mesmo sem dias da semana marcados (vazio = todos os dias do período).
+    // Sem dias, sem data final e com início hoje/passado = tarefa comum, como antes.
+    const hasSchedule = weekDays.length>0 || startDate>today || !!endDate;
+    const newRec = hasSchedule ? {weekDays, startDate, endDate} : null;
     const ttEnabled=q('task-tt-enabled').checked;
     const ttPlanned=q('task-tt-planned').value?Number(q('task-tt-planned').value):null;
 
@@ -4434,8 +4539,20 @@ _isSyncing: false,
         task.alarmTime=q('task-alarm').value; task.updated_at=now; task._synced=false;
         const tt=tt_ensure(task); tt.enabled=ttEnabled; tt.plannedMin=ttPlanned; // sessões existentes (se houver) são preservadas
         if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
-        this.saveLocal(); this.saveTaskRemote(task,found.dateKey);
-        showToast('Tarefa atualizada ✏️','success');
+        // Tarefa de hoje/futura que passa a começar no futuro vai para o dia de início (e vice-versa).
+        // Tarefas de dias passados não são movidas — o histórico daquele dia é preservado.
+        let targetKey=found.dateKey;
+        if(startDate>today){ if(found.dateKey>=today) targetKey=startDate; }
+        else if(found.dateKey>today){ targetKey=today; }
+        if(targetKey!==found.dateKey){
+          const r=this.state.data.routines;
+          r[found.dateKey]=(r[found.dateKey]||[]).filter(t=>t.id!==task.id);
+          if(!r[targetKey]) r[targetKey]=[];
+          r[targetKey].push(task);
+          task.done=false;
+        }
+        this.saveLocal(); this.saveTaskRemote(task,targetKey);
+        showToast(startDate>today?('Tarefa agendada para '+fmtDateKeyBR(startDate)+' 📅'):'Tarefa atualizada ✏️','success');
       }
     } else {
       const task={
@@ -4447,10 +4564,13 @@ _isSyncing: false,
       };
       savedId=task.id;
       if(newRec) setTaskRecurrence(savedId, newRec); else removeTaskRecurrence(savedId);
-      this.state.data.routines[today].push(task);
-      this.saveLocal(); this.saveTaskRemote(task,today);
+      // Início no futuro: a linha fica no dia de início, então nenhuma conta de hoje/dias anteriores a enxerga.
+      const bucket=startDate>today?startDate:today;
+      if(!this.state.data.routines[bucket]) this.state.data.routines[bucket]=[];
+      this.state.data.routines[bucket].push(task);
+      this.saveLocal(); this.saveTaskRemote(task,bucket);
       window.track?.('task_created',{priority:task.priority,has_recurrence:!!newRec,has_alarm:!!task.alarmTime,has_time_tracking:ttEnabled});
-      showToast('Tarefa criada! 🎯','success');
+      showToast(startDate>today?('Tarefa agendada para '+fmtDateKeyBR(startDate)+' 📅'):'Tarefa criada! 🎯','success');
     }
 
     this.renderDashboard();
@@ -5269,7 +5389,7 @@ _isSyncing: false,
   ══════════════════════════════════════ */
   renderAnalytics(){
     if(typeof renderTTWeekCard==='function') renderTTWeekCard();
-    const allTasks=Object.values(this.state.data.routines||{}).flat();
+    const allTasks=flatTasksUpToToday(this.state.data.routines);
     const completed=allTasks.filter(t=>t.done).length, total=allTasks.length;
     const avg=total?Math.round(completed/total*100):0;
     if(q('analytics-avg')) q('analytics-avg').textContent=avg+'%';
@@ -5358,7 +5478,7 @@ _isSyncing: false,
     for(let i=11;i>=0;i--){
       const d=new Date(now.getFullYear(),now.getMonth()-i,1);
       labels.push(d.toLocaleDateString('pt-BR',{month:'short'}));
-      const monthTasks=Object.entries(this.state.data.routines||{}).filter(([k])=>{ const dd=new Date(k+'T00:00:00'); return dd.getFullYear()===d.getFullYear()&&dd.getMonth()===d.getMonth(); }).flatMap(([,t])=>t);
+      const monthTasks=Object.entries(this.state.data.routines||{}).filter(([k])=>{ if(k>todayKey()) return false; const dd=new Date(k+'T00:00:00'); return dd.getFullYear()===d.getFullYear()&&dd.getMonth()===d.getMonth(); }).flatMap(([,t])=>t);
       const tot=monthTasks.length;
       data.push(tot?Math.round(monthTasks.filter(t=>t.done).length/tot*100):0);
     }
@@ -6318,9 +6438,9 @@ const RealtimeManager = (() => {
   window.RealtimeManager = RealtimeManager;
   // Detector de virada de dia — roda carryOver sem precisar reabrir o app
   (function watchDayChange(){
-    let lastDay = new Date().toDateString();
-    setInterval(async ()=>{
-      const hoje = new Date().toDateString();
+    let lastDay = todayKey(); // data LOCAL do usuário
+    async function checkDayChange(){
+      const hoje = todayKey();
       if(hoje !== lastDay){
         lastDay = hoje;
         if(app?.state?.user) {
@@ -6333,14 +6453,20 @@ const RealtimeManager = (() => {
           // Sempre re-renderiza, mesmo quando não há nada para copiar —
           // senão a tela fica presa no dia anterior (checkboxes de tarefas
           // que não existem mais em routines[hoje] não respondem ao clique
-          // até recarregar a página).
+          // até recarregar a página). É aqui também que tarefas agendadas
+          // são liberadas: a disponibilidade é recalculada a cada render.
           app.renderDashboard();
           if(typeof app.renderAll==='function') app.renderAll();
           if(typeof checkSeasonRollover==='function') checkSeasonRollover();
           if(typeof checkCapsulasProntas==='function') checkCapsulasProntas();
         }
       }
-    }, 60000); // checa a cada 1 minuto
+    }
+    setInterval(checkDayChange, 60000); // checa a cada 1 minuto
+    // Timers ficam congelados com o app em segundo plano (celular): ao voltar, confere na hora.
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checkDayChange(); });
+    window.addEventListener('focus', checkDayChange);
+    window.addEventListener('pageshow', checkDayChange);
   })();
 
   console.log('[App] Bootstrap completo ✅');
@@ -8325,7 +8451,7 @@ function checkResumoDia(){
   if(lastShown === today) return;
   localStorage.setItem('pm_resumo_dia', today);
   
-  const allTasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+  const allTasks = flatTasksUpToToday(window.app?.state?.data?.routines);
   const todayTasks = (window.app?.state?.data?.routines?.[today]||[]);
   const doneTasks = todayTasks.filter(t=>t.done).length;
   const totalTasks = todayTasks.length;
@@ -8384,7 +8510,7 @@ function checkRecordes(){
   
   // Recorde de tarefas
   const today = spDateKey();
-  const todayDone = (Object.values(app?.state?.data?.routines||{}).flat()||[]).filter((t)=>t.done && t.updated_at?.startsWith(today)).length;
+  const todayDone = (flatTasksUpToToday(app?.state?.data?.routines)||[]).filter((t)=>t.done && t.updated_at?.startsWith(today)).length;
   if(todayDone > 0 && todayDone === (records.maxTasksDay||0)){
     alerts.push(`⚡ Você está perto do seu recorde diário de tarefas (${records.maxTasksDay})!`);
   }
@@ -8479,7 +8605,7 @@ function renderTutStep(){
   let ckHtml = '';
   if(step.checklist){
     const g = window.app?.state?.data?.goals||[];
-    const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+    const tasks = flatTasksUpToToday(window.app?.state?.data?.routines);
     const habs = loadHabits?.()?.length||0;
     const fin = typeof loadFinance==='function'?(loadFinance()?.transactions?.length||0):0;
     const doneTasks = tasks.filter(t=>t.done).length;
@@ -8612,7 +8738,7 @@ function finishTutorial(giveBonus){
   window.addBreadcrumb?.('tutorial_completed','tutorial');
   if(giveBonus){
     const g = window.app?.state?.data?.goals||[];
-    const tasks = Object.values(window.app?.state?.data?.routines||{}).flat();
+    const tasks = flatTasksUpToToday(window.app?.state?.data?.routines);
     const habs = loadHabits?.()?.length||0;
     const fin = typeof loadFinance==='function'?(loadFinance()?.transactions?.length||0):0;
     const doneTasks = tasks.filter(t=>t.done).length;
@@ -8811,7 +8937,7 @@ function smWrap(ctx,text,x,y,maxW,typo,color,align,maxLines){
 
 function smBg(ctx){ const gr=ctx.createLinearGradient(0,0,SM_W,SM_H); gr.addColorStop(0,'#0c0719'); gr.addColorStop(.45,'#170d35'); gr.addColorStop(1,'#0a0718'); ctx.fillStyle=gr; ctx.fillRect(0,0,SM_W,SM_H); ctx.save(); ctx.globalAlpha=.10; const g1=ctx.createRadialGradient(980,200,0,980,200,500); g1.addColorStop(0,'#8b5cf6'); g1.addColorStop(1,'transparent'); ctx.fillStyle=g1; ctx.fillRect(0,0,SM_W,SM_H); const g2=ctx.createRadialGradient(100,1750,0,100,1750,420); g2.addColorStop(0,'#6d28d9'); g2.addColorStop(1,'transparent'); ctx.fillStyle=g2; ctx.fillRect(0,0,SM_W,SM_H); ctx.restore(); }
 
-function smWm(ctx,light){ const y=SM_H-SM_SAFE_BOT+60; ctx.save(); ctx.globalAlpha=light?.38:.28; ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.font=`600 ${T.WM.size}px ${T.WM.font}`; ctx.fillText('⚡ produtiv.me',SM_W/2,y); ctx.font=`400 ${T.WM.size-4}px ${T.WM.font}`; ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillText('produtiv-me.vercel.app',SM_W/2,y+36); ctx.restore(); }
+function smWm(ctx,light){ smBrand(ctx,{x:SM_W/2,y:SM_H-SM_SAFE_BOT+60,alpha:light?.38:.28,color:'#ffffff',size:26,weight:'600',family:T.WM.font,url:true}); }
 
 function smDiv(ctx,y){ ctx.save(); ctx.globalAlpha=.18; ctx.strokeStyle='#a78bfa'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(120,y); ctx.lineTo(SM_W-120,y); ctx.stroke(); ctx.restore(); }
 
@@ -8907,8 +9033,8 @@ function sm_buildContent(type){
 }
 
 // ── getWeekTasks / getMonthTasks (kept here for compat) ──
-function getWeekTasks(weeksAgo){ weeksAgo=weeksAgo||0; const routines=window.app?.state?.data?.routines||{}; const now=new Date(); const start=new Date(now); start.setDate(now.getDate()-now.getDay()-weeksAgo*7); const end=new Date(start); end.setDate(start.getDate()+6); const keys=Object.keys(routines).filter(dk=>{ const d=new Date(dk+'T00:00:00'); return d>=start&&d<=end; }); const tasks=keys.flatMap(k=>routines[k]||[]); return {total:tasks.length,done:tasks.filter(t=>t.done).length}; }
-function getMonthTasks(monthsAgo){ monthsAgo=monthsAgo||0; const routines=window.app?.state?.data?.routines||{}; const now=new Date(); const target=new Date(now.getFullYear(),now.getMonth()-monthsAgo,1); const ym=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0'); const keys=Object.keys(routines).filter(dk=>dk.startsWith(ym)); const tasks=keys.flatMap(k=>routines[k]||[]); return {total:tasks.length,done:tasks.filter(t=>t.done).length,ym}; }
+function getWeekTasks(weeksAgo){ weeksAgo=weeksAgo||0; const routines=window.app?.state?.data?.routines||{}; const now=new Date(); const start=new Date(now); start.setDate(now.getDate()-now.getDay()-weeksAgo*7); const end=new Date(start); end.setDate(start.getDate()+6); const keys=Object.keys(routines).filter(dk=>{ const d=new Date(dk+'T00:00:00'); return d>=start&&d<=end&&dk<=todayKey(); }); const tasks=keys.flatMap(k=>routines[k]||[]); return {total:tasks.length,done:tasks.filter(t=>t.done).length}; }
+function getMonthTasks(monthsAgo){ monthsAgo=monthsAgo||0; const routines=window.app?.state?.data?.routines||{}; const now=new Date(); const target=new Date(now.getFullYear(),now.getMonth()-monthsAgo,1); const ym=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0'); const keys=Object.keys(routines).filter(dk=>dk.startsWith(ym)&&dk<=todayKey()); const tasks=keys.flatMap(k=>routines[k]||[]); return {total:tasks.length,done:tasks.filter(t=>t.done).length,ym}; }
 
 // ════════════════════════════════════════
 //  6 TEMPLATES
@@ -9001,7 +9127,7 @@ function _tplPolaroid(ctx,c){
   }
   ctx.fillStyle='rgba(106,89,78,.65)'; ctx.font=`italic 28px Georgia,serif`; ctx.textAlign='center';
   smWrap(ctx,`"${c.frase}"`,SM_W/2,y+16,SM_W-220,{...T.PHRASE,size:28,font:'Georgia,serif'},`rgba(106,89,78,.65)`,'center',2);
-  ctx.fillStyle='rgba(139,92,246,.45)'; ctx.font=`600 26px sans-serif`; ctx.textAlign='center'; ctx.fillText('⚡ produtiv.me',SM_W/2,SM_H-100);
+  smBrand(ctx,{x:SM_W/2,y:SM_H-100,alpha:.45,color:'#8b5cf6',size:26,weight:'600',family:'sans-serif',url:false});
 }
 
 function _tplTimeline(ctx,c){
@@ -9041,7 +9167,7 @@ function _tplApple(ctx,c){
     if(c.badge){ ctx.fillStyle='rgba(167,139,250,.65)'; ctx.font=`700 44px ${T.BODY.font}`; ctx.textAlign='center'; ctx.fillText(c.badge,SM_W/2,y); y+=60; }
   }
   smWrap(ctx,`"${c.frase}"`,SM_W/2,y+20,SM_W-200,{...T.PHRASE,size:28},C.W20,'center',2);
-  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.font=`400 24px ${T.WM.font}`; ctx.textAlign='center'; ctx.fillText('produtiv.me',SM_W/2,SM_H-100);
+  smBrand(ctx,{x:SM_W/2,y:SM_H-100,alpha:.22,color:'#ffffff',size:24,weight:'400',family:T.WM.font,url:false});
 }
 
 // ── Main dispatch ──
@@ -9068,6 +9194,49 @@ function generateShareCard(type,reuse){
   } finally { smRec_end(); }
 }
 function sm_render(){ generateShareCard(_shareType,true); }
+
+
+/* ══ MARCA D'ÁGUA (logo do app + produtiv.me) — elemento único, editável (mover, tamanho, cor, opacidade) ══ */
+let _smLogo=null;
+(function(){
+  const fb='data:image/png;base64,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';
+  const img=new Image(); let tried=false;
+  img.onload=()=>{ _smLogo=img; try{ if(document.getElementById('share-modal')?.classList.contains('active')) sm_render(); }catch(e){} };
+  // usa o ícone grande do app (mesma origem, sem "taint" no canvas); se não existir, cai no ícone embutido
+  img.onerror=()=>{ if(!tried){ tried=true; img.src=fb; } };
+  img.src='/icon_192x192.png';
+})();
+function smBrand_layout(p){
+  const m=_smMeasure||(_smMeasure=document.createElement('canvas').getContext('2d'));
+  m.font=p.weight+' '+p.size+'px '+p.family; const tw=m.measureText('produtiv.me').width;
+  const logo=Math.round(p.size*1.35), gap=Math.round(p.size*.35), us=Math.round(p.size*.85);
+  const w1=logo+gap+tw; let uw=0;
+  if(p.showUrl){ m.font='400 '+us+'px '+p.family; uw=m.measureText('produtiv-me.vercel.app').width; }
+  const w=Math.max(w1,uw), rowCy=p.y-p.size*.35, top=rowCy-logo/2;
+  const bottom=p.showUrl?p.y+p.size*1.45+us*.25:top+logo;
+  return {lines:[],lh:p.size*1.2,w,h:bottom-top,left:p.x-w/2,top,right:p.x+w/2,bottom,p,tw,logo,gap,us,w1,rowCy};
+}
+function smBrand_draw(ctx,p){
+  const L=smBrand_layout(p);
+  ctx.save(); ctx.globalAlpha=p.alpha; ctx.textBaseline='alphabetic'; ctx.shadowColor='transparent'; ctx.shadowBlur=0;
+  const x0=p.x-L.w1/2;
+  if(_smLogo){ ctx.save(); roundRect(ctx,x0,L.rowCy-L.logo/2,L.logo,L.logo,L.logo*.24); ctx.clip(); ctx.drawImage(_smLogo,x0,L.rowCy-L.logo/2,L.logo,L.logo); ctx.restore(); }
+  ctx.fillStyle=p.color; ctx.textAlign='left'; ctx.font=p.weight+' '+p.size+'px '+p.family;
+  ctx.fillText('produtiv.me',x0+L.logo+L.gap,p.y);
+  if(p.showUrl){ ctx.globalAlpha=p.alpha*.6; ctx.textAlign='center'; ctx.font='400 '+L.us+'px '+p.family; ctx.fillText('produtiv-me.vercel.app',p.x,p.y+p.size*1.45); }
+  ctx.restore(); return L;
+}
+// Registra a marca como UM elemento editável; se foi editada, é redesenhada por cima no fim do render.
+function smBrand(ctx,o){
+  const rec=_smRec;
+  const p={kind:'brand',x:o.x,y:o.y,size:o.size,weight:o.weight,family:o.family,color:o.color,alpha:o.alpha,showUrl:!!o.url,align:'center',lh:1.2,text:'produtiv.me',italic:false};
+  if(!rec){ smBrand_draw(ctx,p); return; }
+  const el=Object.assign({id:'brand#1',kind:'brand',role:'brand',label:'Marca (logo + produtiv.me)'},p);
+  rec.list.push(el);
+  if(smEd_isMod(rec.st.over[el.id])){ rec.deferred.push(el); return; }
+  rec.group={lines:[],suppress:false}; // impede o gravador de tratar o texto interno como outro elemento
+  try{ smBrand_draw(ctx,p); } finally { rec.group=null; }
+}
 
 /* ══════════════════════════════════════════════════
    EDITOR VISUAL DO STUDIO (editar textos direto na imagem)
@@ -9162,15 +9331,18 @@ function smRec_classify(rec,el){
   el.label=t.length>26?t.slice(0,25)+'…':t;
 }
 function smEd_linesFor(el,ov){
+  if(el.kind==='brand') return null;
   const reflow=ov&&(ov.size!=null||ov.boxW!=null||ov.text!=null||ov.weight!=null);
   if(reflow) return null;
   return el.kind==='para'?el.lines:[el.text];
 }
 function smEd_resolve(el,ov){
   ov=ov||{};
+  if(el.kind==='brand') return {id:el.id,kind:'brand',text:'produtiv.me',x:ov.fx!=null?ov.fx*SM_W:el.x,y:ov.fy!=null?ov.fy*SM_H:el.y,size:ov.size!=null?ov.size:el.size,
+    weight:el.weight,italic:false,family:el.family,color:ov.color||el.color,align:'center',alpha:ov.alpha!=null?ov.alpha:el.alpha,lh:1.2,boxW:SM_W,showUrl:el.showUrl};
   return {id:el.id,text:ov.text!=null?ov.text:el.text,x:ov.fx!=null?ov.fx*SM_W:el.x,y:ov.fy!=null?ov.fy*SM_H:el.y,
     size:ov.size!=null?ov.size:el.size,weight:ov.weight||el.weight,italic:el.italic,family:el.family,
-    color:ov.color||el.color,align:ov.align||el.align,alpha:el.alpha,lh:el.lh,boxW:ov.boxW!=null?ov.boxW:(el.maxW||SM_W-120)};
+    color:ov.color||el.color,align:ov.align||el.align,alpha:ov.alpha!=null?ov.alpha:el.alpha,lh:el.lh,boxW:ov.boxW!=null?ov.boxW:(el.maxW||SM_W-120)};
 }
 function smEd_resolveCustom(cu){
   return {id:cu.id,text:cu.text,x:cu.fx*SM_W,y:cu.fy*SM_H,size:cu.size,weight:cu.weight,italic:false,family:cu.family,color:cu.color,align:cu.align,alpha:1,lh:1.25,boxW:cu.boxW};
@@ -9179,6 +9351,7 @@ let _smMeasure=null;
 // Só se o bloco de texto não couber na arte (largura de uma palavra ou altura total) a fonte é reduzida o mínimo
 // necessário — dentro desse limite o tamanho escolhido pelo usuário é sempre respeitado.
 function smEd_layout(p,fixedLines,_try){
+  if(p.kind==='brand') return smBrand_layout(p);
   _try=_try||0;
   const m=_smMeasure||(_smMeasure=document.createElement('canvas').getContext('2d'));
   const maxW=SM_W-2*SMED_MARGIN, maxH=SM_H-16;
@@ -9202,6 +9375,7 @@ function smEd_layout(p,fixedLines,_try){
   return {lines,lh,w,h,left,top,right:left+w,bottom:top+h,p};
 }
 function smEd_drawText(ctx,p,fixedLines){
+  if(p.kind==='brand') return smBrand_draw(ctx,p);
   const L=smEd_layout(p,fixedLines), q=L.p;
   ctx.save(); ctx.globalAlpha=p.alpha; ctx.fillStyle=p.color; ctx.textAlign=p.align; ctx.textBaseline='alphabetic';
   ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0; ctx.font=smEd_fontStr(q);
@@ -9448,13 +9622,16 @@ function smEd_syncPanel(){
     const locked=(it.role==='value'||it.role==='brand');
     if(document.activeElement!==ta) ta.value=it.p.text;
     ta.disabled=locked;
-    $('smp-text-note').textContent=locked?(it.role==='brand'?'Marca do produto: o texto é fixo.':'Valor dinâmico do app: o texto é calculado automaticamente.'):'';
-    const lo=it.custom?16:Math.max(12,Math.round(it.baseSize*.3)), hi=it.custom?220:Math.min(320,Math.round(it.baseSize*3));
+    $('smp-text-note').textContent=locked?(it.role==='brand'?'Marca do produto: você pode mover, mudar tamanho, cor e opacidade.':'Valor dinâmico do app: o texto é calculado automaticamente.'):'';
+    const lo=it.custom?16:Math.max(12,Math.round(it.baseSize*.3)), hi=it.custom?220:(it.p.kind==='brand'?90:Math.min(320,Math.round(it.baseSize*3)));
     const sz=$('smp-size'); sz.min=lo; sz.max=hi; sz.value=Math.round(it.box.p.size);
     $('smp-size-v').textContent=Math.round(it.box.p.size)+' px';
     const w=$('smp-w'); w.value=Math.round(it.p.boxW/SM_W*100); $('smp-w-v').textContent=Math.round(it.p.boxW/SM_W*100)+'%';
     panel.querySelectorAll('[data-a]').forEach(b=>b.classList.toggle('active',b.dataset.a===it.p.align));
     $('smp-color').value=smEd_toHex(it.p.color);
+    const isBrand=it.p.kind==='brand';
+    $('smp-op').value=Math.round((it.p.alpha||1)*100); $('smp-op-v').textContent=Math.round((it.p.alpha||1)*100)+'%';
+    $('smp-w').disabled=isBrand; panel.querySelectorAll('[data-a]').forEach(b=>b.disabled=isBrand); $('smp-weight').disabled=isBrand;
     $('smp-weight').value=['400','500','600','700','800'].includes(String(it.p.weight))?String(it.p.weight):'700';
     const locked2=locked;
     $('smp-remove').innerHTML=it.custom?'<i class="fas fa-trash"></i> Excluir':'<i class="fas fa-eye-slash"></i> Ocultar';
@@ -9483,6 +9660,8 @@ function smEd_initPanel(){
   $('smp-w').addEventListener('change',end);
   $('smp-color').addEventListener('input',gesture(e=>{ if(_smEd.sel) smEd_apply(_smEd.sel,{color:e.target.value},{noClamp:true}); }));
   $('smp-color').addEventListener('change',end);
+  $('smp-op').addEventListener('input',gesture(e=>{ if(_smEd.sel) smEd_apply(_smEd.sel,{alpha:+e.target.value/100},{noClamp:true}); }));
+  $('smp-op').addEventListener('change',end);
   $('smp-weight').addEventListener('change',e=>{ if(_smEd.sel){ smEd_commit(); smEd_apply(_smEd.sel,{weight:e.target.value}); } });
   document.querySelectorAll('#sm-edit-panel [data-a]').forEach(b=>b.addEventListener('click',()=>{ if(_smEd.sel){ smEd_commit(); smEd_apply(_smEd.sel,{align:b.dataset.a}); } }));
   document.querySelectorAll('#sm-edit-panel [data-c]').forEach(b=>b.addEventListener('click',()=>{ if(_smEd.sel){ smEd_commit(); smEd_apply(_smEd.sel,{color:b.dataset.c},{noClamp:true}); } }));
