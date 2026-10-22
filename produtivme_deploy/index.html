@@ -7789,6 +7789,47 @@ async function amigosVerDesafioGrupo(id){
 }
 window.amigosVerDesafioGrupo=amigosVerDesafioGrupo;
 
+/* ── Compartilhamento de desafios (1x1 e em grupo) ──────────────────────────
+   Os dois tipos usam o MESMO gerador de imagem (openShareModal('desafio')), o mesmo
+   "Salvar na Jornada?" e o mesmo card Compartilhamentos. Cada desafio guarda seus
+   dados por id: abrir/fechar o modal não perde o dado e dois desafios nunca se misturam.
+   A referência {id, kind} segue junto no campo "snap" do compartilhamento (jsonb que já
+   existe na tabela) — sem coluna nova e sem mexer em registros antigos. */
+window._desafioShareStore = window._desafioShareStore || {};
+function _desafioSetShareData(data, soGuardar){
+  if(data && data.ref && data.ref.id) window._desafioShareStore[data.ref.id]=data;
+  if(!soGuardar) window._shareDesafioData=data;
+  return data;
+}
+function _desafioOpenShare(id){
+  const d=window._desafioShareStore[id];
+  if(!d){ showToast('Abra o desafio novamente para compartilhar','default'); return; }
+  window._shareDesafioData=d;
+  openShareModal('desafio');
+}
+// Desafio individual (1x1): monta o dado do compartilhamento a partir do placar já carregado.
+// "ranked" já vem na ordem final (vencedor primeiro; em empate, maior pontuação/você primeiro).
+function _desafio1x1ShareData(ch, o){
+  const me={nome:'Você', pts:o.meuDelta, souEu:true};
+  const other={nome:o.outroNome, pts:o.deleDelta, souEu:false};
+  let ranked;
+  if(o.finalizado && !o.empate) ranked = o.souVencedor ? [me,other] : [other,me];
+  else ranked = (o.meuDelta>=o.deleDelta) ? [me,other] : [other,me];
+  return {
+    nome:`Você × ${o.outroNome}`,
+    desc:`⚔️ Você × ${o.outroNome} · ${ch.duration_days} dias`,
+    ranked, finalizado:!!o.finalizado, empate:!!(o.finalizado && o.empate), unit:'pts',
+    ref:{id:ch.id, kind:'individual', nome:o.outroNome, dias:ch.duration_days}
+  };
+}
+function _desafio1x1Resultado(ch, live, meuDelta, deleDelta, finalizado){
+  const souVencedor = live.is_finished
+    ? (live.winner_id ? (ch.souEuCriador ? live.winner_id===ch.creator_id : live.winner_id===ch.opponent_id) : null)
+    : (meuDelta===deleDelta ? null : meuDelta>deleDelta);
+  const empate = live.is_finished ? live.winner_id===null : meuDelta===deleDelta;
+  return {souVencedor, empate};
+}
+
 function _dgRenderPlacar(ch, ranked, finalizado){
   const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
   const msRest=new Date(ch.ends_at)-new Date();
@@ -7816,14 +7857,14 @@ function _dgRenderPlacar(ch, ranked, finalizado){
     </div>`).join('')+`</div>`;
   html+=`<button class="btn btn-ghost btn-block" style="margin-top:.6rem" onclick="amigosCompartilharDesafioGrupo('${ch.id}')"><i class="fab fa-instagram"></i> Compartilhar no Instagram</button>`;
   q('ver-desafio-body').innerHTML=html;
-  window._shareDesafioData={nome:ch.name, ranked, finalizado};
+  _desafioSetShareData({nome:ch.name, ranked, finalizado, ref:{id:ch.id, kind:'grupo', nome:ch.name||'Desafio em grupo'}});
 }
 
-function amigosCompartilharDesafioGrupo(id){
-  if(!window._shareDesafioData) return;
-  openShareModal('desafio');
-}
+function amigosCompartilharDesafioGrupo(id){ _desafioOpenShare(id); }
 window.amigosCompartilharDesafioGrupo=amigosCompartilharDesafioGrupo;
+
+function amigosCompartilharDesafioIndividual(id){ _desafioOpenShare(id); }
+window.amigosCompartilharDesafioIndividual=amigosCompartilharDesafioIndividual;
 
 async function amigosResponderDesafio(id, accept){
   try{
@@ -7924,6 +7965,12 @@ function _renderDesafioBody(ch, live, meuDelta, deleDelta){
       <div style="font-family:var(--font-display);font-weight:800;color:var(--primary)">${l.pts}</div>
     </div>`).join('')+`</div>`;
 
+  // Só desafio já aceito/em andamento (ou com prazo vencido aguardando fechar) pode ser compartilhado
+  if(ch.status==='active'){
+    const r=_desafio1x1Resultado(ch, live, meuDelta, deleDelta, finalizado);
+    _desafioSetShareData(_desafio1x1ShareData(ch,{meuDelta, deleDelta, finalizado, outroNome, ...r}));
+    html+=`<button class="btn btn-ghost btn-block" style="margin-top:.6rem" onclick="amigosCompartilharDesafioIndividual('${ch.id}')"><i class="fab fa-instagram"></i> Compartilhar no Instagram</button>`;
+  }
   q('ver-desafio-body').innerHTML=html;
 }
 
@@ -7949,10 +7996,14 @@ async function amigosAbrirHistorico(){
       const deleDelta=souEuCriador?live.opponent_delta:live.creator_delta;
       const nome=profiles[souEuCriador?c.opponent_id:c.creator_id]?.name||'Amigo';
       const souVencedor = live.winner_id===null?null:(souEuCriador?live.winner_id===c.creator_id:live.winner_id===c.opponent_id);
+      _desafioSetShareData(_desafio1x1ShareData(c,{meuDelta, deleDelta, finalizado:true, outroNome:nome, souVencedor, empate:souVencedor===null}), true); // só guarda; o modal usa ao tocar em Compartilhar
       return `<div style="padding:.7rem 0;border-bottom:1px solid var(--border)">
         <div style="font-weight:700;font-size:.86rem">Você × ${esc(nome)}</div>
         <div style="font-size:.75rem;color:var(--text-3);margin:.15rem 0">${c.duration_days} dias · ${souVencedor===null?'Empate':souVencedor?'🏆 Você venceu':`🏆 ${esc(nome)} venceu`}</div>
-        <div style="font-size:.8rem;font-weight:700">${meuDelta} × ${deleDelta}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+          <div style="font-size:.8rem;font-weight:700">${meuDelta} × ${deleDelta}</div>
+          <button class="btn btn-ghost btn-xs" onclick="amigosCompartilharDesafioIndividual('${c.id}')"><i class="fab fa-instagram"></i> Compartilhar</button>
+        </div>
       </div>`;
     }));
     q('historico-desafios-body').innerHTML=rows.join('');
@@ -9023,9 +9074,9 @@ function sm_buildContent(type){
     const d=window._shareDesafioData;
     if(!d) return {kind:'stats',title:'Desafio',icon:'⚔️',rows:[],badge:'',frase,type};
     const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
-    const rows=d.ranked.map((p,i)=>({icon:medals[i]||`${i+1}º`, label:p.souEu?'Você':p.nome, val:`${p.pts} XP`}));
+    const rows=d.ranked.map((p,i)=>({icon:medals[i]||`${i+1}º`, label:p.souEu?'Você':p.nome, val:`${p.pts} ${d.unit||'XP'}`}));
     const badge = d.finalizado
-      ? (d.ranked[0]?.souEu?'🏆 Você venceu!':`🏆 ${d.ranked[0]?.nome||''} venceu!`)
+      ? (d.empate?'🤝 Empate!':(d.ranked[0]?.souEu?'🏆 Você venceu!':`🏆 ${d.ranked[0]?.nome||''} venceu!`))
       : '⏳ Em andamento';
     return {kind:'stats',title:d.nome||'Desafio',icon:'⚔️',rows,badge,frase,type};
   }
@@ -9732,9 +9783,11 @@ function _askSaveJornada(thumbB64){
     semanal:'📊 Semana',
     comp_semanal:'📅 Comparação Semanal',
     comp_mensal:'📆 Comparação Mensal',
-    desafio:`⚔️ ${window._shareDesafioData?.nome||'Desafio'}`,
+    desafio:(window._shareDesafioData?.desc)||`⚔️ ${window._shareDesafioData?.nome||'Desafio'}`,
   };
   const desc = descMap[_shareType]||_shareType;
+  // Referência do desafio (id + tipo) fixada AGORA — o toast pode durar 12s e o modal já ter sido fechado
+  window._jornadaSaveRef = (_shareType==='desafio' && window._shareDesafioData?.ref) ? window._shareDesafioData.ref : null;
 
   // Remover toast anterior se houver
   const old = document.getElementById('jornada-save-toast');
@@ -9753,7 +9806,7 @@ function _askSaveJornada(thumbB64){
     <img src="${thumbB64}" style="width:44px;height:78px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid var(--border)">
     <div style="flex:1;min-width:0">
       <div style="font-size:.82rem;font-weight:700;color:var(--text);line-height:1.3">Salvar na Jornada?</div>
-      <div style="font-size:.72rem;color:var(--text-3);margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${desc}</div>
+      <div style="font-size:.72rem;color:var(--text-3);margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(desc)}</div>
     </div>
     <div style="display:flex;gap:.35rem;flex-shrink:0">
       <button onclick="_confirmSaveJornada('${_shareType}','${encodeURIComponent(desc)}')" style="padding:.35rem .7rem;border-radius:8px;background:var(--primary);border:none;color:#fff;font-size:.76rem;font-weight:700;cursor:pointer">Salvar</button>
@@ -9765,8 +9818,14 @@ function _askSaveJornada(thumbB64){
   setTimeout(()=>{ if(document.getElementById('jornada-save-toast')) toast.remove(); }, 12000);
 }
 
+let _jSaveGuard={key:'',ts:0};
 function _confirmSaveJornada(type, encodedDesc){
   const desc = decodeURIComponent(encodedDesc);
+  const ref = (type==='desafio') ? (window._jornadaSaveRef||null) : null;
+  // Toque duplo / reentrada: o mesmo compartilhamento (tipo + texto + desafio) não é salvo duas vezes em 5s
+  const gKey=type+'|'+desc+'|'+(ref?ref.kind+':'+ref.id:'');
+  if(_jSaveGuard.key===gKey && Date.now()-_jSaveGuard.ts<5000){ document.getElementById('jornada-save-toast')?.remove(); return; }
+  _jSaveGuard={key:gKey, ts:Date.now()};
   const canvas = sm_getExportCanvas();
   // Capturar thumbnail (grid) e versão maior (visualização completa) do canvas
   const thumbCanvas = document.createElement('canvas');
@@ -9780,7 +9839,7 @@ function _confirmSaveJornada(type, encodedDesc){
   const fullB64 = fullCanvas.toDataURL('image/jpeg', 0.85);
 
   if(typeof jornadaRegistrarShare === 'function'){
-    const id=jornadaRegistrarShare(type, desc, thumbB64);
+    const id=jornadaRegistrarShare(type, desc, thumbB64, ref?{desafio:ref}:null);
     JDB.set('share_'+id, fullB64).catch(()=>{});
   }
   document.getElementById('jornada-save-toast')?.remove();
@@ -10197,6 +10256,7 @@ const JEV_TYPES={
   capsula:     {icon:'⏳',color:'#fbbf24',bg:'rgba(251,191,36,.14)',  dot:'#fbbf24',label:'Cápsula do Tempo'},
   temporada:   {icon:'🏁',color:'#a78bfa',bg:'rgba(167,139,250,.16)', dot:'#a78bfa',label:'Temporada'},
   auto:        {icon:'⚡',color:'#a78bfa',bg:'rgba(167,139,250,.10)', dot:'#a78bfa',label:'Auto'},
+  desafio:     {icon:'⚔️',color:'#f59e0b',bg:'rgba(245,158,11,.14)',  dot:'#f59e0b',label:'Desafio'},
 };
 
 /* ── Marcos do Mural ── */
@@ -10459,11 +10519,11 @@ function jornadaVerEvolucaoPergunta(questionId){
 }
 window.jornadaVerEvolucaoPergunta=jornadaVerEvolucaoPergunta;
 
-function jornadaRegistrarShare(type,desc,thumb){
+function jornadaRegistrarShare(type,desc,thumb,extraSnap){
   const s=loadJShares();
   const isFirst=s.length===0;
   const id='sh_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  const share={id,type,desc,ts:new Date().toISOString(),thumb:thumb||null, snap:_jSnapshotHoje()};
+  const share={id,type,desc,ts:new Date().toISOString(),thumb:thumb||null, snap:{..._jSnapshotHoje(), ...(extraSnap||{})}};
   s.unshift(share);
   if(s.length>60) s.length=60; saveJShares(s);
   saveJShareRemote(share);
@@ -11293,6 +11353,7 @@ async function jornadaVerShareFull(id){
   if(snap.diaPerfeito) badges.push(`<span class="badge" style="background:rgba(244,114,182,.12);color:#f472b6">🌟 Dia Perfeito</span>`);
   if(snap.metaConcluida) badges.push(`<span class="badge" style="background:var(--primary-glow);color:var(--primary)">🎯 ${_jEsc(snap.metaConcluida)}</span>`);
   if(snap.liga) badges.push(`<span class="badge" style="background:rgba(251,191,36,.12);color:var(--gold)">${snap.liga.icon} ${_jEsc(snap.liga.name)}</span>`);
+  if(snap.desafio) badges.push(`<span class="badge" style="background:rgba(245,158,11,.14);color:#f59e0b">⚔️ ${snap.desafio.kind==='grupo'?'Desafio em grupo':'Desafio individual'}${snap.desafio.nome?` · ${_jEsc(snap.desafio.kind==='grupo'?snap.desafio.nome:('Você × '+snap.desafio.nome))}`:''}</span>`);
 
   meta.innerHTML=`
     <div class="jpm-caption">${t.icon} ${_jEsc(s.desc||s.type)}</div>
