@@ -2273,6 +2273,33 @@ function getTodayEffectiveTasks(appRef){
   return result;
 }
 
+/* ── Ordem da lista de tarefas: prioridade alta → média → baixa ──────────────
+   Ordenação estável: dentro da mesma prioridade mantém a ordem original (criação).
+   Tarefas bloqueadas hoje (dia da semana não marcado) ficam depois das que podem
+   ser feitas agora, para uma tarefa "alta" que não dá para executar hoje não
+   empurrar para baixo as que dá. Nunca altera o array guardado — devolve cópia. */
+const TASK_PRIORITY_RANK={alta:0,media:1,baixa:2};
+function taskPriorityRank(p){ const r=TASK_PRIORITY_RANK[p||'media']; return r===undefined?1:r; }
+function sortTasksByPriority(list){
+  const lockedOf=t=>(t.__recurring && t.__matchesToday===false)?1:0;
+  return list.map((t,i)=>({t,i}))
+    .sort((a,b)=>lockedOf(a.t)-lockedOf(b.t) || taskPriorityRank(a.t.priority)-taskPriorityRank(b.t.priority) || a.i-b.i)
+    .map(x=>x.t);
+}
+// Reordena, dentro de cada grupo da lista (Pendentes / Concluídas / Agendadas), os itens pelo data-idx
+// que o render gravou. Só mexe no DOM se a ordem realmente mudou.
+function sortTaskListDOM(list){
+  const groups=[]; let cur={label:null,items:[]}; groups.push(cur);
+  Array.from(list.children).forEach(k=>{
+    if(k.classList.contains('section-label')){ cur={label:k,items:[]}; groups.push(cur); } else cur.items.push(k);
+  });
+  const idx=el=>{ const n=parseInt(el.dataset.idx,10); return isNaN(n)?1e9:n; };
+  const before=Array.from(list.children);
+  groups.forEach(g=>g.items.sort((a,b)=>idx(a)-idx(b)));
+  const after=[]; groups.forEach(g=>{ if(g.label) after.push(g.label); after.push(...g.items); });
+  if(after.some((el,i)=>el!==before[i])) after.forEach(el=>list.appendChild(el));
+}
+
 // Localiza uma tarefa em qualquer bucket de data (necessário pois tarefas
 // recorrentes continuam fisicamente guardadas no dia em que foram criadas).
 function findTaskAnyDate(appRef, id){
@@ -4162,14 +4189,7 @@ _isSyncing: false,
     if(!tasks.length){
       list.innerHTML='<div class="empty-state"><i class="fas fa-sun"></i><p>Nenhuma tarefa hoje</p><small>Toque em "+ Nova" para começar seu dia</small></div>';
     } else {
-      const live=tasks.filter(t=>!t.__scheduled), sched=tasks.filter(t=>t.__scheduled);
-      const pending=live.filter(t=>!t.done), finished=live.filter(t=>t.done);
-      let html='';
-      if(pending.length) html+=pending.map(t=>this.taskHTML(t)).join('');
-      if(finished.length && pending.length) html+=`<div class="section-label">Concluídas</div>`;
-      if(finished.length) html+=finished.map(t=>this.taskHTML(t)).join('');
-      if(sched.length) html+=`<div class="section-label sched-label">Agendadas</div>`+sched.map(t=>this.taskHTML(t)).join('');
-      list.innerHTML=html;
+      list.innerHTML=this._taskListHTML(tasks);
     }
 
     // Resumo diário
@@ -4190,7 +4210,21 @@ _isSyncing: false,
     setTimeout(()=>checkAutoShare_Streak(streak), 1000);
   },
 
-  taskHTML(task){
+  // HTML da lista do dia: Pendentes → Concluídas → Agendadas, cada grupo por prioridade (alta, média, baixa).
+  // data-idx guarda a posição na ordenação, para o toggle reposicionar a tarefa sem redesenhar a lista.
+  _taskListHTML(tasks){
+    const live=sortTasksByPriority(tasks.filter(t=>!t.__scheduled)), sched=sortTasksByPriority(tasks.filter(t=>t.__scheduled));
+    const pending=live.filter(t=>!t.done), finished=live.filter(t=>t.done);
+    const pos=new Map(live.map((t,i)=>[t.id,i])); sched.forEach((t,i)=>pos.set(t.id,i));
+    let html='';
+    if(pending.length) html+=pending.map(t=>this.taskHTML(t,pos.get(t.id))).join('');
+    if(finished.length && pending.length) html+=`<div class="section-label">Concluídas</div>`;
+    if(finished.length) html+=finished.map(t=>this.taskHTML(t,pos.get(t.id))).join('');
+    if(sched.length) html+=`<div class="section-label sched-label">Agendadas</div>`+sched.map(t=>this.taskHTML(t,pos.get(t.id))).join('');
+    return html;
+  },
+
+  taskHTML(task, idx){
     const priColors={alta:'badge-alta',media:'badge-media',baixa:'badge-baixa'};
     const priLabels={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
     const locked=task.__recurring && task.__matchesToday===false;
@@ -4204,7 +4238,7 @@ _isSyncing: false,
       const hit=tt.plannedMin && sec>=tt.plannedMin*60;
       return `<span class="tt-badge ${tt.status==='running'?'tt-running':''}"><i class="fas ${tt.status==='running'?'fa-play':'fa-stopwatch'}"></i> ${tt_fmt(sec)}${planned}${hit?' 🎯':''}</span>`;
     })():'';
-    return `<div class="task-item ${task.done?'task-done':''} ${locked?'task-locked':''}" id="task-${task.id}" onclick="if(!event.target.closest('input,.task-share-btn,.task-desc-more')) app.openTaskDetail('${task.id}')">
+    return `<div class="task-item ${task.done?'task-done':''} ${locked?'task-locked':''}" id="task-${task.id}"${idx===undefined?'':` data-idx="${idx}"`} onclick="if(!event.target.closest('input,.task-share-btn,.task-desc-more')) app.openTaskDetail('${task.id}')">
       <input type="checkbox" ${task.done?'checked':''} ${locked?'disabled':''} onclick="event.stopPropagation()" onchange="app.toggleTask('${task.id}')">
       <div style="flex:1;min-width:0">
         <div class="task-title">${esc(task.title)}${task.alarmTime?`<i class="fas fa-bell alarm-icon" title="Alarme: ${task.alarmTime}"></i>`:''}</div>
@@ -4401,6 +4435,7 @@ _isSyncing: false,
       const wrapper=document.createElement('div');
       wrapper.innerHTML=this.taskHTML(task).trim();
       newEl=wrapper.firstElementChild;
+      if(oldEl.dataset.idx!==undefined) newEl.dataset.idx=oldEl.dataset.idx; // mantém a posição por prioridade
       oldEl.replaceWith(newEl);
       newEl.classList.add('just-done');
       setTimeout(()=>newEl.classList.remove('just-done'),350);
@@ -4420,6 +4455,7 @@ _isSyncing: false,
         const aindaTemConcluida=Array.from(list.children).some(c=>c!==label && c.classList.contains('task-done'));
         if(!aindaTemConcluida) label.remove();
       }
+      sortTaskListDOM(list); // dentro de Pendentes / Concluídas, volta à ordem de prioridade
     }
 
     if(task.done){
@@ -4676,7 +4712,7 @@ _isSyncing: false,
         <span style="font-size:.82rem;color:var(--primary);font-weight:700">${pct>=80?'🏆 Excelente':pct>=50?'👍 Bom':'💪 Em progresso'}</span>
       </div>
       <div class="progress-bar" style="margin-bottom:.75rem"><div class="progress-fill" style="width:${pct}%"></div></div>
-      ${tasks.map(t=>this.taskHTML(t)).join('')}`:'<div class="empty-state"><i class="fas fa-calendar"></i><p>Nenhuma tarefa neste dia</p></div>';
+      ${sortTasksByPriority(tasks).map(t=>this.taskHTML(t)).join('')}`:'<div class="empty-state"><i class="fas fa-calendar"></i><p>Nenhuma tarefa neste dia</p></div>';
   },
 
   renderWeekChart(){
